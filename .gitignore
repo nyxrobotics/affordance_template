@@ -1,3 +1,3 @@
 *.pyc
 *~
-template_server_protobuf/proto_gen/*
+affordance_template_server_protobuf/proto_gen/*

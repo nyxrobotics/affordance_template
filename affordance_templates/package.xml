@@ -27,9 +27,9 @@
   <!--   <test_depend>gtest</test_depend> -->
   <buildtool_depend>catkin</buildtool_depend>
   <run_depend>rospy</run_depend>
-  <run_depend>template_markers</run_depend>
-<!--   <run_depend>rviz_template_panel</run_depend> -->
-  <run_depend>template_server</run_depend>
+  <run_depend>affordance_template_markers</run_depend>
+<!--   <run_depend>rviz_affordance_template_panel</run_depend> -->
+  <run_depend>affordance_template_server</run_depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>
