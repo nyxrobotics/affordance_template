@@ -1,5 +1,5 @@
 <?xml version="1.0" ?>
-<affordance_template name="Wheel" image="package://affordance_template_library/images/test.jpg">
+<affordance_template name="Wheel" image="package://affordance_template_library/images/wheel.png">
 
     <display_objects>
         <display_object name="wheel">
