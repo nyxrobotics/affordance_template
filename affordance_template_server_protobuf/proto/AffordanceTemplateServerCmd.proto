@@ -23,6 +23,25 @@ message Template {
     optional string image_path = 3;  // contains path to image of template (used in rviz)
 }
 
+message EndEffector {
+    required string name = 1;           // robot end-effector name
+    required int32 id = 2;           // template ID the ee maps to
+    required Pose pose_offset = 3;           // base offset pose
+}
+
+message EndEffectorMap {
+    repeated EndEffector end_effector = 1;
+}
+
+message Robot {
+    required string filename = 1;        // robot config filename
+    required string name = 2;        // robot name
+    required string moveit_config_package = 3;  // moveit config package name
+    required string frame_id = 4;        // robot base frame
+    required Pose root_offset = 5;           // base offset pose
+    required EndEffectorMap end_effectors = 6;        // list of end effector mapping
+}
+
 message Request {
     enum Type {
         ADD = 0;       // add a new template to the server
@@ -33,13 +52,16 @@ message Request {
         PING = 5;      // ping message
         KILL = 6;      // kill a template
         RUNNING = 7;   // get running templates
+        LOAD_ROBOT = 8; // load robot from robot_config
     }
     required Type type = 1;
     repeated Template affordance_template = 2;
     optional Pose pose = 3;
+    optional Robot robot = 4;
 }
 
 message Response {
     required bool success = 1;
     repeated Template affordance_template = 2;
+    repeated Robot robot = 3;
 }

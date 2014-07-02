@@ -10,7 +10,7 @@ import zmq
 import affordance_template_markers
 import affordance_template_server_protobuf
 
-from AffordanceTemplateServerCmd_pb2 import Template, Request, Response, Pose, Position, Orientation
+from AffordanceTemplateServerCmd_pb2 import Template, Request, Response, Pose, Position, Orientation, EndEffector, Robot, EndEffectorMap
 from visualization_msgs.msg import Marker
 
 from threading import Thread
@@ -34,6 +34,7 @@ class AffordanceTemplateServer(Thread):
         Thread.__init__(self)
         signal.signal(signal.SIGINT, signal.SIG_DFL)
         self.topic_arg = topic_arg
+        self.robot_config = None
 
         self.server = InteractiveMarkerServer("affordance_template_server")
 
@@ -48,24 +49,28 @@ class AffordanceTemplateServer(Thread):
         # get path to template marker package
         self._package_path = self.getPackagePath("affordance_template_library")
         # get path to actual template source files
-        self._package_path    = os.path.join(self._package_path, 'templates')
+        self._template_path    = os.path.join(self._package_path, 'templates')
+        self._robot_path    = os.path.join(self._package_path, 'robots')
         # # get path to resources
         # self._resource_path = os.path.join(self._package_path, 'resources', 'rviz')
         # # find plugin_description.xml file that holds all templates
         # filename = self._package_path + "/plugin_description.xml"
         # # call getAvailableTemplates to parse out templates
-        self.class_map, self.image_map, self.file_map = self.getAvailableTemplates(self._package_path)
+        self.class_map, self.image_map, self.file_map = self.getAvailableTemplates(self._template_path)
+        self.robot_map = self.getRobots(self._robot_path)
 
-        import rospkg
-        rp = rospkg.RosPack()
-        robot_config_file = rp.get_path('affordance_template_markers') + "/resources/robots/r2.yaml"
-        self.robot_config = None
-        try:
-            # load RobotConfig from yaml and moveit package
-            self.robot_config = RobotConfig()
-            self.robot_config.load_from_file(robot_config_file)
-        except rospy.ROSInterruptException:
-            pass
+        # import rospkg
+        # rp = rospkg.RosPack()
+        # robot_config_file = rp.get_path('affordance_template_library') + "/robots/r2.yaml"
+        # self.robot_config = None
+        # try:
+        #     # load RobotConfig from yaml and moveit package
+        #     self.robot_config = RobotConfig()
+        #     if self.robot_config.load_from_file(robot_config_file) :
+        #         print "configuring R2:"
+        #         self.robot_config.configure()
+        # except rospy.ROSInterruptException:
+        #     pass
 
     @property
     def resource_path(self):
@@ -132,12 +137,42 @@ class AffordanceTemplateServer(Thread):
                             template = response.affordance_template.add()
                             template.type = class_type
                             template.image_path = self.image_map[class_type]
+
+                        for name in self.robot_map.iterkeys():
+                            print name
+                            robot = response.robot.add()
+                            robot.filename = name
+                            robot.name = self.robot_map[name].robot_name
+                            robot.moveit_config_package = self.robot_map[name].config_package
+                            robot.frame_id = self.robot_map[name].frame_id
+                            robot.root_offset.position.x = self.robot_map[name].root_offset.position.x
+                            robot.root_offset.position.y = self.robot_map[name].root_offset.position.y
+                            robot.root_offset.position.z = self.robot_map[name].root_offset.position.z
+                            robot.root_offset.orientation.x = self.robot_map[name].root_offset.orientation.x
+                            robot.root_offset.orientation.y = self.robot_map[name].root_offset.orientation.y
+                            robot.root_offset.orientation.z = self.robot_map[name].root_offset.orientation.z
+                            robot.root_offset.orientation.w = self.robot_map[name].root_offset.orientation.w
+                            print "adding end_effectors"
+                            for e in self.robot_map[name].end_effector_names:
+                                print "found: ", e
+                                ee = robot.end_effectors.end_effector.add()
+                                ee.name = e
+                                ee.id =self.robot_map[name].end_effector_id_map[e]
+                                ee.pose_offset.position.x = self.robot_map[name].end_effector_pose_map[e].position.x
+                                ee.pose_offset.position.y = self.robot_map[name].end_effector_pose_map[e].position.y
+                                ee.pose_offset.position.z = self.robot_map[name].end_effector_pose_map[e].position.z
+                                ee.pose_offset.orientation.x = self.robot_map[name].end_effector_pose_map[e].orientation.x
+                                ee.pose_offset.orientation.y = self.robot_map[name].end_effector_pose_map[e].orientation.y
+                                ee.pose_offset.orientation.z = self.robot_map[name].end_effector_pose_map[e].orientation.z
+                                ee.pose_offset.orientation.w = self.robot_map[name].end_effector_pose_map[e].orientation.w
+
                         response.success = True
                     except:
                         print 'Error with query for available templates'
 
                 # add a new template and add it to the mapping
                 elif request.type == request.ADD:
+                    print "got new add request"
                     try:
                         for template in request.affordance_template:
                             class_type = str(template.type)
@@ -176,6 +211,13 @@ class AffordanceTemplateServer(Thread):
                             self.removeTemplate(template.type, template.id)
                     except:
                         print 'Error trying to kill template'
+
+                elif request.type == request.LOAD_ROBOT:
+                    try:
+                        self.robot_config = self.loadRobotFromMsg(request.robot)
+                        self.robot_config.configure()
+                    except:
+                        print 'Error trying to load robot from message'
 
                 self.socket.send(response.SerializeToString())
 
@@ -274,6 +316,64 @@ class AffordanceTemplateServer(Thread):
                     file_map[root.attrib['name']] = os.path.join(path,atf)
 
         return class_map, image_map, file_map
+
+    def getRobots(self, path):
+        """Parse parses available robots from fs."""
+
+        robot_map = {}
+        import glob, yaml
+        os.chdir(path)
+        for r in glob.glob("*.yaml") :
+            print "found robot yaml: ", r
+            rc = RobotConfig()
+            rc.load_from_file(r)
+            robot_map[r] = rc
+        return robot_map
+
+    def loadRobotFromMsg(self, robot) :
+        r = RobotConfig()
+
+        print "creating new robot from pb message"
+        try:
+
+            r.robot_name = robot.name
+            r.config_package = robot.moveit_config_package
+            r.frame_id = robot.frame_id
+            print "loading robot: " , r.robot_name
+
+            r.root_offset.position.x = robot.root_offset.position.x
+            r.root_offset.position.y = robot.root_offset.position.y
+            r.root_offset.position.z = robot.root_offset.position.z
+            r.root_offset.orientation.x = robot.root_offset.orientation.x
+            r.root_offset.orientation.y = robot.root_offset.orientation.y
+            r.root_offset.orientation.z = robot.root_offset.orientation.z
+            r.root_offset.orientation.w = robot.root_offset.orientation.w
+
+            r.end_effector_names = []
+            r.end_effector_name_map = {}
+            r.end_effector_id_map = {}
+            r.end_effector_pose_map = {}
+
+            for ee in robot.end_effectors.end_effector:
+                r.end_effector_names.append(ee.name)
+                r.end_effector_name_map[ee.id] = ee.name
+                r.end_effector_id_map[ee.name] = ee.id
+                p = geometry_msgs.msg.Pose()
+                p.position.x = ee.pose_offset.position.x
+                p.position.y = ee.pose_offset.position.y
+                p.position.z = ee.pose_offset.position.z
+                p.orientation.x = ee.pose_offset.orientation.x
+                p.orientation.y = ee.pose_offset.orientation.y
+                p.orientation.z = ee.pose_offset.orientation.z
+                p.orientation.w = ee.pose_offset.orientation.w
+                r.end_effector_pose_map[ee.name] = p
+
+            print "done!"
+            return r
+
+        except :
+            rospy.logerr("AffordanceTemplateServer::loadRobotFromMsg() -- error parsing robot protobuf file")
+            return None
 
     def getRawName(self, name):
         """Parse the class_name and return just the type."""

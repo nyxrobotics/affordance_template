@@ -13,18 +13,26 @@ include_directories(${ZeroMQ_INCLUDE_DIR})
 # add protobuf include
 find_package(affordance_template_server_protobuf)
 include_directories(${affordance_template_server_protobuf_DIR}/proto_gen/cpp)
-#include_directories(/home/khambuch/hydro_workspace/src/affordance_templates/affordance_template_server_protobuf/proto_gen/cpp)
+# include_directories(${rviz_affordance_template_panel_DIR})
 
-# find Qt
+
 find_package(Qt4 COMPONENTS QtCore QtGui REQUIRED)
 include(${QT_USE_FILE})
 add_definitions(-DQT_NO_KEYWORDS)
+
+set(QT_FORMS ${PROJECT_SOURCE_DIR}/ui/rviz_affordance_template_panel.ui)
+set(QT_RESS ${PROJECT_SOURCE_DIR}/resources/images.qrc)
+
 qt4_wrap_cpp(MOC_FILES
-    src/AffordanceTemplatePanel.hpp
+    src/rviz_affordance_template_panel.hpp
     src/Affordance.hpp
+    src/RobotConfig.hpp
 )
+qt4_wrap_ui(QT_FORMS_HPP ${QT_FORMS})
+qt4_add_resources(QT_RESOURCES ${QT_RESS})
+
 set(SRC_FILES
-    src/AffordanceTemplatePanel.cpp
+    src/rviz_affordance_template_panel.cpp
     src/Affordance.cpp
     ${MOC_FILES}
 )
@@ -51,7 +59,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-  #INCLUDE_DIRS include
+  # INCLUDE_DIRS include
   LIBRARIES rviz_affordance_template_panel
   CATKIN_DEPENDS geometry_msgs interactive_markers roscpp roslib rviz affordance_template_server affordance_template_server_protobuf visualization_msgs
   DEPENDS system_lib
@@ -65,7 +73,9 @@ catkin_package(
 ## Your package locations should be listed before other locations
 # include_directories(include)
 include_directories(
+  include
   ${catkin_INCLUDE_DIRS}
+  ${CMAKE_CURRENT_BINARY_DIR}
 )
 
 
@@ -75,8 +85,7 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
 ## Declare a cpp library
-add_library(${PROJECT_NAME} ${SRC_FILES})
-
+add_library(${PROJECT_NAME} ${SRC_FILES} ${QT_FORMS_HPP} ${QT_RESOURCES})
 
 # Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${ZeroMQ_LIBRARIES} ${PROTOBUF_LIBRARY} AffordanceTemplateServerCmd)
