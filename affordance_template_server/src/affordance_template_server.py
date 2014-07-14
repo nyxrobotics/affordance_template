@@ -216,6 +216,7 @@ class AffordanceTemplateServer(Thread):
                     try:
                         self.robot_config = self.loadRobotFromMsg(request.robot)
                         self.robot_config.configure()
+                        response.success = True
                     except:
                         print 'Error trying to load robot from message'
 

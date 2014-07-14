@@ -51,12 +51,31 @@ RVizAffordanceTemplatePanel::RVizAffordanceTemplatePanel(QWidget *parent) :
     rviz::Panel(parent),
     context(1),
     connected(false),
-    _ui(new Ui::RVizAffordanceTemplatePanel)
+    _ui(new Ui::RVizAffordanceTemplatePanel),
+    descriptionRobot(""),
+    force_load(true)
 {
     // Setup the panel.
     _ui->setupUi(this);
     setupWidgets();
     connect();
+
+    descriptionRobot = getRobotFromDescription();
+
+    if (descriptionRobot != "") {
+        std::string yamlRobotCandidate = descriptionRobot + ".yaml";
+        cout << "RVizAffordanceTemplatePanel::RVizAffordanceTemplatePanel() -- searching for Robot: " << yamlRobotCandidate << endl;
+        map<string,RobotConfigSharedPtr>::const_iterator it = robotMap.find(yamlRobotCandidate);
+        if (it != robotMap.end() ) {
+//            changeRobot(yamlRobotCandidate);
+ //           cout << "RVizAffordanceTemplatePanel::RVizAffordanceTemplatePanel() -- found it" << endl;
+            setupRobotPanel(yamlRobotCandidate);
+ //           cout << "RVizAffordanceTemplatePanel::RVizAffordanceTemplatePanel() -- force loading" << endl;
+            loadConfig();
+            //connect();
+        }
+    }
+
 }
 
 RVizAffordanceTemplatePanel::~RVizAffordanceTemplatePanel()
@@ -149,7 +168,6 @@ void RVizAffordanceTemplatePanel::getAvailableTemplates() {
         QObject::connect(graphicsScene, SIGNAL(selectionChanged()), this, SLOT(addTemplate()));
         graphicsScene->update();
 
-
         for (auto& r: rep.robot()) {
 
             RobotConfigSharedPtr pitem(new RobotConfig(r.filename()));
@@ -188,7 +206,6 @@ void RVizAffordanceTemplatePanel::getAvailableTemplates() {
         }
 
         setupRobotPanel(robotMap.begin()->first);
-
     }
 }
 
@@ -340,9 +357,17 @@ void RVizAffordanceTemplatePanel::getRunningTemplates() {
 
 void RVizAffordanceTemplatePanel::loadConfig() {
 
-    if(_ui->robot_lock->isChecked()) {
-        cout << "Can't load while RobotConfig is locked" << endl;
-        return;
+    cout << "RVizAffordanceTemplatePanel::loadConfig() -- connected: " << connected << endl;
+/*    if (!force_load) {
+        if(_ui->robot_lock->isChecked()) {
+            cout << "Can't load while RobotConfig is locked" << endl;
+            return;
+        }
+    }
+*/
+    if (!connected) {
+        cout << "reconnecting..." << endl;
+        connect();
     }
 
     Request req;
@@ -388,7 +413,7 @@ void RVizAffordanceTemplatePanel::loadConfig() {
     }
 
     Response resp;
-    send_request(req, resp);
+    send_request(req, resp, 10000000);
 
 }
 
@@ -408,8 +433,10 @@ void RVizAffordanceTemplatePanel::addTemplate() {
     getRunningTemplates();
 }
 
-void RVizAffordanceTemplatePanel::send_request(const Request& request, Response& response) {
+void RVizAffordanceTemplatePanel::send_request(const Request& request, Response& response, long timeout) {
+    cout << "RVizAffordanceTemplatePanel::send_request() 1" << endl;
     if (connected) {
+        cout << "RVizAffordanceTemplatePanel::send_request() 2" << endl;
         try {
             string req;
             request.SerializeToString(&req);
@@ -420,7 +447,7 @@ void RVizAffordanceTemplatePanel::send_request(const Request& request, Response&
 
             string rep;
             zmq::pollitem_t poller[] = { {*socket, 0, ZMQ_POLLIN, 0} };
-            zmq::poll(&poller[0], 1, 1000000);
+            zmq::poll(&poller[0], 1, timeout);
 
             // poll for 1 second
             if (poller[0].revents & ZMQ_POLLIN) {
@@ -430,13 +457,18 @@ void RVizAffordanceTemplatePanel::send_request(const Request& request, Response&
 
                 response.ParseFromArray(reply.data(), reply.size());
 
+            cout << "RVizAffordanceTemplatePanel::send_request() 3" << endl;
+
             } else {
+                cout << "RVizAffordanceTemplatePanel::send_request() discon" << endl;
                 disconnect();
             }
         } catch (const zmq::error_t& ex) {
             cerr << ex.what() << endl;
         }
     }
+    cout << "RVizAffordanceTemplatePanel::send_request() end" << endl;
+
 }
 
 bool RVizAffordanceTemplatePanel::addAffordance(const AffordanceSharedPtr& obj) {
@@ -493,6 +525,19 @@ bool RVizAffordanceTemplatePanel::checkRobot(const RobotConfigSharedPtr& obj) {
 void RVizAffordanceTemplatePanel::configChanged()
 {
     rviz::Panel::configChanged();
+}
+
+
+std::string RVizAffordanceTemplatePanel::getRobotFromDescription() {
+    std::string robot = "";
+    urdf::Model model;
+    if (!model.initParam("robot_description")) {
+        ROS_ERROR("Failed to parse robot_description rosparam");
+    } else {
+        cout << "RVizAffordanceTemplatePanel::getRobotFromDescription() -- found robot: " << model.name_ << endl;
+        robot = model.name_;
+    }
+    return robot;
 }
 
 

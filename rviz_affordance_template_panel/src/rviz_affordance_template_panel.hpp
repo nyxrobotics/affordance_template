@@ -5,6 +5,7 @@
 #include <ros/ros.h>
 #include <rviz/panel.h>
 #include <ros/package.h>
+#include <urdf/model.h>
 
 /* qt */
 #include <QGraphicsScene>
@@ -97,7 +98,9 @@ namespace rviz_affordance_template_panel
         bool removeRobot(const RobotConfigSharedPtr& obj);
         bool checkRobot(const RobotConfigSharedPtr& obj);
 
-        void send_request(const Request& request, Response& response);
+        std::string getRobotFromDescription();
+
+        void send_request(const Request& request, Response& response, long timeout=1000000);
         std::string resolvePackagePath(const string& str);
 
 
@@ -112,6 +115,8 @@ namespace rviz_affordance_template_panel
         // map to track instantiated object templates
         std::map<std::string, AffordanceSharedPtr> affordanceMap;
         std::map<std::string, RobotConfigSharedPtr> robotMap;
+        std::string descriptionRobot;
+        bool force_load;
 
         // zmq
         zmq::context_t context;
