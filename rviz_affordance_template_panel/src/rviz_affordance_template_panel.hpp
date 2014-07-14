@@ -62,6 +62,10 @@ namespace rviz_affordance_template_panel
          */
         void loadConfig();
 
+        /** \brief Load Robot Config.
+         */
+        void safeLoadConfig();
+
         /** \brief Robot Selection callback.
          */
         void changeRobot(int id);

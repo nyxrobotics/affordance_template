@@ -67,12 +67,10 @@ RVizAffordanceTemplatePanel::RVizAffordanceTemplatePanel(QWidget *parent) :
         cout << "RVizAffordanceTemplatePanel::RVizAffordanceTemplatePanel() -- searching for Robot: " << yamlRobotCandidate << endl;
         map<string,RobotConfigSharedPtr>::const_iterator it = robotMap.find(yamlRobotCandidate);
         if (it != robotMap.end() ) {
-//            changeRobot(yamlRobotCandidate);
- //           cout << "RVizAffordanceTemplatePanel::RVizAffordanceTemplatePanel() -- found it" << endl;
             setupRobotPanel(yamlRobotCandidate);
- //           cout << "RVizAffordanceTemplatePanel::RVizAffordanceTemplatePanel() -- force loading" << endl;
             loadConfig();
-            //connect();
+            int idx= _ui->robot_select->findText(QString(yamlRobotCandidate.c_str()));
+            _ui->robot_select->setCurrentIndex(idx);
         }
     }
 
@@ -93,7 +91,7 @@ void RVizAffordanceTemplatePanel::setupWidgets() {
     _ui->graphicsView->setScene(graphicsScene);
 
     QObject::connect(_ui->connect_button, SIGNAL(clicked()), this, SLOT(connect()));
-    QObject::connect(_ui->load_config_button, SIGNAL(clicked()), this, SLOT(loadConfig()));
+    QObject::connect(_ui->load_config_button, SIGNAL(clicked()), this, SLOT(safeLoadConfig()));
     QObject::connect(_ui->robot_select, SIGNAL(currentIndexChanged(int)), this, SLOT(changeRobot(int)));
 }
 
@@ -346,7 +344,7 @@ void RVizAffordanceTemplatePanel::getRunningTemplates() {
     Request req;
     req.set_type(Request::RUNNING);
     Response resp;
-    send_request(req, resp);
+    send_request(req, resp, 10000000);
     runningList->clear();
     for (auto& c: resp.affordance_template()) {
         string name = c.type() + ":" + to_string(c.id());
@@ -355,16 +353,17 @@ void RVizAffordanceTemplatePanel::getRunningTemplates() {
     runningList->sortItems();
 }
 
+void RVizAffordanceTemplatePanel::safeLoadConfig() {
+    if(_ui->robot_lock->isChecked()) {
+        cout << "Can't load while RobotConfig is locked" << endl;
+        return;
+    }
+    loadConfig();
+}
+
 void RVizAffordanceTemplatePanel::loadConfig() {
 
     cout << "RVizAffordanceTemplatePanel::loadConfig() -- connected: " << connected << endl;
-/*    if (!force_load) {
-        if(_ui->robot_lock->isChecked()) {
-            cout << "Can't load while RobotConfig is locked" << endl;
-            return;
-        }
-    }
-*/
     if (!connected) {
         cout << "reconnecting..." << endl;
         connect();
@@ -413,7 +412,7 @@ void RVizAffordanceTemplatePanel::loadConfig() {
     }
 
     Response resp;
-    send_request(req, resp, 10000000);
+    send_request(req, resp, 20000000);
 
 }
 

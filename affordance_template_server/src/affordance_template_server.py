@@ -132,6 +132,8 @@ class AffordanceTemplateServer(Thread):
                 response.success = False
                 # respond with available templates
                 if request.type == request.QUERY:
+                    print "new QUERY request"
+
                     try:
                         for class_type in self.class_map.iterkeys():
                             template = response.affordance_template.add()
@@ -172,7 +174,7 @@ class AffordanceTemplateServer(Thread):
 
                 # add a new template and add it to the mapping
                 elif request.type == request.ADD:
-                    print "got new add request"
+                    print "new ADD request"
                     try:
                         for template in request.affordance_template:
                             class_type = str(template.type)
@@ -188,6 +190,7 @@ class AffordanceTemplateServer(Thread):
 
                 # respond with a list of the running templates on the server
                 elif request.type == request.RUNNING:
+                    print "new RUNNING request"
                     try:
                         # push the running templates into a temporary list so we can sort them
                         running_templates = []
@@ -206,6 +209,7 @@ class AffordanceTemplateServer(Thread):
                         print 'Error parsing running templates'
 
                 elif request.type == request.KILL:
+                    print "new KILL request"
                     try:
                         for template in request.affordance_template:
                             self.removeTemplate(template.type, template.id)
@@ -213,6 +217,7 @@ class AffordanceTemplateServer(Thread):
                         print 'Error trying to kill template'
 
                 elif request.type == request.LOAD_ROBOT:
+                    print "new LOAD_ROBOT request: ", request.robot.name
                     try:
                         self.robot_config = self.loadRobotFromMsg(request.robot)
                         self.robot_config.configure()
