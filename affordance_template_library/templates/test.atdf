@@ -1,6 +1,5 @@
 <?xml version="1.0" ?>
 <affordance_template name="test_template" image="package://affordance_template_library/images/test.jpg">
-
     <display_objects>
         <display_object name="root_object">
             <geometry>
@@ -35,7 +34,6 @@
             <origin xyz=".25 0 0.0" rpy="0 0 0"/>
             <controls xyz="0 0 0" rpy="1 1 1" scale="0.25"/>
         </display_object>
-
     </display_objects>
 
     <end_effector_waypoints>
