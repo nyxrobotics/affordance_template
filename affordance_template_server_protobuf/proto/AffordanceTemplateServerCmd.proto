@@ -17,10 +17,16 @@ message Pose {
     required Orientation orientation = 2;
 }
 
+message WaypointInfo {
+    required int32 id = 1;
+    required int32 num_waypoints = 2;
+}
+
 message Template {
-    required string type = 1;        // template_type e.g. "Waypoint", "Car", "Wheel", "BORING"
+    required string type = 1;        // template_type e.g. "Car", "Wheel", "BORING"
     optional int32 id = 2;           // ID of the template object on the server
     optional string image_path = 3;  // contains path to image of template (used in rviz)
+    repeated WaypointInfo waypoint_info = 4;       // info about how many waypoint for each end effector template has
 }
 
 message EndEffector {
@@ -42,6 +48,22 @@ message Robot {
     required EndEffectorMap end_effectors = 6;        // list of end effector mapping
 }
 
+message Command {
+    enum CommandType {
+        GO_TO_START = 0;
+        GO_TO_END = 1;
+        PLAY_BACKWARD = 2;
+        PLAY_FORWARD = 3;
+        STEP_BACKWARD = 4;
+        STEP_FORWARD = 5;
+        PAUSE = 6;
+    }
+    required CommandType type = 1;
+    repeated string end_effector = 2;
+    optional int32 steps = 3;
+    required bool execute = 4;
+}
+
 message Request {
     enum Type {
         ADD = 0;       // add a new template to the server
@@ -53,15 +75,18 @@ message Request {
         KILL = 6;      // kill a template
         RUNNING = 7;   // get running templates
         LOAD_ROBOT = 8; // load robot from robot_config
+        COMMAND = 9;   // command for controlling the robot
     }
     required Type type = 1;
     repeated Template affordance_template = 2;
     optional Pose pose = 3;
     optional Robot robot = 4;
+    optional Command command = 5;
 }
 
 message Response {
     required bool success = 1;
     repeated Template affordance_template = 2;
     repeated Robot robot = 3;
+    repeated WaypointInfo waypoint_info = 4;
 }

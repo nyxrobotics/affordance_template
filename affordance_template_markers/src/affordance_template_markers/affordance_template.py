@@ -72,7 +72,7 @@ class AffordanceTemplate(object) :
         self.dserver = None
         self.initial_pose = initial_pose
 
-        if not isinstance(robot_config, RobotConfig) :
+        if not isinstance(robot_config, affordance_template_markers.robot_config.RobotConfig) :
             rospy.loginfo("AffordanceTemplate::init() -- problem setting robot config")
         else :
             self.robot_config = robot_config
@@ -203,9 +203,11 @@ class AffordanceTemplate(object) :
     def load_initial_parameters(self) :
 
         if self.robot_config == None :
+            rospy.error("AffordanceTemplate::load_initial_parameters() -- no robot config")
             return False
 
         if self.structure == None :
+            rospy.error("AffordanceTemplate::load_initial_parameters() -- no structure")
             return False
 
         self.display_objects = []
@@ -354,7 +356,7 @@ class AffordanceTemplate(object) :
                     control.markers[0].color.g = self.object_material[obj].color.rgba[1]
                     control.markers[0].color.b = self.object_material[obj].color.rgba[2]
                     control.markers[0].color.a = self.object_material[obj].color.rgba[3]
-                    if isinstance(obj.geometry, affordance_template_markers.atdf_parser.Mesh) :
+                    if isinstance(self.object_geometry[obj], affordance_template_markers.atdf_parser.Mesh) :
                         control.markers[0].mesh_use_embedded_materials = False
 
             scale = 1.0
@@ -381,6 +383,7 @@ class AffordanceTemplate(object) :
         wp_ids = 0
         for wp in self.waypoints :
 
+            print wp
             ee_name = self.robot_config.end_effector_name_map[int(self.waypoint_end_effectors[wp])]
 
             robotTroot = self.robotTroot*self.get_chain_from_robot(self.parent_map[wp])
@@ -472,9 +475,14 @@ class AffordanceTemplate(object) :
                 if c : self.marker_menus[waypoint].setCheckState( self.menu_handles[(waypoint,m)], MenuHandler.UNCHECKED )
 
     def load_from_file(self, filename) :
+        print "AffordanceTemplate::load_from_file() -- building structure"
         self.structure = affordance_template_markers.atdf_parser.AffordanceTemplateStructure.from_file(filename)
+        # self.print_structure()
+        print "AffordanceTemplate::load_from_file() -- loading initial parameters"
         self.load_initial_parameters()
+        print "AffordanceTemplate::load_from_file() -- creating RViz template from parameters"
         self.create_from_parameters()
+        print "AffordanceTemplate::load_from_file() -- done"
         return self.structure
 
     def print_structure(self) :
@@ -818,8 +826,6 @@ class AffordanceTemplate(object) :
 
                         rospy.loginfo(str("AffordanceTemplate::process_feedback() -- setting Hide Controls flag to " + str(self.waypoint_controls_display_on)))
 
-
-
                     if handle == self.menu_handles[(feedback.marker_name,"Loop Path")] :
                         state = self.marker_menus[feedback.marker_name].getCheckState( handle )
                         if state == MenuHandler.CHECKED:
@@ -848,3 +854,66 @@ class AffordanceTemplate(object) :
                 self.robot_config.moveit_interface.create_joint_plan_to_target(manipulator_name, self.robot_config.stored_poses[manipulator_name][p])
                 r = self.robot_config.moveit_interface.execute_plan(manipulator_name)
                 if not r : rospy.logerr(str("RobotTeleop::process_feedback(pose) -- failed moveit execution for group: " + manipulator_name + ". re-synching..."))
+
+
+    def plan_path_to_waypoint(self, end_effector, steps=1, backwards=False, direct=False) :
+
+        ee_id = self.robot_config.end_effector_id_map[end_effector]
+        ee_offset = self.robot_config.end_effector_pose_map[end_effector]
+        max_idx = self.waypoint_max[ee_id]
+        manipulator_name = self.robot_config.get_manipulator(end_effector)
+        print "manipulator_name: ", manipulator_name
+        print "steps: ", steps
+        if self.waypoint_index[ee_id] < 0 :
+            # haven't started yet, so set first waypoint to 0
+            next_path_idx = 0
+        else :
+            if backwards :
+                next_path_idx = self.waypoint_index[ee_id]-steps
+                if self.waypoint_loop[ee_id] :
+                    if next_path_idx < 0 :
+                        next_path_idx = max_idx + next_path_idx
+                else :
+                    if next_path_idx < 0 :
+                        next_path_idx = 0
+            else :
+                next_path_idx = self.waypoint_index[ee_id]+steps
+                if self.waypoint_loop[ee_id] :
+                    if  next_path_idx > max_idx :
+                        next_path_idx = (self.waypoint_index[ee_id]+steps)-max_idx
+                else :
+                    if  next_path_idx > max_idx :
+                        next_path_idx = max_idx
+
+        print "next waypoint id: ", next_path_idx
+        next_path_str = str(str(ee_id) + "." + str(next_path_idx))
+
+        print "next_path_str: ", next_path_str
+        rospy.loginfo(str("AffordanceTemplate::plan_path_to_waypoint() -- computing path to index[" + str(next_path_str) + "]"))
+        k = str(next_path_str)
+        pt = geometry_msgs.msg.PoseStamped()
+        pt.header = self.server.get(k).header
+        pt.pose = self.server.get(k).pose
+
+        T_goal = getFrameFromPose(pt.pose)
+        T_offset = getFrameFromPose(ee_offset)
+        T = T_goal*T_offset
+        pt.pose = getPoseFromFrame(T)
+
+        self.robot_config.moveit_interface.groups[manipulator_name].clear_pose_targets()
+        self.robot_config.moveit_interface.create_plan_to_target(manipulator_name, pt)
+        self.waypoint_plan_valid[ee_id] = True
+
+        return next_path_idx
+
+    def move_to_waypoint(self, end_effector, next_path_idx) :
+        ee_id = self.robot_config.end_effector_id_map[end_effector]
+        manipulator_name = self.robot_config.get_manipulator(end_effector)
+        if self.waypoint_plan_valid[ee_id] :
+            r = self.robot_config.moveit_interface.execute_plan(manipulator_name,from_stored=True)
+            if not r :
+                rospy.logerr(str("RobotTeleop::move_to_waypoint(mouse) -- failed moveit execution for group: " + manipulator_name + ". re-synching..."))
+            self.waypoint_index[ee_id] = next_path_idx
+            rospy.loginfo(str("setting current waypoint idx: " + str(self.waypoint_index[ee_id])))
+            self.waypoint_plan_valid[ee_id] = False
+

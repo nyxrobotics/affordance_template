@@ -6,6 +6,7 @@
 #define XOFFSET 20
 #define YOFFSET 20
 #define CLASS_INDEX 0
+#define WAYPOINT_DATA 1
 
 /* Project Includes */
 #include "rviz_affordance_template_panel.hpp"
@@ -45,6 +46,27 @@ static vector<string> split(const string &s, char delim) {
     return elems;
 }
 
+static vector<float> quaternionToRPY(float x, float y, float z, float w) {
+    vector<float> rpy(3);
+    double rr, rp, ry;
+    KDL::Rotation::Quaternion(x,y,z,w).GetRPY(rr,rp,ry);
+    rpy[0] = (float)rr;
+    rpy[1] = (float)rp;
+    rpy[2] = (float)ry;
+    //cout << "converted quaternion(" << x << ", " << y << ", " << z << ", " << w << ") to rpy(" << rr << ", " << rp << ", " << ry << ")" << endl;
+    return rpy;
+}
+
+static vector<float> RPYToQuaternion(float rr, float rp, float ry) {
+    vector<float> q(4);
+    double x,y,z,w;
+    KDL::Rotation::RPY(rr,rp,ry).GetQuaternion(x,y,z,w);
+    q[0] = (float)x;
+    q[1] = (float)y;
+    q[2] = (float)z;
+    q[3] = (float)w;
+    return q;
+}
 
 
 RVizAffordanceTemplatePanel::RVizAffordanceTemplatePanel(QWidget *parent) :
@@ -67,10 +89,11 @@ RVizAffordanceTemplatePanel::RVizAffordanceTemplatePanel(QWidget *parent) :
         cout << "RVizAffordanceTemplatePanel::RVizAffordanceTemplatePanel() -- searching for Robot: " << yamlRobotCandidate << endl;
         map<string,RobotConfigSharedPtr>::const_iterator it = robotMap.find(yamlRobotCandidate);
         if (it != robotMap.end() ) {
-            setupRobotPanel(yamlRobotCandidate);
-            loadConfig();
             int idx= _ui->robot_select->findText(QString(yamlRobotCandidate.c_str()));
             _ui->robot_select->setCurrentIndex(idx);
+            setupRobotPanel(yamlRobotCandidate);
+            loadConfig();
+            // connect(); // shouldnt need to have to do this....
         }
     }
 
@@ -93,6 +116,15 @@ void RVizAffordanceTemplatePanel::setupWidgets() {
     QObject::connect(_ui->connect_button, SIGNAL(clicked()), this, SLOT(connect()));
     QObject::connect(_ui->load_config_button, SIGNAL(clicked()), this, SLOT(safeLoadConfig()));
     QObject::connect(_ui->robot_select, SIGNAL(currentIndexChanged(int)), this, SLOT(changeRobot(int)));
+
+    QObject::connect(_ui->go_to_start_button, SIGNAL(clicked()), this, SLOT(go_to_start()));
+    QObject::connect(_ui->go_to_end_button, SIGNAL(clicked()), this, SLOT(go_to_end()));
+    QObject::connect(_ui->pause_button, SIGNAL(clicked()), this, SLOT(pause()));
+    QObject::connect(_ui->play_backwards_button, SIGNAL(clicked()), this, SLOT(play_backward()));
+    QObject::connect(_ui->play_button, SIGNAL(clicked()), this, SLOT(play_forward()));
+    QObject::connect(_ui->step_backwards_button, SIGNAL(clicked()), this, SLOT(step_backward()));
+    QObject::connect(_ui->step_forward_button, SIGNAL(clicked()), this, SLOT(step_forward()));
+
 }
 
 void RVizAffordanceTemplatePanel::connect() {
@@ -147,24 +179,25 @@ void RVizAffordanceTemplatePanel::getAvailableTemplates() {
 
         string package_path = ros::package::getPath("affordance_template_library");
         for (auto& c: rep.affordance_template()) {
-
             cout << c.type() << endl;
-
             string image_path = resolvePackagePath(c.image_path());
-
+            QMap<QString, QVariant> waypoint_map;
+            for (auto& wp: c.waypoint_info()) {
+                waypoint_map[QString::number(wp.id())] = QVariant(wp.num_waypoints());
+            }
+            AffordanceSharedPtr pitem(new Affordance(c.type(), image_path, waypoint_map));
             std::cout << image_path << std::endl;
-            AffordanceSharedPtr pitem(new Affordance(c.type(), image_path));
-
             pitem->setPos(XOFFSET, yoffset);
             yoffset += PIXMAP_SIZE + YOFFSET;
-
             graphicsScene->addItem(pitem.get());
             addAffordance(pitem);
         }
-
         cout << "setting up addTemplate callback" << endl;
         QObject::connect(graphicsScene, SIGNAL(selectionChanged()), this, SLOT(addTemplate()));
         graphicsScene->update();
+
+        _ui->robot_select->clear();
+        _ui->end_effector_select->clear();
 
         for (auto& r: rep.robot()) {
 
@@ -223,9 +256,10 @@ void RVizAffordanceTemplatePanel::setupRobotPanel(const string& key) {
     _ui->robot_ty->setText(QString::number(root_offset[1]));
     _ui->robot_tz->setText(QString::number(root_offset[2]));
 
-    _ui->robot_rr->setText(QString::number(0));
-    _ui->robot_rp->setText(QString::number(0));
-    _ui->robot_ry->setText(QString::number(0));
+    vector<float> rpy = quaternionToRPY(root_offset[3],root_offset[4],root_offset[5],root_offset[6]);
+    _ui->robot_rr->setText(QString::number(rpy[0]));
+    _ui->robot_rp->setText(QString::number(rpy[1]));
+    _ui->robot_ry->setText(QString::number(rpy[2]));
 
     _ui->end_effector_select->clear();
 
@@ -256,10 +290,11 @@ void RVizAffordanceTemplatePanel::setupEndEffectorConfigPanel(const string& key)
             _ui->ee_tx->setText(QString::number(pose_offset[0]));
             _ui->ee_ty->setText(QString::number(pose_offset[1]));
             _ui->ee_tz->setText(QString::number(pose_offset[2]));
-            _ui->ee_rr->setText(QString::number(pose_offset[3]));
-            _ui->ee_rp->setText(QString::number(pose_offset[4]));
-            _ui->ee_ry->setText(QString::number(pose_offset[5]));
-            //_ui->ee_tw(pose_offset[6]);
+
+            vector<float> rpy = quaternionToRPY(pose_offset[3],pose_offset[4],pose_offset[5],pose_offset[6]);
+            _ui->ee_rr->setText(QString::number(rpy[0]));
+            _ui->ee_rp->setText(QString::number(rpy[1]));
+            _ui->ee_ry->setText(QString::number(rpy[2]));
             break;
         }
     }
@@ -272,7 +307,6 @@ void RVizAffordanceTemplatePanel::changeRobot(int id) {
 }
 
 void RVizAffordanceTemplatePanel::changeEndEffector(int id) {
-    cout << "change eeeee" << endl;
     QString ee = _ui->end_effector_select->itemText(id);
     setupEndEffectorConfigPanel(ee.toUtf8().constData());
 }
@@ -344,7 +378,7 @@ void RVizAffordanceTemplatePanel::getRunningTemplates() {
     Request req;
     req.set_type(Request::RUNNING);
     Response resp;
-    send_request(req, resp, 10000000);
+    send_request(req, resp, 30000000);
     runningList->clear();
     for (auto& c: resp.affordance_template()) {
         string name = c.type() + ":" + to_string(c.id());
@@ -364,6 +398,7 @@ void RVizAffordanceTemplatePanel::safeLoadConfig() {
 void RVizAffordanceTemplatePanel::loadConfig() {
 
     cout << "RVizAffordanceTemplatePanel::loadConfig() -- connected: " << connected << endl;
+
     if (!connected) {
         cout << "reconnecting..." << endl;
         connect();
@@ -394,6 +429,16 @@ void RVizAffordanceTemplatePanel::loadConfig() {
     roo->set_z(root_offset[5]);
     roo->set_w(root_offset[6]);
 
+    // remove all rows from before
+    while(_ui->end_effector_table->rowCount()>0) {
+        _ui->end_effector_table->removeCellWidget(0,0);
+        _ui->end_effector_table->removeCellWidget(0,1);
+        _ui->end_effector_table->removeCellWidget(0,2);
+        _ui->end_effector_table->removeCellWidget(0,3);
+        _ui->end_effector_table->removeRow(0);
+    }
+
+    int r = 0;
     for (auto& e: (*robotMap[key]).endeffectorMap) {
         EndEffector *ee = ee_map->add_end_effector();
         Pose *ee_offset = ee->mutable_pose_offset();
@@ -409,11 +454,30 @@ void RVizAffordanceTemplatePanel::loadConfig() {
         poo->set_y(pose_offset[4]);
         poo->set_z(pose_offset[5]);
         poo->set_w(pose_offset[6]);
+
+        // add rows to end effector controls table
+        QTableWidgetItem *i= new QTableWidgetItem(QString(e.second->name().c_str()));
+        _ui->end_effector_table->insertRow(r);
+
+        _ui->end_effector_table->setItem(r,0,new QTableWidgetItem(QString(e.second->name().c_str())));
+        _ui->end_effector_table->setItem(r,1,new QTableWidgetItem(QString("-")));
+        _ui->end_effector_table->setItem(r,2,new QTableWidgetItem(QString("-")));
+
+        QTableWidgetItem *pItem = new QTableWidgetItem();
+        pItem->setCheckState(Qt::Checked);
+        _ui->end_effector_table->setItem(r,3,pItem);
+
+        r++;
+
     }
+
+    _ui->end_effector_table->resizeColumnsToContents();
+    _ui->end_effector_table->resizeRowsToContents();
 
     Response resp;
     send_request(req, resp, 20000000);
 
+    robot_name = key;
 }
 
 
@@ -427,15 +491,24 @@ void RVizAffordanceTemplatePanel::addTemplate() {
         string class_name = list.at(i)->data(CLASS_INDEX).toString().toStdString();
         cout << "RVizAffordanceTemplatePanel::addTemplate() -- " << class_name << endl;
         sendAdd(class_name);
+        cout << "RVizAffordanceTemplatePanel::addTemplate() -- retrieving waypoint info" << endl;
+        for (auto& c: list.at(i)->data(WAYPOINT_DATA).toMap().toStdMap()) {
+            string robot_key = _ui->robot_select->currentText().toUtf8().constData();
+            for (auto& e: (*robotMap[robot_name]).endeffectorMap) {
+                for (int r=0; r<_ui->end_effector_table->rowCount(); r++ ) {
+                    if (e.second->name() == _ui->end_effector_table->item(r,0)->text().toStdString() ) {
+                        _ui->end_effector_table->setItem(r,2,new QTableWidgetItem(QString::number(c.second.toInt())));
+                    }
+                }
+            }
+        }
     }
     // update running templates
     getRunningTemplates();
 }
 
 void RVizAffordanceTemplatePanel::send_request(const Request& request, Response& response, long timeout) {
-    cout << "RVizAffordanceTemplatePanel::send_request() 1" << endl;
     if (connected) {
-        cout << "RVizAffordanceTemplatePanel::send_request() 2" << endl;
         try {
             string req;
             request.SerializeToString(&req);
@@ -456,18 +529,14 @@ void RVizAffordanceTemplatePanel::send_request(const Request& request, Response&
 
                 response.ParseFromArray(reply.data(), reply.size());
 
-            cout << "RVizAffordanceTemplatePanel::send_request() 3" << endl;
-
             } else {
-                cout << "RVizAffordanceTemplatePanel::send_request() discon" << endl;
+                cout << "RVizAffordanceTemplatePanel::send_request() disconnecting" << endl;
                 disconnect();
             }
         } catch (const zmq::error_t& ex) {
             cerr << ex.what() << endl;
         }
     }
-    cout << "RVizAffordanceTemplatePanel::send_request() end" << endl;
-
 }
 
 bool RVizAffordanceTemplatePanel::addAffordance(const AffordanceSharedPtr& obj) {
@@ -526,7 +595,6 @@ void RVizAffordanceTemplatePanel::configChanged()
     rviz::Panel::configChanged();
 }
 
-
 std::string RVizAffordanceTemplatePanel::getRobotFromDescription() {
     std::string robot = "";
     urdf::Model model;
@@ -538,6 +606,234 @@ std::string RVizAffordanceTemplatePanel::getRobotFromDescription() {
     }
     return robot;
 }
+
+vector<string> RVizAffordanceTemplatePanel::getSelectedEndEffectors() {
+
+    vector<string> selectedEndEffectors;
+    for (int r=0; r<_ui->end_effector_table->rowCount(); r++ ) {
+        if (_ui->end_effector_table->item(r,3)->checkState() == Qt::Checked ) {
+            selectedEndEffectors.push_back(_ui->end_effector_table->item(r,0)->text().toStdString());
+        }
+    }
+    return selectedEndEffectors;
+}
+
+void RVizAffordanceTemplatePanel::go_to_start() {
+    if (connected) {
+        Request req;
+        req.set_type(Request::COMMAND);
+        Command *cmd = req.mutable_command();
+        cmd->set_type(Command::GO_TO_START);
+        cmd->set_steps(_ui->num_steps->text().toInt());
+        cmd->set_execute(_ui->execute_on_plan->isChecked());
+        vector<string> ee_list = getSelectedEndEffectors();
+        for(int i=0; i<ee_list.size(); i++) {
+            cmd->add_end_effector(ee_list[i]);
+        }
+        Response rep;
+        send_request(req, rep, 10000000);
+        cout << "got response" << endl;
+        for (auto& c: rep.waypoint_info()) {
+            cout << c.id() << endl;
+            cout << c.num_waypoints() << endl;
+            for (auto& e: (*robotMap[robot_name]).endeffectorMap) {
+                if (e.second->id() == c.id()) {
+                    for (int r=0; r<_ui->end_effector_table->rowCount(); r++ ) {
+                        if (e.second->name() == _ui->end_effector_table->item(r,0)->text().toStdString() ) {
+                            _ui->end_effector_table->setItem(r,1,new QTableWidgetItem(QString::number(c.num_waypoints())));
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+void RVizAffordanceTemplatePanel::go_to_end() {
+    if (connected) {
+        Request req;
+        req.set_type(Request::COMMAND);
+        Command *cmd = req.mutable_command();
+        cmd->set_type(Command::GO_TO_END);
+        cmd->set_steps(_ui->num_steps->text().toInt());
+        cmd->set_execute(_ui->execute_on_plan->isChecked());
+        vector<string> ee_list = getSelectedEndEffectors();
+        for(int i=0; i<ee_list.size(); i++) {
+            cmd->add_end_effector(ee_list[i]);
+        }
+        Response rep;
+        send_request(req, rep, 10000000);
+        cout << "got response" << endl;
+        for (auto& c: rep.waypoint_info()) {
+            cout << c.id() << endl;
+            cout << c.num_waypoints() << endl;
+            for (auto& e: (*robotMap[robot_name]).endeffectorMap) {
+                if (e.second->id() == c.id()) {
+                    for (int r=0; r<_ui->end_effector_table->rowCount(); r++ ) {
+                        if (e.second->name() == _ui->end_effector_table->item(r,0)->text().toStdString() ) {
+                            _ui->end_effector_table->setItem(r,1,new QTableWidgetItem(QString::number(c.num_waypoints())));
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+void RVizAffordanceTemplatePanel::pause() {
+    if (connected) {
+        Request req;
+        req.set_type(Request::COMMAND);
+        Command *cmd = req.mutable_command();
+        cmd->set_type(Command::PAUSE);
+        cmd->set_steps(_ui->num_steps->text().toInt());
+        cmd->set_execute(_ui->execute_on_plan->isChecked());
+        vector<string> ee_list = getSelectedEndEffectors();
+        for(int i=0; i<ee_list.size(); i++) {
+            cmd->add_end_effector(ee_list[i]);
+        }
+        Response rep;
+        send_request(req, rep, 10000000);
+        cout << "got response" << endl;
+        for (auto& c: rep.waypoint_info()) {
+            cout << c.id() << endl;
+            cout << c.num_waypoints() << endl;
+            for (auto& e: (*robotMap[robot_name]).endeffectorMap) {
+                if (e.second->id() == c.id()) {
+                    for (int r=0; r<_ui->end_effector_table->rowCount(); r++ ) {
+                        if (e.second->name() == _ui->end_effector_table->item(r,0)->text().toStdString() ) {
+                            _ui->end_effector_table->setItem(r,1,new QTableWidgetItem(QString::number(c.num_waypoints())));
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+void RVizAffordanceTemplatePanel::play_backward() {
+    if (connected) {
+        Request req;
+        req.set_type(Request::COMMAND);
+        Command *cmd = req.mutable_command();
+        cmd->set_type(Command::PLAY_BACKWARD);
+        cmd->set_steps(_ui->num_steps->text().toInt());
+        cmd->set_execute(_ui->execute_on_plan->isChecked());
+        vector<string> ee_list = getSelectedEndEffectors();
+        for(int i=0; i<ee_list.size(); i++) {
+            cmd->add_end_effector(ee_list[i]);
+        }
+        Response rep;
+        send_request(req, rep, 10000000);
+        cout << "got response" << endl;
+        for (auto& c: rep.waypoint_info()) {
+            cout << c.id() << endl;
+            cout << c.num_waypoints() << endl;
+            for (auto& e: (*robotMap[robot_name]).endeffectorMap) {
+                if (e.second->id() == c.id()) {
+                    for (int r=0; r<_ui->end_effector_table->rowCount(); r++ ) {
+                        if (e.second->name() == _ui->end_effector_table->item(r,0)->text().toStdString() ) {
+                            _ui->end_effector_table->setItem(r,1,new QTableWidgetItem(QString::number(c.num_waypoints())));
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+void RVizAffordanceTemplatePanel::play_forward() {
+    if (connected) {
+        Request req;
+        req.set_type(Request::COMMAND);
+        Command *cmd = req.mutable_command();
+        cmd->set_type(Command::PLAY_FORWARD);
+        cmd->set_steps(_ui->num_steps->text().toInt());
+        cmd->set_execute(_ui->execute_on_plan->isChecked());
+        vector<string> ee_list = getSelectedEndEffectors();
+        for(int i=0; i<ee_list.size(); i++) {
+            cmd->add_end_effector(ee_list[i]);
+        }
+        Response rep;
+        send_request(req, rep, 10000000);
+        cout << "got response" << endl;
+        for (auto& c: rep.waypoint_info()) {
+            cout << c.id() << endl;
+            cout << c.num_waypoints() << endl;
+            for (auto& e: (*robotMap[robot_name]).endeffectorMap) {
+                if (e.second->id() == c.id()) {
+                    for (int r=0; r<_ui->end_effector_table->rowCount(); r++ ) {
+                        if (e.second->name() == _ui->end_effector_table->item(r,0)->text().toStdString() ) {
+                            _ui->end_effector_table->setItem(r,1,new QTableWidgetItem(QString::number(c.num_waypoints())));
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+void RVizAffordanceTemplatePanel::step_backward() {
+    if (connected) {
+        Request req;
+        req.set_type(Request::COMMAND);
+        Command *cmd = req.mutable_command();
+        cmd->set_type(Command::STEP_BACKWARD);
+        cmd->set_steps(_ui->num_steps->text().toInt());
+        cmd->set_execute(_ui->execute_on_plan->isChecked());
+        vector<string> ee_list = getSelectedEndEffectors();
+        for(int i=0; i<ee_list.size(); i++) {
+            cmd->add_end_effector(ee_list[i]);
+        }
+        Response rep;
+        send_request(req, rep, 10000000);
+        cout << "got response" << endl;
+        for (auto& c: rep.waypoint_info()) {
+            cout << c.id() << endl;
+            cout << c.num_waypoints() << endl;
+            for (auto& e: (*robotMap[robot_name]).endeffectorMap) {
+                if (e.second->id() == c.id()) {
+                    for (int r=0; r<_ui->end_effector_table->rowCount(); r++ ) {
+                        if (e.second->name() == _ui->end_effector_table->item(r,0)->text().toStdString() ) {
+                            _ui->end_effector_table->setItem(r,1,new QTableWidgetItem(QString::number(c.num_waypoints())));
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+void RVizAffordanceTemplatePanel::step_forward() {
+    if (connected) {
+        Request req;
+        req.set_type(Request::COMMAND);
+        Command *cmd = req.mutable_command();
+        cmd->set_type(Command::STEP_FORWARD);
+        cmd->set_steps(_ui->num_steps->text().toInt());
+        cmd->set_execute(_ui->execute_on_plan->isChecked());
+        vector<string> ee_list = getSelectedEndEffectors();
+        for(int i=0; i<ee_list.size(); i++) {
+            cmd->add_end_effector(ee_list[i]);
+        }
+        Response rep;
+        send_request(req, rep, 10000000);
+        for (auto& c: rep.waypoint_info()) {
+            cout << "end effector: " << c.id() << endl;
+            cout << "now at waypoint : " << (c.num_waypoints()+1) << endl;
+            for (auto& e: (*robotMap[robot_name]).endeffectorMap) {
+                if (e.second->id() == c.id()) {
+                    for (int r=0; r<_ui->end_effector_table->rowCount(); r++ ) {
+                        if (e.second->name() == _ui->end_effector_table->item(r,0)->text().toStdString() ) {
+                            _ui->end_effector_table->setItem(r,1,new QTableWidgetItem(QString::number(c.num_waypoints()+1)));
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 
 
 #include <pluginlib/class_list_macros.h>

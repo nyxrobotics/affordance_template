@@ -15,7 +15,6 @@ find_package(affordance_template_server_protobuf)
 include_directories(${affordance_template_server_protobuf_DIR}/proto_gen/cpp)
 # include_directories(${rviz_affordance_template_panel_DIR})
 
-
 find_package(Qt4 COMPONENTS QtCore QtGui REQUIRED)
 include(${QT_USE_FILE})
 add_definitions(-DQT_NO_KEYWORDS)
@@ -48,6 +47,11 @@ find_package(catkin REQUIRED COMPONENTS
   visualization_msgs
 )
 
+find_package(orocos_kdl REQUIRED)
+# Find the absolute path to the orocos-kdl library
+find_library(orocos_kdl_LIBRARY NAMES ${orocos_kdl_LIBRARIES} PATHS
+${orocos_kdl_LIBRARY_DIRS} NO_DEFAULT_PATH)
+set(orocos_kdl_LIBRARIES ${orocos_kdl_LIBRARY})
 
 ###################################
 ## catkin specific configuration ##
@@ -62,7 +66,7 @@ catkin_package(
   # INCLUDE_DIRS include
   LIBRARIES rviz_affordance_template_panel
   CATKIN_DEPENDS geometry_msgs interactive_markers roscpp roslib rviz affordance_template_server affordance_template_server_protobuf visualization_msgs
-  DEPENDS system_lib
+  DEPENDS system_lib orocos_kdl
 )
 
 ###########

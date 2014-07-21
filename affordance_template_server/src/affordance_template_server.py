@@ -38,6 +38,7 @@ class AffordanceTemplateServer(Thread):
 
         self.server = InteractiveMarkerServer("affordance_template_server")
 
+        self.at = None
 
         # get exported templates from affordance_templates package
         # self._plugin_description = self.getPluginDescription("affordance_template_markers")
@@ -56,7 +57,7 @@ class AffordanceTemplateServer(Thread):
         # # find plugin_description.xml file that holds all templates
         # filename = self._package_path + "/plugin_description.xml"
         # # call getAvailableTemplates to parse out templates
-        self.class_map, self.image_map, self.file_map = self.getAvailableTemplates(self._template_path)
+        self.class_map, self.image_map, self.file_map, self.waypoint_map = self.getAvailableTemplates(self._template_path)
         self.robot_map = self.getRobots(self._robot_path)
 
         # import rospkg
@@ -139,9 +140,12 @@ class AffordanceTemplateServer(Thread):
                             template = response.affordance_template.add()
                             template.type = class_type
                             template.image_path = self.image_map[class_type]
+                            for p in self.waypoint_map[class_type].keys() :
+                                wp = template.waypoint_info.add()
+                                wp.id = int(p)
+                                wp.num_waypoints = self.waypoint_map[class_type][p]
 
                         for name in self.robot_map.iterkeys():
-                            print name
                             robot = response.robot.add()
                             robot.filename = name
                             robot.name = self.robot_map[name].robot_name
@@ -154,9 +158,7 @@ class AffordanceTemplateServer(Thread):
                             robot.root_offset.orientation.y = self.robot_map[name].root_offset.orientation.y
                             robot.root_offset.orientation.z = self.robot_map[name].root_offset.orientation.z
                             robot.root_offset.orientation.w = self.robot_map[name].root_offset.orientation.w
-                            print "adding end_effectors"
                             for e in self.robot_map[name].end_effector_names:
-                                print "found: ", e
                                 ee = robot.end_effectors.end_effector.add()
                                 ee.name = e
                                 ee.id =self.robot_map[name].end_effector_id_map[e]
@@ -179,12 +181,11 @@ class AffordanceTemplateServer(Thread):
                         for template in request.affordance_template:
                             class_type = str(template.type)
                             new_id = self.getNextID(class_type)
-                            print new_id
-                            popen = self.addTemplate(class_type, new_id)
-                            print "popen: ", popen
-                            if popen != None:
-                                self.class_map[class_type][new_id] = popen
-                        response.success = True
+                            ret = self.addTemplate(class_type, new_id)
+                            print "ret: ", ret
+                            # if popen != None:
+                            #     self.class_map[class_type][new_id] = popen
+                        response.success = ret
                     except:
                         print 'Error adding template to server'
 
@@ -202,7 +203,7 @@ class AffordanceTemplateServer(Thread):
                             for id_ in self.class_map[class_type].iterkeys():
                                 template = response.affordance_template.add()
                                 template.type = class_type
-                                template.id = id_
+                                # template.id = id_
 
                         response.success = True
                     except:
@@ -221,6 +222,46 @@ class AffordanceTemplateServer(Thread):
                     try:
                         self.robot_config = self.loadRobotFromMsg(request.robot)
                         self.robot_config.configure()
+                        response.success = True
+                    except:
+                        print 'Error trying to load robot from message'
+
+                elif request.type == request.COMMAND:
+                    print "new COMMAND request: ", request.robot.name
+                    try:
+                        print "command: ", request.command.type
+                        print "steps: ", request.command.steps
+                        print "end_effectors: ", request.command.end_effector
+                        print "execute on plan: ", request.command.execute
+                        for ee in request.command.end_effector :
+
+                            if request.command.type == request.command.GO_TO_START :
+                                idx = self.at.plan_path_to_waypoint(str(ee), backwards=True, steps=10000, direct=True)
+                            elif request.command.type == request.command.GO_TO_END :
+                                idx = self.at.plan_path_to_waypoint(str(ee), steps=10000, direct=True)
+                            elif request.command.type == request.command.PLAY_BACKWARD :
+                                idx = self.at.plan_path_to_waypoint(str(ee), backwards=True, steps=request.command.steps)
+                            elif request.command.type == request.command.PLAY_FORWARD :
+                                idx = self.at.plan_path_to_waypoint(str(ee), steps=request.command.steps)
+                            elif request.command.type == request.command.STEP_BACKWARD :
+                                idx = self.at.plan_path_to_waypoint(str(ee), backwards=True, steps=request.command.steps)
+                            elif request.command.type == request.command.STEP_FORWARD :
+                                idx = self.at.plan_path_to_waypoint(str(ee), steps=request.command.steps)
+                            elif request.command.type == request.command.PAUSE :
+                                pass
+
+                            if request.command.execute :
+                                print "Executing!!!"
+                                self.at.move_to_waypoint(str(ee), idx)
+                                wp = response.waypoint_info.add()
+                                wp.id = int(self.at.robot_config.end_effector_id_map[str(ee)])
+                                wp.num_waypoints = idx
+                            else :
+                                wp = response.waypoint_info.add()
+                                wp.id = int(self.at.robot_config.end_effector_id_map[str(ee)])
+                                wp.num_waypoints = self.at.waypoint_index[wp.id]
+
+
                         response.success = True
                     except:
                         print 'Error trying to load robot from message'
@@ -256,20 +297,20 @@ class AffordanceTemplateServer(Thread):
         @returns The Popen object started by the server.
         """
         if class_type in self.class_map:
-            at = AffordanceTemplate(self.server, instance_id, robot_config=self.robot_config)
+            self.at = AffordanceTemplate(self.server, instance_id, robot_config=self.robot_config)
             filename = self.file_map[class_type]
             print "Trying to load: ", filename
-            at.load_from_file(filename)
+            self.at.load_from_file(filename)
             print "Success?"
             # filename = os.path.join(self.template_path, ''.join([class_type, '.py']))
             # if self.topic_arg is None:
             #     args = [filename, str(instance_id), "True"]
             # else:
             #     args = [filename, str(instance_id)]
-            args = [filename, str(instance_id)]
-
+            # args = [filename, str(instance_id)]
+            print args
             print("templateServer.addTemplate: adding template " + str(class_type))
-            return subprocess.Popen(args)
+            return True
 
 
     def getNextID(self, class_type):
@@ -310,18 +351,27 @@ class AffordanceTemplateServer(Thread):
         class_map = {}
         image_map = {}
         file_map = {}
+
+        waypoint_map = {}
+
         os.chdir(path)
         for atf in glob.glob("*.atdf") :
-            tree = ElementTree()
-            tree.parse(atf)
-            root = tree.getroot()
-            if root.tag == "affordance_template" :
-                if 'name' in root.attrib.keys() and 'image' in root.attrib.keys() :
-                    class_map[root.attrib['name']] = {}
-                    image_map[root.attrib['name']] = root.attrib['image']
-                    file_map[root.attrib['name']] = os.path.join(path,atf)
+            print atf
+            structure = affordance_template_markers.atdf_parser.AffordanceTemplateStructure.from_file(atf)
 
-        return class_map, image_map, file_map
+            class_map[structure.name] = {}
+            image_map[structure.name] = structure.image
+            file_map[structure.name] = os.path.join(path,atf)
+            waypoint_map[structure.name] = {}
+
+            for wp in structure.end_effector_waypoints.end_effector_waypoints :
+                if not wp.end_effector in waypoint_map[structure.name] :
+                    waypoint_map[structure.name][wp.end_effector] = 1
+                else :
+                    if (int(wp.id)+1) > waypoint_map[structure.name][wp.end_effector] :
+                        waypoint_map[structure.name][wp.end_effector] = int(wp.id)+1
+
+        return class_map, image_map, file_map, waypoint_map
 
     def getRobots(self, path):
         """Parse parses available robots from fs."""

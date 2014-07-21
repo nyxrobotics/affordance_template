@@ -6,9 +6,11 @@
 #include <rviz/panel.h>
 #include <ros/package.h>
 #include <urdf/model.h>
+#include <kdl/frames.hpp>
 
 /* qt */
 #include <QGraphicsScene>
+#include <QTableWidgetItem>
 
 /* Project Include */
 #include "Affordance.hpp"
@@ -18,9 +20,6 @@
 // zmq
 #include <zmq.hpp>
 #include "AffordanceTemplateServerCmd.pb.h"
-
-/* Forward Declarations */
-//class RVizControlsPanel;
 
 namespace Ui {
 class RVizAffordanceTemplatePanel;
@@ -78,6 +77,34 @@ namespace rviz_affordance_template_panel
          */
         void killTemplate(QListWidgetItem* item);
 
+        /** \brief Go To Start Command.
+         */
+        void go_to_start();
+
+        /** \brief Go To End Command.
+         */
+        void go_to_end();
+
+        /** \brief Pause Command.
+         */
+        void pause();
+
+        /** \brief Play Backward Command.
+         */
+        void play_backward();
+
+        /** \brief Play Forward Command.
+         */
+        void play_forward();
+
+        /** \brief Step Backward Command.
+         */
+        void step_backward();
+
+        /** \brief Step Forward Command.
+         */
+        void step_forward();
+
 
     private:
         // Pointer to ui.
@@ -103,6 +130,7 @@ namespace rviz_affordance_template_panel
         bool checkRobot(const RobotConfigSharedPtr& obj);
 
         std::string getRobotFromDescription();
+        std::vector<std::string> getSelectedEndEffectors();
 
         void send_request(const Request& request, Response& response, long timeout=1000000);
         std::string resolvePackagePath(const string& str);
@@ -111,24 +139,18 @@ namespace rviz_affordance_template_panel
         // GUI Widgets
         QGraphicsScene* graphicsScene;
         QListWidget* runningList;
-        /*
-        QGridLayout* gridLayout;
-        QGraphicsView* graphicsView;
-        */
 
         // map to track instantiated object templates
         std::map<std::string, AffordanceSharedPtr> affordanceMap;
         std::map<std::string, RobotConfigSharedPtr> robotMap;
         std::string descriptionRobot;
+        std::string robot_name;
         bool force_load;
 
         // zmq
         zmq::context_t context;
         zmq::socket_t* socket;
         bool connected;
-
-        // AT Controls panel.
-        //RVizControlsPanel* _controlsPanel;
 
         ros::NodeHandle _nh;
 

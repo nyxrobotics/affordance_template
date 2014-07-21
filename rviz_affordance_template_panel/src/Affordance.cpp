@@ -2,10 +2,11 @@
 
 #define PIXMAP_SIZE 100
 #define CLASS_INDEX 0
+#define WAYPOINT_DATA 1
 
 using namespace rviz_affordance_template_panel;
 
-Affordance::Affordance(const string& class_type, const string& image_path) {
+Affordance::Affordance(const string& class_type, const string& image_path, QMap<QString, QVariant> &waypoint_map) {
     QPixmap pixmap(QSize(PIXMAP_SIZE,PIXMAP_SIZE));
 
     // set pixmap to image if it exists
@@ -27,5 +28,8 @@ Affordance::Affordance(const string& class_type, const string& image_path) {
     // store the class name associated with the template pixmap item
     // we'll use the class name to instantiate an object template using Pluginlib
     this->setData(CLASS_INDEX, QVariant(class_type.c_str()));
+    this->setData(WAYPOINT_DATA, QVariant(waypoint_map));
+
     this->key_ = class_type;
+    this->map_ = waypoint_map;
 }
