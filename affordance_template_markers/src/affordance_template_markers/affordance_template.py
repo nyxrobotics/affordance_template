@@ -946,7 +946,7 @@ class AffordanceTemplate(object) :
         elif steps == -999 and direct:
             path = [0]
             next_path_idx = 0
-        if steps == 999 and not direct:
+        elif steps == 999 and not direct:
             path, next_path_idx = self.compute_path_ids(ee_id, self.waypoint_max[ee_id] - self.waypoint_index[ee_id], backwards)
         elif steps == -999 and not direct:
             path, next_path_idx = self.compute_path_ids(ee_id, max(0,self.waypoint_index[ee_id]), backwards)
@@ -958,46 +958,46 @@ class AffordanceTemplate(object) :
         print "path: ", path
         rospy.loginfo(str("AffordanceTemplate::plan_path_to_waypoint() -- computing path to index[" + str(next_path_str) + "]"))
 
-        if steps == 1 :
-            k = str(next_path_str)
-            pt = geometry_msgs.msg.PoseStamped()
-            pt.header = self.server.get(k).header
-            pt.pose = self.server.get(k).pose
+        # if steps == 1 :
+        #     k = str(next_path_str)
+        #     pt = geometry_msgs.msg.PoseStamped()
+        #     pt.header = self.server.get(k).header
+        #     pt.pose = self.server.get(k).pose
 
-            T_goal = getFrameFromPose(pt.pose)
-            T_offset = getFrameFromPose(ee_offset)
-            T = T_goal*T_offset
-            pt.pose = getPoseFromFrame(T)
+        #     T_goal = getFrameFromPose(pt.pose)
+        #     T_offset = getFrameFromPose(ee_offset)
+        #     T = T_goal*T_offset
+        #     pt.pose = getPoseFromFrame(T)
 
-            self.robot_config.moveit_interface.groups[manipulator_name].clear_pose_targets()
-            self.robot_config.moveit_interface.create_plan_to_target(manipulator_name, pt)
-            self.waypoint_plan_valid[ee_id] = True
-        else :
-            waypoints = []
-            frame_id = ""
-            print "waypoint_index: ", self.waypoint_index[ee_id]
-            print "next_path_idx: ", next_path_idx
-            print "max_idx: ", max_idx
+        #     self.robot_config.moveit_interface.groups[manipulator_name].clear_pose_targets()
+        #     self.robot_config.moveit_interface.create_plan_to_target(manipulator_name, pt)
+        #     self.waypoint_plan_valid[ee_id] = True
+        # else :
+        waypoints = []
+        frame_id = ""
+        print "waypoint_index: ", self.waypoint_index[ee_id]
+        print "next_path_idx: ", next_path_idx
+        print "max_idx: ", max_idx
 
-            for idx in path :
-                next_path_str = str(str(ee_id) + "." + str(idx))
-                if not next_path_str in self.objTwp :
-                    rospy.logerr(str("AffordanceTemplate::process_feedback() -- path index[" + str(next_path_str) + "] not found!!"))
-                else :
-                    rospy.loginfo(str("AffordanceTemplate::process_feedback() -- computing path to index[" + str(next_path_str) + "]"))
-                    k = str(next_path_str)
-                    pt = geometry_msgs.msg.PoseStamped()
-                    pt.header = self.server.get(k).header
-                    pt.pose = self.server.get(k).pose
-                    frame_id =  pt.header.frame_id
+        for idx in path :
+            next_path_str = str(str(ee_id) + "." + str(idx))
+            if not next_path_str in self.objTwp :
+                rospy.logerr(str("AffordanceTemplate::process_feedback() -- path index[" + str(next_path_str) + "] not found!!"))
+            else :
+                rospy.loginfo(str("AffordanceTemplate::process_feedback() -- computing path to index[" + str(next_path_str) + "]"))
+                k = str(next_path_str)
+                pt = geometry_msgs.msg.PoseStamped()
+                pt.header = self.server.get(k).header
+                pt.pose = self.server.get(k).pose
+                frame_id =  pt.header.frame_id
 
-                    T_goal = getFrameFromPose(pt.pose)
-                    T_offset = getFrameFromPose(ee_offset)
-                    T = T_goal*T_offset
-                    pt.pose = getPoseFromFrame(T)
-                    waypoints.append(pt.pose)
-            self.robot_config.moveit_interface.create_path_plan(manipulator_name, frame_id, waypoints)
-            self.waypoint_plan_valid[ee_id] = True
+                T_goal = getFrameFromPose(pt.pose)
+                T_offset = getFrameFromPose(ee_offset)
+                T = T_goal*T_offset
+                pt.pose = getPoseFromFrame(T)
+                waypoints.append(pt.pose)
+        self.robot_config.moveit_interface.create_path_plan(manipulator_name, frame_id, waypoints)
+        self.waypoint_plan_valid[ee_id] = True
 
 
         return next_path_idx
