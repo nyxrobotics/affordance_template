@@ -236,13 +236,13 @@ class AffordanceTemplateServer(Thread):
                         for ee in request.command.end_effector :
 
                             if request.command.type == request.command.GO_TO_START :
-                                idx = self.at.plan_path_to_waypoint(str(ee), backwards=True, steps=10000, direct=True)
+                                idx = self.at.plan_path_to_waypoint(str(ee), backwards=True, steps=-999, direct=True)
                             elif request.command.type == request.command.GO_TO_END :
-                                idx = self.at.plan_path_to_waypoint(str(ee), steps=10000, direct=True)
+                                idx = self.at.plan_path_to_waypoint(str(ee), steps=999, direct=True)
                             elif request.command.type == request.command.PLAY_BACKWARD :
-                                idx = self.at.plan_path_to_waypoint(str(ee), backwards=True, steps=request.command.steps)
+                                idx = self.at.plan_path_to_waypoint(str(ee), backwards=True, steps=-999, direct=False)
                             elif request.command.type == request.command.PLAY_FORWARD :
-                                idx = self.at.plan_path_to_waypoint(str(ee), steps=request.command.steps)
+                                idx = self.at.plan_path_to_waypoint(str(ee), steps=999, direct=False)
                             elif request.command.type == request.command.STEP_BACKWARD :
                                 idx = self.at.plan_path_to_waypoint(str(ee), backwards=True, steps=request.command.steps)
                             elif request.command.type == request.command.STEP_FORWARD :

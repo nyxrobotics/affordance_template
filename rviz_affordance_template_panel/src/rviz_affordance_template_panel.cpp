@@ -46,6 +46,8 @@ static vector<string> split(const string &s, char delim) {
     return elems;
 }
 
+/** \brief KDL helper function convert quaternion to rpy angles
+*/
 static vector<float> quaternionToRPY(float x, float y, float z, float w) {
     vector<float> rpy(3);
     double rr, rp, ry;
@@ -57,6 +59,8 @@ static vector<float> quaternionToRPY(float x, float y, float z, float w) {
     return rpy;
 }
 
+/** \brief KDL helper function convert rpy angles to quaternion
+*/
 static vector<float> RPYToQuaternion(float rr, float rp, float ry) {
     vector<float> q(4);
     double x,y,z,w;
@@ -79,6 +83,7 @@ RVizAffordanceTemplatePanel::RVizAffordanceTemplatePanel(QWidget *parent) :
 {
     // Setup the panel.
     _ui->setupUi(this);
+
     setupWidgets();
     connect();
 
@@ -277,10 +282,7 @@ void RVizAffordanceTemplatePanel::setupRobotPanel(const string& key) {
 void RVizAffordanceTemplatePanel::setupEndEffectorConfigPanel(const string& key) {
 
     cout << "setupEndEffectorConfigPanel() -- setting panel data: " << key << endl;
-
     string robot_key = _ui->robot_select->currentText().toUtf8().constData();
-
-//    EndEffectorConfig e = (*(*robotMap[robot_key]).endeffectorMap[key]);
 
     for (auto& e: (*robotMap[robot_key]).endeffectorMap) {
         if (e.second->name() == key) {
@@ -403,6 +405,8 @@ void RVizAffordanceTemplatePanel::loadConfig() {
         cout << "reconnecting..." << endl;
         connect();
     }
+
+    cout << "RVizAffordanceTemplatePanel::loadConfig() -- WARNING::taking parameters loaded from original config, not the GUI yet!!! " << endl;
 
     Request req;
     req.set_type(Request::LOAD_ROBOT);
