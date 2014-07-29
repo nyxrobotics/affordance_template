@@ -834,44 +834,6 @@ class AffordanceTemplate(object) :
                 r = self.robot_config.moveit_interface.execute_plan(manipulator_name)
                 if not r : rospy.logerr(str("RobotTeleop::process_feedback(pose) -- failed moveit execution for group: " + manipulator_name + ". re-synching..."))
 
-    # dumb
-    # def compute_path_ids(self, id, steps, backwards=False) :
-    #     idx  = self.waypoint_index[id]
-    #     max_idx = self.waypoint_max[id]
-    #     path = []
-    #     if steps == 0: return path
-    #     if not backwards :
-    #         if idx+steps > max_idx :
-    #             r = range(idx+1,max_idx+1)
-    #             for p in r: path.append(p)
-    #             of = (idx+steps) - max_idx - 1
-    #             while of > max_idx :
-    #                 r = range(0,max_idx+1)
-    #                 for p in r: path.append(p)
-    #                 of = of - max_idx - 1 # check
-    #             r = range(0,of+1)
-    #             for p in r: path.append(p)
-    #         else :
-    #             r = range(idx+1,steps+idx+1)
-    #             for p in r: path.append(p)
-    #     else :
-    #         if idx-steps < 0 :
-    #             r = range(0,idx); r.reverse()
-    #             for p in r: path.append(p)
-    #             of = int(fabs(idx-steps+1))+1
-    #             # print of
-    #             while of > max_idx :
-    #                 r = range(0,max_idx+1); r.reverse()
-    #                 for p in r: path.append(p)
-    #                 of = of - max_idx - 1 # check
-    #             r = range(max_idx-of+1,max_idx+1); r.reverse()
-    #             for p in r: path.append(p)
-    #         else :
-    #             r = range(idx-steps, idx); r.reverse()
-    #             for p in r: path.append(p)
-    #         if id < 0: path.pop()
-
-    #     return path, path[len(path)-1]
 
     def compute_path_ids(self, id, steps, backwards=False) :
         idx  = self.waypoint_index[id]
@@ -889,15 +851,9 @@ class AffordanceTemplate(object) :
         if backwards and id < 0: path.pop()
         return path, path[len(path)-1]
 
-    def compute_path_ids_too(self, id, steps, backwards=False) :
-        idx  = self.waypoint_index[id]
-        max_idx = self.waypoint_max[id]
-        path = []
-        inc = 1
-        if backwards : inc = -1
-        for s in range(steps) :
-            path.append((idx+inc % max_idx))
-        return path, path[len(path)-1]
+    def stop(self, end_effector) :
+        manipulator_name = self.robot_config.get_manipulator(end_effector)
+        self.robot_config.moveit_interface.groups[manipulator_name].stop()
 
     def compute_next_path_id(self, id, steps, backwards=False) :
 
@@ -940,16 +896,18 @@ class AffordanceTemplate(object) :
         print "steps: ", steps
         # next_path_idx = self.compute_next_path_id(ee_id, steps, backwards)
 
-        if steps == 999 and direct:
-            path = [self.waypoint_max[ee_id]]
-            next_path_idx = self.waypoint_max[ee_id]
-        elif steps == -999 and direct:
-            path = [0]
-            next_path_idx = 0
-        elif steps == 999 and not direct:
-            path, next_path_idx = self.compute_path_ids(ee_id, self.waypoint_max[ee_id] - self.waypoint_index[ee_id], backwards)
-        elif steps == -999 and not direct:
-            path, next_path_idx = self.compute_path_ids(ee_id, max(0,self.waypoint_index[ee_id]), backwards)
+        if steps == 999:
+            if direct:
+                path = [self.waypoint_max[ee_id]]
+                next_path_idx = self.waypoint_max[ee_id]
+            else :
+                path, next_path_idx = self.compute_path_ids(ee_id, self.waypoint_max[ee_id] - self.waypoint_index[ee_id], backwards)
+        elif steps == -999 :
+            if direct:
+                path = [0]
+                next_path_idx = 0
+            else :
+                path, next_path_idx = self.compute_path_ids(ee_id, max(0,self.waypoint_index[ee_id]), backwards)
         else:
             path, next_path_idx = self.compute_path_ids(ee_id, steps, backwards)
 
@@ -958,27 +916,13 @@ class AffordanceTemplate(object) :
         print "path: ", path
         rospy.loginfo(str("AffordanceTemplate::plan_path_to_waypoint() -- computing path to index[" + str(next_path_str) + "]"))
 
-        # if steps == 1 :
-        #     k = str(next_path_str)
-        #     pt = geometry_msgs.msg.PoseStamped()
-        #     pt.header = self.server.get(k).header
-        #     pt.pose = self.server.get(k).pose
-
-        #     T_goal = getFrameFromPose(pt.pose)
-        #     T_offset = getFrameFromPose(ee_offset)
-        #     T = T_goal*T_offset
-        #     pt.pose = getPoseFromFrame(T)
-
-        #     self.robot_config.moveit_interface.groups[manipulator_name].clear_pose_targets()
-        #     self.robot_config.moveit_interface.create_plan_to_target(manipulator_name, pt)
-        #     self.waypoint_plan_valid[ee_id] = True
-        # else :
         waypoints = []
         frame_id = ""
         print "waypoint_index: ", self.waypoint_index[ee_id]
         print "next_path_idx: ", next_path_idx
         print "max_idx: ", max_idx
 
+        # if we are gonna handle pausing, it probably should allow us to interrupt things.
         for idx in path :
             next_path_str = str(str(ee_id) + "." + str(idx))
             if not next_path_str in self.objTwp :
@@ -998,7 +942,6 @@ class AffordanceTemplate(object) :
                 waypoints.append(pt.pose)
         self.robot_config.moveit_interface.create_path_plan(manipulator_name, frame_id, waypoints)
         self.waypoint_plan_valid[ee_id] = True
-
 
         return next_path_idx
 

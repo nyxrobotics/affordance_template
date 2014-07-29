@@ -715,6 +715,38 @@ void RVizAffordanceTemplatePanel::pause() {
     }
 }
 
+void RVizAffordanceTemplatePanel::stop() {
+    if (connected) {
+        Request req;
+        req.set_type(Request::COMMAND);
+        Command *cmd = req.mutable_command();
+        cmd->set_type(Command::STOP);
+        cmd->set_steps(_ui->num_steps->text().toInt());
+        cmd->set_execute(_ui->execute_on_plan->isChecked());
+        vector<string> ee_list = getSelectedEndEffectors();
+        for(int i=0; i<ee_list.size(); i++) {
+            cmd->add_end_effector(ee_list[i]);
+        }
+        Response rep;
+        send_request(req, rep, 10000000);
+        cout << "got response" << endl;
+        for (auto& c: rep.waypoint_info()) {
+            cout << c.id() << endl;
+            cout << c.num_waypoints() << endl;
+            for (auto& e: (*robotMap[robot_name]).endeffectorMap) {
+                if (e.second->id() == c.id()) {
+                    for (int r=0; r<_ui->end_effector_table->rowCount(); r++ ) {
+                        if (e.second->name() == _ui->end_effector_table->item(r,0)->text().toStdString() ) {
+                            _ui->end_effector_table->setItem(r,1,new QTableWidgetItem(QString::number(c.num_waypoints())));
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
 void RVizAffordanceTemplatePanel::play_backward() {
     if (connected) {
         Request req;

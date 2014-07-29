@@ -247,8 +247,8 @@ class AffordanceTemplateServer(Thread):
                                 idx = self.at.plan_path_to_waypoint(str(ee), backwards=True, steps=request.command.steps)
                             elif request.command.type == request.command.STEP_FORWARD :
                                 idx = self.at.plan_path_to_waypoint(str(ee), steps=request.command.steps)
-                            elif request.command.type == request.command.PAUSE :
-                                pass
+                            elif request.command.type == request.command.STOP :
+                                self.at.stop(str(ee))
 
                             if request.command.execute :
                                 print "Executing!!!"

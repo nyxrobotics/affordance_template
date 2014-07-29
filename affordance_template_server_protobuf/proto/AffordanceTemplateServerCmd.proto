@@ -57,6 +57,7 @@ message Command {
         STEP_BACKWARD = 4;
         STEP_FORWARD = 5;
         PAUSE = 6;
+        STOP = 7;
     }
     required CommandType type = 1;
     repeated string end_effector = 2;

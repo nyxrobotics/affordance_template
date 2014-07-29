@@ -89,6 +89,10 @@ namespace rviz_affordance_template_panel
          */
         void pause();
 
+        /** \brief Stop Command.
+         */
+        void stop();
+
         /** \brief Play Backward Command.
          */
         void play_backward();
