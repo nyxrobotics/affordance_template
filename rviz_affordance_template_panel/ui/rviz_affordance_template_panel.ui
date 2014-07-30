@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>337</width>
+    <width>398</width>
     <height>944</height>
    </rect>
   </property>
@@ -29,7 +29,7 @@
       </size>
      </property>
      <property name="currentIndex">
-      <number>1</number>
+      <number>0</number>
      </property>
      <widget class="QWidget" name="server_tab">
       <attribute name="title">
@@ -513,12 +513,6 @@
           <widget class="QListWidget" name="server_output_status">
            <property name="enabled">
             <bool>true</bool>
-           </property>
-           <property name="maximumSize">
-            <size>
-             <width>325</width>
-             <height>500</height>
-            </size>
            </property>
           </widget>
          </item>
@@ -1162,9 +1156,24 @@
       </attribute>
       <layout class="QGridLayout" name="gridLayout_6">
        <item row="0" column="0">
-        <widget class="QGraphicsView" name="graphicsView"/>
+        <widget class="QGraphicsView" name="affordanceTemplateGraphicsView"/>
        </item>
       </layout>
+     </widget>
+     <widget class="QWidget" name="tab_3">
+      <attribute name="title">
+       <string>Recognition Tools</string>
+      </attribute>
+      <widget class="QGraphicsView" name="recognitionObjectGraphicsView">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>10</y>
+         <width>358</width>
+         <height>411</height>
+        </rect>
+       </property>
+      </widget>
      </widget>
      <widget class="QWidget" name="tab_2">
       <attribute name="title">
@@ -1367,12 +1376,7 @@
        </item>
       </layout>
       <zorder>control_box</zorder>
-      <zorder>label_2</zorder>
-      <zorder>num_steps</zorder>
-      <zorder>label_2</zorder>
       <zorder>end_effector_table</zorder>
-      <zorder>num_steps</zorder>
-      <zorder>label_2</zorder>
       <zorder>go_to_start_button</zorder>
       <zorder>go_to_end_button</zorder>
       <zorder>play_button</zorder>

@@ -10,7 +10,7 @@ import zmq
 import affordance_template_markers
 import affordance_template_server_protobuf
 
-from AffordanceTemplateServerCmd_pb2 import Template, Request, Response, Pose, Position, Orientation, EndEffector, Robot, EndEffectorMap
+from AffordanceTemplateServerCmd_pb2 import Template, Request, Response, Pose, Position, Orientation, EndEffector, Robot, EndEffectorMap, RecogObject
 from visualization_msgs.msg import Marker
 
 from threading import Thread
@@ -25,6 +25,7 @@ from affordance_template_markers.robot_config import *
 from affordance_template_markers.affordance_template import *
 from affordance_template_markers.template_utilities import *
 from affordance_template_markers.robot_config import *
+from affordance_template_markers.recognition_object import *
 import affordance_template_markers.atdf_parser
 
 
@@ -52,6 +53,7 @@ class AffordanceTemplateServer(Thread):
         # get path to actual template source files
         self._template_path    = os.path.join(self._package_path, 'templates')
         self._robot_path    = os.path.join(self._package_path, 'robots')
+        self._recognition_object_path    = os.path.join(self._package_path, 'recognition_objects')
         # # get path to resources
         # self._resource_path = os.path.join(self._package_path, 'resources', 'rviz')
         # # find plugin_description.xml file that holds all templates
@@ -59,7 +61,9 @@ class AffordanceTemplateServer(Thread):
         # # call getAvailableTemplates to parse out templates
         self.class_map, self.image_map, self.file_map, self.waypoint_map = self.getAvailableTemplates(self._template_path)
         self.robot_map = self.getRobots(self._robot_path)
+        self.recognition_object_map = self.getRecognitionObjects(self._recognition_object_path)
 
+        for r in self.recognition_object_map.keys() : print self.recognition_object_map[r].print_yaml()
         # import rospkg
         # rp = rospkg.RosPack()
         # robot_config_file = rp.get_path('affordance_template_library') + "/robots/r2.yaml"
@@ -170,6 +174,14 @@ class AffordanceTemplateServer(Thread):
                                 ee.pose_offset.orientation.z = self.robot_map[name].end_effector_pose_map[e].orientation.z
                                 ee.pose_offset.orientation.w = self.robot_map[name].end_effector_pose_map[e].orientation.w
 
+                        for rot in self.recognition_object_map.keys():
+                            print self.recognition_object_map[rot]
+                            recognition_object = response.recognition_object.add()
+                            recognition_object.type = self.recognition_object_map[rot].type
+                            recognition_object.launch_file = self.recognition_object_map[rot].launch_file
+                            recognition_object.package = self.recognition_object_map[rot].package
+                            recognition_object.image_path = self.recognition_object_map[rot].image_path
+
                         response.success = True
                     except:
                         print 'Error with query for available templates'
@@ -185,6 +197,29 @@ class AffordanceTemplateServer(Thread):
                             print "ret: ", ret
                             # if popen != None:
                             #     self.class_map[class_type][new_id] = popen
+                        # for rot in self.recognition_object_map.keys():
+                        #     print self.recognition_object_map[rot]
+                        #     recognition_object = response.recognition_object.add()
+                        #     recognition_object.type = self.recognition_object_map[rot].type
+                        #     recognition_object.launch_file = self.recognition_object_map[rot].launch_file
+                        #     recognition_object.package = self.recognition_object_map[rot].package
+                        #     recognition_object.image_path = self.recognition_object_map[rot].image_path
+
+                        response.success = ret
+                    except:
+                        print 'Error adding template to server'
+
+                elif request.type == request.START_RECOGNITION:
+                    print "new START_RECOGNITION request"
+                    try:
+                        for rot in self.recognition_object_map.keys():
+                            print self.recognition_object_map[rot]
+                            recognition_object = response.recognition_object.add()
+                            recognition_object.type = self.recognition_object_map[rot].type
+                            recognition_object.launch_file = self.recognition_object_map[rot].launch_file
+                            recognition_object.package = self.recognition_object_map[rot].package
+                            recognition_object.image_path = self.recognition_object_map[rot].image_path
+
                         response.success = ret
                     except:
                         print 'Error adding template to server'
@@ -197,6 +232,9 @@ class AffordanceTemplateServer(Thread):
                         running_templates = []
                         for template in self.class_map.iterkeys():
                             running_templates.append(template)
+
+                        for recog_object in self.recognition_object_map.iterkeys():
+                            running_templates.append(recog_object)
                         running_templates.sort()
 
                         for class_type in self.class_map.iterkeys():
@@ -375,7 +413,6 @@ class AffordanceTemplateServer(Thread):
 
     def getRobots(self, path):
         """Parse parses available robots from fs."""
-
         robot_map = {}
         import glob, yaml
         os.chdir(path)
@@ -386,8 +423,66 @@ class AffordanceTemplateServer(Thread):
             robot_map[r] = rc
         return robot_map
 
+    def getRecognitionObjects(self, path):
+        """Parse parses available robots from fs."""
+        recognition_object_map = {}
+        import glob, yaml
+        os.chdir(path)
+        for r in glob.glob("*.yaml") :
+            print "found recognition_object yaml: ", r
+            ro = RecognitionObject()
+            ro.load_from_file(r)
+            recognition_object_map[r] = ro
+
+        return recognition_object_map
+
     def loadRobotFromMsg(self, robot) :
         r = RobotConfig()
+
+        print "creating new robot from pb message"
+        try:
+
+            r.robot_name = robot.name
+            r.config_package = robot.moveit_config_package
+            r.frame_id = robot.frame_id
+            print "loading robot: " , r.robot_name
+
+            r.root_offset.position.x = robot.root_offset.position.x
+            r.root_offset.position.y = robot.root_offset.position.y
+            r.root_offset.position.z = robot.root_offset.position.z
+            r.root_offset.orientation.x = robot.root_offset.orientation.x
+            r.root_offset.orientation.y = robot.root_offset.orientation.y
+            r.root_offset.orientation.z = robot.root_offset.orientation.z
+            r.root_offset.orientation.w = robot.root_offset.orientation.w
+
+            r.end_effector_names = []
+            r.end_effector_name_map = {}
+            r.end_effector_id_map = {}
+            r.end_effector_pose_map = {}
+
+            for ee in robot.end_effectors.end_effector:
+                r.end_effector_names.append(ee.name)
+                r.end_effector_name_map[ee.id] = ee.name
+                r.end_effector_id_map[ee.name] = ee.id
+                p = geometry_msgs.msg.Pose()
+                p.position.x = ee.pose_offset.position.x
+                p.position.y = ee.pose_offset.position.y
+                p.position.z = ee.pose_offset.position.z
+                p.orientation.x = ee.pose_offset.orientation.x
+                p.orientation.y = ee.pose_offset.orientation.y
+                p.orientation.z = ee.pose_offset.orientation.z
+                p.orientation.w = ee.pose_offset.orientation.w
+                r.end_effector_pose_map[ee.name] = p
+
+            print "done!"
+            return r
+
+        except :
+            rospy.logerr("AffordanceTemplateServer::loadRobotFromMsg() -- error parsing robot protobuf file")
+            return None
+
+    def loadRecognitionObjectFromMsg(self, recognition_object) :
+        r = RecogntionObject()
 
         print "creating new robot from pb message"
         try:

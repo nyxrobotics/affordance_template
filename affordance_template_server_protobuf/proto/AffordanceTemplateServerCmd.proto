@@ -48,6 +48,14 @@ message Robot {
     required EndEffectorMap end_effectors = 6;        // list of end effector mapping
 }
 
+message RecogObject {
+    required string type = 1;        // type
+    optional string launch_file = 2;        // launch file
+    optional string package = 3;  // package dependency name
+    optional string image_path = 4;        // recognition object
+    optional int32 id = 5;           // ID of the object on the server
+}
+
 message Command {
     enum CommandType {
         GO_TO_START = 0;
@@ -77,17 +85,20 @@ message Request {
         RUNNING = 7;   // get running templates
         LOAD_ROBOT = 8; // load robot from robot_config
         COMMAND = 9;   // command for controlling the robot
+        START_RECOGNITION = 10;       // start a new recognition object process
     }
     required Type type = 1;
     repeated Template affordance_template = 2;
-    optional Pose pose = 3;
-    optional Robot robot = 4;
-    optional Command command = 5;
+    repeated RecogObject recognition_object = 3;
+    optional Pose pose = 4;
+    optional Robot robot = 5;
+    optional Command command = 6;
 }
 
 message Response {
     required bool success = 1;
     repeated Template affordance_template = 2;
-    repeated Robot robot = 3;
-    repeated WaypointInfo waypoint_info = 4;
+    repeated RecogObject recognition_object = 3;
+    repeated Robot robot = 4;
+    repeated WaypointInfo waypoint_info = 5;
 }

@@ -1,0 +1,4 @@
+type: handle
+package: handle_detector
+launch_file: r2.launch
+image_path: package://affordance_template_library/images/handle.jpg

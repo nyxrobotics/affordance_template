@@ -14,6 +14,7 @@
 
 /* Project Include */
 #include "Affordance.hpp"
+#include "RecognitionObject.hpp"
 #include "RobotConfig.hpp"
 #include "ui_rviz_affordance_template_panel.h"
 
@@ -32,6 +33,7 @@ namespace rviz_affordance_template_panel
         Q_OBJECT
     public:
         typedef boost::shared_ptr<Affordance> AffordanceSharedPtr;
+        typedef boost::shared_ptr<RecognitionObject> RecognitionObjectSharedPtr;
         typedef boost::shared_ptr<RobotConfig> RobotConfigSharedPtr;
         typedef boost::shared_ptr<EndEffectorConfig> EndEffectorConfigSharedPtr;
 
@@ -43,15 +45,16 @@ namespace rviz_affordance_template_panel
         void configChanged();
 
     public Q_SLOTS:
-        void addTemplate();
+        void addAffordanceDisplayItem();
+        void addObjectDisplayItem();
 
         /** \brief Send a ZMQ request to get available template classes and populate the template list.
          */
-        void getAvailableTemplates();
+        void getAvailableInfo();
 
-        /** \brief Send a ZMQ request to get running templates on the server.
+        /** \brief Send a ZMQ request to get running templates and recognition objects on the server.
          */
-        void getRunningTemplates();
+        void getRunningItems();
 
         /** \brief Connect/Disconnect to the template server.
          */
@@ -75,7 +78,11 @@ namespace rviz_affordance_template_panel
 
         /** \brief Send a ZMQ request to kill a running template.
          */
-        void killTemplate(QListWidgetItem* item);
+        void killAffordanceTemplate(QListWidgetItem* item);
+
+        /** \brief Send a ZMQ request to kill a running object recog.
+         */
+        void killRecognitionObject(QListWidgetItem* item);
 
         /** \brief Go To Start Command.
          */
@@ -118,16 +125,24 @@ namespace rviz_affordance_template_panel
         void setupRobotPanel(const string& key);
         void setupEndEffectorConfigPanel(const string& key);
 
-        void removeTemplates();
-        void sendAdd(const string& class_name);
-        void sendKill(const string& class_name, int id);
+        void removeAffordanceTemplates();
+        void sendAffordanceTemplateAdd(const string& class_name);
+        void sendAffordanceTemplateKill(const string& class_name, int id);
         void sendPing();
         void sendShutdown();
+
+        void removeRecognitionObjects();
+        void sendRecognitionObjectAdd(const string& object_name);
+        void sendRecognitionObjectKill(const string& object_name, int id);
 
         // TODO: template these template functions that keep track of templates
         bool addAffordance(const AffordanceSharedPtr& obj);
         bool removeAffordance(const AffordanceSharedPtr& obj);
         bool checkAffordance(const AffordanceSharedPtr& obj);
+
+        bool addRecognitionObject(const RecognitionObjectSharedPtr& obj);
+        bool removeRecognitionObject(const RecognitionObjectSharedPtr& obj);
+        bool checkRecognitionObject(const RecognitionObjectSharedPtr& obj);
 
         bool addRobot(const RobotConfigSharedPtr& obj);
         bool removeRobot(const RobotConfigSharedPtr& obj);
@@ -141,11 +156,12 @@ namespace rviz_affordance_template_panel
 
 
         // GUI Widgets
-        QGraphicsScene* graphicsScene;
-        QListWidget* runningList;
+        QGraphicsScene* affordanceTemplateGraphicsScene;
+        QGraphicsScene* recognitionObjectGraphicsScene;
 
         // map to track instantiated object templates
         std::map<std::string, AffordanceSharedPtr> affordanceMap;
+        std::map<std::string, RecognitionObjectSharedPtr> recognitionObjectMap;
         std::map<std::string, RobotConfigSharedPtr> robotMap;
         std::string descriptionRobot;
         std::string robot_name;

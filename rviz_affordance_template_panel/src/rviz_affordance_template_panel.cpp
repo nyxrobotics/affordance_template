@@ -5,8 +5,14 @@
 #define PIXMAP_SIZE 100
 #define XOFFSET 20
 #define YOFFSET 20
+
 #define CLASS_INDEX 0
 #define WAYPOINT_DATA 1
+
+#define OBJECT_INDEX 0
+#define PACKAGE 1
+#define LAUNCH_FILE 2
+
 
 /* Project Includes */
 #include "rviz_affordance_template_panel.hpp"
@@ -51,11 +57,16 @@ static vector<string> split(const string &s, char delim) {
 static vector<float> quaternionToRPY(float x, float y, float z, float w) {
     vector<float> rpy(3);
     double rr, rp, ry;
-    KDL::Rotation::Quaternion(x,y,z,w).GetRPY(rr,rp,ry);
+    //KDL::Rotation::Quaternion(x,y,z,w).GetRPY(rr,rp,ry);
+    /*
     rpy[0] = (float)rr;
     rpy[1] = (float)rp;
     rpy[2] = (float)ry;
-    //cout << "converted quaternion(" << x << ", " << y << ", " << z << ", " << w << ") to rpy(" << rr << ", " << rp << ", " << ry << ")" << endl;
+    */
+    rpy[0] = (float)0;
+    rpy[1] = (float)0;
+    rpy[2] = (float)0;
+    cout << "converted quaternion(" << x << ", " << y << ", " << z << ", " << w << ") to rpy(" << rpy[0] << ", " << rpy[1] << ", " << rpy[2] << ")" << endl;
     return rpy;
 }
 
@@ -111,12 +122,13 @@ RVizAffordanceTemplatePanel::~RVizAffordanceTemplatePanel()
 
 void RVizAffordanceTemplatePanel::setupWidgets() {
 
-    runningList = new QListWidget();
-    runningList->setMinimumHeight(200);
-    QObject::connect(runningList, SIGNAL(itemDoubleClicked(QListWidgetItem*)), this, SLOT(killTemplate(QListWidgetItem*)));
+    affordanceTemplateGraphicsScene = new QGraphicsScene(this);
+    _ui->affordanceTemplateGraphicsView->setScene(affordanceTemplateGraphicsScene);
 
-    graphicsScene = new QGraphicsScene(this);
-    _ui->graphicsView->setScene(graphicsScene);
+    recognitionObjectGraphicsScene = new QGraphicsScene(this);
+    _ui->recognitionObjectGraphicsView->setScene(recognitionObjectGraphicsScene);
+
+    QObject::connect(_ui->server_output_status, SIGNAL(itemDoubleClicked(QListWidgetItem*)), this, SLOT(killAffordanceTemplate(QListWidgetItem*)));
 
     QObject::connect(_ui->connect_button, SIGNAL(clicked()), this, SLOT(connect()));
     QObject::connect(_ui->load_config_button, SIGNAL(clicked()), this, SLOT(safeLoadConfig()));
@@ -137,8 +149,9 @@ void RVizAffordanceTemplatePanel::connect() {
     bool success = false;
     if (connected) {
         try {
-            runningList->clear();
-            removeTemplates();
+            _ui->server_output_status->clear();
+            removeAffordanceTemplates();
+            removeRecognitionObjects();
             socket->close();
             connected = false;
             delete socket;
@@ -158,8 +171,8 @@ void RVizAffordanceTemplatePanel::connect() {
             socket = client_socket(context, addr);
             connected = true;
             sendPing();
-            getAvailableTemplates();
-            getRunningTemplates();
+            getAvailableInfo();
+            getRunningItems();
             success = true;
         } catch (const zmq::error_t& ex) {
             cerr << ex.what() << endl;
@@ -173,7 +186,7 @@ void RVizAffordanceTemplatePanel::connect() {
     }
 }
 
-void RVizAffordanceTemplatePanel::getAvailableTemplates() {
+void RVizAffordanceTemplatePanel::getAvailableInfo() {
     if (connected) {
         // templates must be exported in plugin_description.xml of affordance_template package
         Request req;
@@ -183,6 +196,8 @@ void RVizAffordanceTemplatePanel::getAvailableTemplates() {
         int yoffset = YOFFSET;
 
         string package_path = ros::package::getPath("affordance_template_library");
+
+        // set up Affordance Template select menu
         for (auto& c: rep.affordance_template()) {
             cout << c.type() << endl;
             string image_path = resolvePackagePath(c.image_path());
@@ -194,13 +209,32 @@ void RVizAffordanceTemplatePanel::getAvailableTemplates() {
             std::cout << image_path << std::endl;
             pitem->setPos(XOFFSET, yoffset);
             yoffset += PIXMAP_SIZE + YOFFSET;
-            graphicsScene->addItem(pitem.get());
+            affordanceTemplateGraphicsScene->addItem(pitem.get());
             addAffordance(pitem);
         }
-        cout << "setting up addTemplate callback" << endl;
-        QObject::connect(graphicsScene, SIGNAL(selectionChanged()), this, SLOT(addTemplate()));
-        graphicsScene->update();
+        cout << "setting up addAffordanceDisplayItem callback" << endl;
+        QObject::connect(affordanceTemplateGraphicsScene, SIGNAL(selectionChanged()), this, SLOT(addAffordanceDisplayItem()));
+        affordanceTemplateGraphicsScene->update();
 
+        // set up Recognition Object select menu
+        for (auto& c: rep.recognition_object()) {
+            cout << c.type() << endl;
+            cout << c.launch_file() << endl;
+            cout << c.package() << endl;
+            cout << c.image_path() << endl;
+            string image_path = resolvePackagePath(c.image_path());
+            RecognitionObjectSharedPtr pitem(new RecognitionObject(c.type(), c.launch_file(), c.package(), image_path));
+            cout << image_path << endl;
+            pitem->setPos(XOFFSET, yoffset);
+            yoffset += PIXMAP_SIZE + YOFFSET;
+            recognitionObjectGraphicsScene->addItem(pitem.get());
+            addRecognitionObject(pitem);
+        }
+        cout << "setting up addObjectDisplayItem callback" << endl;
+        QObject::connect(recognitionObjectGraphicsScene, SIGNAL(selectionChanged()), this, SLOT(addObjectDisplayItem()));
+        recognitionObjectGraphicsScene->update();
+
+        // load stuff for robot config sub panel
         _ui->robot_select->clear();
         _ui->end_effector_select->clear();
 
@@ -253,18 +287,33 @@ void RVizAffordanceTemplatePanel::setupRobotPanel(const string& key) {
     string frame_id = (*robotMap[key]).frame_id();
     vector<float> root_offset = (*robotMap[key]).root_offset();
 
+    cout << "test 1" << endl;
     _ui->robot_name->setText(QString(name.c_str()));
     _ui->moveit_package->setText(QString(pkg.c_str()));
     _ui->frame_id->setText(QString(frame_id.c_str()));
+
+    cout << "test 2" << endl;
 
     _ui->robot_tx->setText(QString::number(root_offset[0]));
     _ui->robot_ty->setText(QString::number(root_offset[1]));
     _ui->robot_tz->setText(QString::number(root_offset[2]));
 
+    cout << "test 3" << endl;
+    cout << root_offset[3] << endl;
+    cout << root_offset[4] << endl;
+    cout << root_offset[5] << endl;
+    cout << root_offset[6] << endl;
+
     vector<float> rpy = quaternionToRPY(root_offset[3],root_offset[4],root_offset[5],root_offset[6]);
+
+    cout << "test 4" << endl;
     _ui->robot_rr->setText(QString::number(rpy[0]));
+    cout << "test 5" << endl;
     _ui->robot_rp->setText(QString::number(rpy[1]));
+    cout << "test 6" << endl;
     _ui->robot_ry->setText(QString::number(rpy[2]));
+
+    cout << "test 7" << endl;
 
     _ui->end_effector_select->clear();
 
@@ -273,9 +322,15 @@ void RVizAffordanceTemplatePanel::setupRobotPanel(const string& key) {
         _ui->end_effector_select->addItem(e.second->name().c_str());
     }
 
+    cout << "test 2" << endl;
+
     setupEndEffectorConfigPanel((*robotMap[key]).endeffectorMap.begin()->first);
 
+    cout << "test 3" << endl;
+
     QObject::connect(_ui->end_effector_select, SIGNAL(currentIndexChanged(int)), this, SLOT(changeEndEffector(int)));
+
+    cout << "test 4" << endl;
 
 }
 
@@ -325,16 +380,16 @@ string RVizAffordanceTemplatePanel::resolvePackagePath(const string& str) {
   return package_path + file_path;
 }
 
-void RVizAffordanceTemplatePanel::removeTemplates() {
-    graphicsScene->disconnect(SIGNAL(selectionChanged()));
-    for (auto& pitem: graphicsScene->items()) {
-        graphicsScene->removeItem(pitem);
+void RVizAffordanceTemplatePanel::removeAffordanceTemplates() {
+    affordanceTemplateGraphicsScene->disconnect(SIGNAL(selectionChanged()));
+    for (auto& pitem: affordanceTemplateGraphicsScene->items()) {
+        affordanceTemplateGraphicsScene->removeItem(pitem);
     }
     affordanceMap.clear();
-    graphicsScene->update();
+    affordanceTemplateGraphicsScene->update();
 }
 
-void RVizAffordanceTemplatePanel::sendAdd(const string& class_name) {
+void RVizAffordanceTemplatePanel::sendAffordanceTemplateAdd(const string& class_name) {
     Request req;
     req.set_type(Request::ADD);
     Template* temp(req.add_affordance_template());
@@ -343,7 +398,7 @@ void RVizAffordanceTemplatePanel::sendAdd(const string& class_name) {
     send_request(req, resp);
 }
 
-void RVizAffordanceTemplatePanel::sendKill(const string& class_name, int id) {
+void RVizAffordanceTemplatePanel::sendAffordanceTemplateKill(const string& class_name, int id) {
     Request req;
     req.set_type(Request::KILL);
     Template* temp(req.add_affordance_template());
@@ -353,13 +408,55 @@ void RVizAffordanceTemplatePanel::sendKill(const string& class_name, int id) {
     send_request(req, resp);
 }
 
-void RVizAffordanceTemplatePanel::killTemplate(QListWidgetItem* item) {
+void RVizAffordanceTemplatePanel::killAffordanceTemplate(QListWidgetItem* item) {
     vector<string> template_info = split(item->text().toUtf8().constData(), ':');
     int id;
     istringstream(template_info[1]) >> id;
-    sendKill(template_info[0], id);
-    getRunningTemplates();
+    sendAffordanceTemplateKill(template_info[0], id);
+    getRunningItems();
 }
+
+
+void RVizAffordanceTemplatePanel::removeRecognitionObjects() {
+    recognitionObjectGraphicsScene->disconnect(SIGNAL(selectionChanged()));
+    for (auto& pitem: recognitionObjectGraphicsScene->items()) {
+        recognitionObjectGraphicsScene->removeItem(pitem);
+    }
+    recognitionObjectMap.clear();
+    recognitionObjectGraphicsScene->update();
+}
+
+void RVizAffordanceTemplatePanel::sendRecognitionObjectAdd(const string& object_name) {
+    Request req;
+    req.set_type(Request::START_RECOGNITION);
+    RecogObject* temp(req.add_recognition_object());
+    temp->set_type(object_name);
+    /*temp->set_image_path(object_name);
+    temp->set_package(object_name);
+    temp->set_launch_file(object_name);
+    */
+    Response resp;
+    send_request(req, resp);
+}
+
+void RVizAffordanceTemplatePanel::sendRecognitionObjectKill(const string& object_name, int id) {
+    Request req;
+    req.set_type(Request::KILL);
+    RecogObject* temp(req.add_recognition_object());
+    temp->set_type(object_name);
+    temp->set_id(id);
+    Response resp;
+    send_request(req, resp);
+}
+
+void RVizAffordanceTemplatePanel::killRecognitionObject(QListWidgetItem* item) {
+    vector<string> object_info = split(item->text().toUtf8().constData(), ':');
+    int id;
+    istringstream(object_info[1]) >> id;
+    sendRecognitionObjectKill(object_info[0], id);
+    getRunningItems();
+}
+
 
 void RVizAffordanceTemplatePanel::sendShutdown() {
     Request req;
@@ -376,18 +473,28 @@ void RVizAffordanceTemplatePanel::sendPing() {
     cout << resp.success() << endl;
 }
 
-void RVizAffordanceTemplatePanel::getRunningTemplates() {
+void RVizAffordanceTemplatePanel::getRunningItems() {
     Request req;
     req.set_type(Request::RUNNING);
     Response resp;
     send_request(req, resp, 30000000);
-    runningList->clear();
+    _ui->server_output_status->clear();
+    int id = 0;
     for (auto& c: resp.affordance_template()) {
         string name = c.type() + ":" + to_string(c.id());
-        runningList->addItem(QString::fromStdString(name));
+        _ui->server_output_status->addItem(QString::fromStdString(name));
+        _ui->server_output_status->item(id)->setForeground(Qt::blue);
+        id++;
     }
-    runningList->sortItems();
+    for (auto& c: resp.recognition_object()) {
+        string name = c.type() + ":" + to_string(c.id());
+        _ui->server_output_status->addItem(QString::fromStdString(name));
+        _ui->server_output_status->item(id)->setForeground(Qt::green);
+        id++;
+    }
+    _ui->server_output_status->sortItems();
 }
+
 
 void RVizAffordanceTemplatePanel::safeLoadConfig() {
     if(_ui->robot_lock->isChecked()) {
@@ -485,17 +592,17 @@ void RVizAffordanceTemplatePanel::loadConfig() {
 }
 
 
-void RVizAffordanceTemplatePanel::addTemplate() {
+void RVizAffordanceTemplatePanel::addAffordanceDisplayItem() {
     // Add an object template to the InteractiveMarkerServer for each selected item.
-    cout << "RVizAffordanceTemplatePanel::addTemplate()" << endl;
-    QList<QGraphicsItem*> list = graphicsScene->selectedItems();
+    cout << "RVizAffordanceTemplatePanel::addAffordanceDisplayItem()" << endl;
+    QList<QGraphicsItem*> list = affordanceTemplateGraphicsScene->selectedItems();
     for (int i=0; i < list.size(); ++i) {
         // Get the object template class name from the first element in the QGraphicsItem's custom data
         // field. This field is set in the derived Affordance class when setting up the widgets.
         string class_name = list.at(i)->data(CLASS_INDEX).toString().toStdString();
-        cout << "RVizAffordanceTemplatePanel::addTemplate() -- " << class_name << endl;
-        sendAdd(class_name);
-        cout << "RVizAffordanceTemplatePanel::addTemplate() -- retrieving waypoint info" << endl;
+        cout << "RVizAffordanceTemplatePanel::addAffordanceDisplayItem() -- " << class_name << endl;
+        sendAffordanceTemplateAdd(class_name);
+        cout << "RVizAffordanceTemplatePanel::addAffordanceDisplayItem() -- retrieving waypoint info" << endl;
         for (auto& c: list.at(i)->data(WAYPOINT_DATA).toMap().toStdMap()) {
             string robot_key = _ui->robot_select->currentText().toUtf8().constData();
             for (auto& e: (*robotMap[robot_name]).endeffectorMap) {
@@ -508,8 +615,24 @@ void RVizAffordanceTemplatePanel::addTemplate() {
         }
     }
     // update running templates
-    getRunningTemplates();
+    getRunningItems();
 }
+
+void RVizAffordanceTemplatePanel::addObjectDisplayItem() {
+    // Add an object template to the InteractiveMarkerServer for each selected item.
+    cout << "RVizAffordanceTemplatePanel::addObjectDisplayItem()" << endl;
+    QList<QGraphicsItem*> list = recognitionObjectGraphicsScene->selectedItems();
+    for (int i=0; i < list.size(); ++i) {
+        // Get the object template class name from the first element in the QGraphicsItem's custom data
+        // field. This field is set in the derived Affordance class when setting up the widgets.
+        string object_name = list.at(i)->data(OBJECT_INDEX).toString().toStdString();
+        cout << "RVizAffordanceTemplatePanel::addObjectDisplayItem() -- " << object_name << endl;
+        sendRecognitionObjectAdd(object_name);
+    }
+    // update running templates
+    getRunningItems();
+}
+
 
 void RVizAffordanceTemplatePanel::send_request(const Request& request, Response& response, long timeout) {
     if (connected) {
@@ -563,6 +686,31 @@ bool RVizAffordanceTemplatePanel::removeAffordance(const AffordanceSharedPtr& ob
 
 bool RVizAffordanceTemplatePanel::checkAffordance(const AffordanceSharedPtr& obj) {
     if (affordanceMap.find((*obj).key()) == affordanceMap.end()) {
+        return false;
+    }
+    return true;
+}
+
+bool RVizAffordanceTemplatePanel::addRecognitionObject(const RecognitionObjectSharedPtr& obj) {
+    // check if template is in our map
+    if (!checkRecognitionObject(obj)) {
+        recognitionObjectMap[(*obj).key()] = obj;
+        return true;
+    }
+    return false;
+}
+
+bool RVizAffordanceTemplatePanel::removeRecognitionObject(const RecognitionObjectSharedPtr& obj) {
+    // check if template is in our map
+    if (checkRecognitionObject(obj)) {
+        recognitionObjectMap.erase((*obj).key());
+        return true;
+    }
+    return false;
+}
+
+bool RVizAffordanceTemplatePanel::checkRecognitionObject(const RecognitionObjectSharedPtr& obj) {
+    if (recognitionObjectMap.find((*obj).key()) == recognitionObjectMap.end()) {
         return false;
     }
     return true;
