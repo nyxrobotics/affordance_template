@@ -10,6 +10,7 @@ class RecognitionObject(object) :
         self.package =  ""
         self.launch_file = ""
         self.image_path = ""
+        self.topic = ""
 
     def load_from_file(self, filename) :
 
@@ -22,6 +23,7 @@ class RecognitionObject(object) :
             self.package = str(self.yaml_config['package'])
             self.image_path = str(self.yaml_config['image_path'])
             self.launch_file = self.yaml_config['launch_file']
+            self.topic = self.yaml_config['marker_topic']
 
             self.print_yaml()
 
@@ -41,5 +43,6 @@ class RecognitionObject(object) :
             print " package: ", self.yaml_config['package']
             print " image_path: ", self.yaml_config['image_path']
             print " launch_file: ", self.yaml_config['launch_file']
+            print " marker_topic: ", self.yaml_config['marker_topic']
             print "============================="
 

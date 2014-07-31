@@ -61,7 +61,7 @@ class AffordanceTemplate(object) :
         self.waypoint_plan_valid = {}
         self.waypoint_loop = {}
         self.waypoint_max = {}
-        self.waypoint_controls_display_on = True
+        self.waypoint_controls_display_on = False
         # helper frames
         self.robotTroot = kdl.Frame()
         self.rootTobj = {}
@@ -90,6 +90,9 @@ class AffordanceTemplate(object) :
         self.waypoint_menu_options.append(("Manipulator Stored Poses", False))
         self.waypoint_menu_options.append(("End-Effector Stored Poses", False))
         self.waypoint_menu_options.append(("Hide Controls", True))
+        self.waypoint_menu_options.append(("Add Waypoint Before", False))
+        self.waypoint_menu_options.append(("Add Waypoint After", False))
+        self.waypoint_menu_options.append(("Delete Waypoint", False))
 
         self.object_menu_options = []
         self.object_menu_options.append(("Display Next Path Segment", False))
@@ -383,7 +386,7 @@ class AffordanceTemplate(object) :
         wp_ids = 0
         for wp in self.waypoints :
 
-            print wp
+            print "creating marker for wp: ", wp
             ee_name = self.robot_config.end_effector_name_map[int(self.waypoint_end_effectors[wp])]
 
             robotTroot = self.robotTroot*self.get_chain_from_robot(self.parent_map[wp])
@@ -392,6 +395,7 @@ class AffordanceTemplate(object) :
                 rospy.logerr(str("AffordanceTemplate::create_from_structure() -- end-effector display object " + self.parent_map[wp] + "not found!"))
 
             display_pose = getPoseFromFrame(robotTroot*self.objTwp[wp])
+            # print "display pose: ", display_pose
 
             int_marker = InteractiveMarker()
             control = InteractiveMarkerControl()
@@ -417,7 +421,7 @@ class AffordanceTemplate(object) :
             if self.waypoint_loop[id] :
                 self.marker_menus[wp].setCheckState( self.menu_handles[(wp,"Loop Path")], MenuHandler.CHECKED )
             if self.waypoint_controls_display_on :
-                self.marker_menus[wp].setCheckState( self.menu_handles[(wp,"Hide Controls")], MenuHandler.UNCHECKED )
+                self.marker_menus[wp].setCheckState( self.menu_handles[(wp,"Hide Controls")], MenuHandler.CHECKED )
             else :
                 self.marker_menus[wp].setCheckState( self.menu_handles[(wp,"Hide Controls")], MenuHandler.CHECKED )
 
@@ -447,7 +451,33 @@ class AffordanceTemplate(object) :
             self.marker_menus[wp].apply( self.server, wp )
             self.server.applyChanges()
 
+            # print "wp_ids: ", wp_ids
             wp_ids += 1
+
+    def move_waypoint(self, ee_id, old_id, new_id) :
+        old_name = str(str(ee_id) + "." + str(old_id))
+        new_name = str(str(ee_id) + "." + str(new_id))
+
+        self.parent_map[new_name] = copy.deepcopy(self.parent_map[old_name])
+        self.objTwp[new_name] = copy.deepcopy(self.objTwp[old_name])
+        self.wpTee[new_name] = copy.deepcopy(self.wpTee[old_name])
+        self.waypoint_controls[new_name] = copy.deepcopy(self.waypoint_controls[old_name])
+        self.waypoint_end_effectors[new_name] = copy.deepcopy(self.waypoint_end_effectors[old_name])
+        self.waypoint_ids[new_name] = self.waypoint_ids[old_name]
+        self.waypoint_origin[new_name] = self.waypoint_origin[old_name]
+
+        if self.waypoint_end_effectors[new_name] not in self.waypoint_index :
+            id = int(self.waypoint_end_effectors[new_name])
+            self.waypoint_index[id] = -1
+            self.waypoint_backwards_flag[id] = False
+            self.waypoint_auto_execute[id] = False
+            self.waypoint_plan_valid[id] = False
+            self.waypoint_loop[id] = False
+        # else :
+        #     # set max wp_name id for this ee
+        #     if int(self.waypoint_ids[new_name]) > self.waypoint_max[id] :
+        #         self.waypoint_max[id] = int(self.waypoint_ids[new_name])
+
 
 
     def create_from_structure(self) :
@@ -776,6 +806,53 @@ class AffordanceTemplate(object) :
                         self.marker_menus[feedback.marker_name].setCheckState( handle, MenuHandler.CHECKED )
                         self.waypoint_backwards_flag[ee_id] = True
                     rospy.loginfo(str("AffordanceTemplate::process_feedback() -- setting Backwards Path flag for ee[" + str(ee_id) + "] to " + str(self.waypoint_backwards_flag[ee_id])))
+
+                if handle == self.menu_handles[(feedback.marker_name,"Add Waypoint Before")] :
+                    print "Adding Waypoint before ", waypoint_id, "for end effector: ", ee_id
+
+                    r = range(waypoint_id,max_idx+1)
+                    print "before: ", r
+                    r.reverse()
+                    print "after: ", r
+                    for k in r:
+                        old_name = str(str(ee_id) + "." + str(k))
+                        new_name = str(str(ee_id) + "." + str(k+1))
+                        print "changing waypoint ", old_name, " to ", new_name
+                        self.move_waypoint(ee_id, k, k+1)
+
+                    new_last = str(str(ee_id) + "." + str(max_idx+1))
+                    print "new max_idx: ", new_last
+                    max_idx += 1
+                    self.waypoint_max[ee_id] += 1
+                    self.waypoints.append(new_last)
+                    self.waypoints.sort()
+                    self.create_from_parameters()
+
+                if handle == self.menu_handles[(feedback.marker_name,"Delete Waypoint")] :
+                    print "Deleting Waypoint after ", waypoint_id, "for end effector: ", ee_id
+
+                if handle == self.menu_handles[(feedback.marker_name,"Add Waypoint After")] :
+                    print "Adding Waypoint after ", waypoint_id, "for end effector: ", ee_id
+
+                    r = range(waypoint_id,max_idx+1)
+                    print "before: ", r
+                    r.reverse()
+                    print "after: ", r
+                    for k in r:
+                        old_name = str(str(ee_id) + "." + str(k))
+                        new_name = str(str(ee_id) + "." + str(k+1))
+                        print "changing waypoint ", old_name, " to ", new_name
+                        self.move_waypoint(ee_id, k, k+1)
+                    new_last = str(str(ee_id) + "." + str(max_idx+1))
+                    print "new max_idx: ", new_last
+                    max_idx += 1
+                    self.waypoint_max[ee_id] += 1
+                    self.waypoints.append(new_last)
+                    self.waypoints.sort()
+                    self.create_from_parameters()
+
+                if handle == self.menu_handles[(feedback.marker_name,"Delete Waypoint")] :
+                    print "TODO: Deleting Waypoint after ", waypoint_id, "for end effector: ", ee_id
 
                 # if handle == self.menu_handles[(feedback.marker_name,"Execute On Move")] :
                 #     state = self.marker_menus[feedback.marker_name].getCheckState( handle )

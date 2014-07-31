@@ -53,7 +53,8 @@ message RecogObject {
     optional string launch_file = 2;        // launch file
     optional string package = 3;  // package dependency name
     optional string image_path = 4;        // recognition object
-    optional int32 id = 5;           // ID of the object on the server
+    optional string topic = 5;     // marker topic
+    optional int32 id = 6;           // ID of the object on the server
 }
 
 message Command {

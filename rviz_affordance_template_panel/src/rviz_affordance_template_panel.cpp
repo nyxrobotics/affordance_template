@@ -57,15 +57,10 @@ static vector<string> split(const string &s, char delim) {
 static vector<float> quaternionToRPY(float x, float y, float z, float w) {
     vector<float> rpy(3);
     double rr, rp, ry;
-    //KDL::Rotation::Quaternion(x,y,z,w).GetRPY(rr,rp,ry);
-    /*
+    KDL::Rotation::Quaternion(x,y,z,w).GetRPY(rr,rp,ry);
     rpy[0] = (float)rr;
     rpy[1] = (float)rp;
     rpy[2] = (float)ry;
-    */
-    rpy[0] = (float)0;
-    rpy[1] = (float)0;
-    rpy[2] = (float)0;
     cout << "converted quaternion(" << x << ", " << y << ", " << z << ", " << w << ") to rpy(" << rpy[0] << ", " << rpy[1] << ", " << rpy[2] << ")" << endl;
     return rpy;
 }
@@ -222,6 +217,7 @@ void RVizAffordanceTemplatePanel::getAvailableInfo() {
             cout << c.launch_file() << endl;
             cout << c.package() << endl;
             cout << c.image_path() << endl;
+            cout << c.topic() << endl;
             string image_path = resolvePackagePath(c.image_path());
             RecognitionObjectSharedPtr pitem(new RecognitionObject(c.type(), c.launch_file(), c.package(), image_path));
             cout << image_path << endl;
