@@ -285,7 +285,6 @@ class AffordanceTemplate(object) :
                 if int(self.waypoint_ids[wp_name]) > self.waypoint_max[id] :
                     self.waypoint_max[id] = int(self.waypoint_ids[wp_name])
 
-
             wp_ids += 1
 
 
@@ -810,6 +809,25 @@ class AffordanceTemplate(object) :
                 if handle == self.menu_handles[(feedback.marker_name,"Add Waypoint Before")] :
                     print "Adding Waypoint before ", waypoint_id, "for end effector: ", ee_id
 
+                    new_pose = geometry_msgs.msg.Pose()
+                    frist_name = str(str(ee_id) + "." + str(waypoint_id))
+                    pose_first = getPoseFromFrame(self.objTwp[frist_name])
+                    new_id = 0
+                    if waypoint_id > 0 :
+                        new_id = waypoint_id-1
+                        second_name = str(str(ee_id) + "." + str(new_id))
+                        pose_second = getPoseFromFrame(self.objTwp[second_name])
+                        new_pose.position.x = (pose_second.position.x - pose_first.position.x)/2.0 + pose_first.position.x
+                        new_pose.position.y = (pose_second.position.y - pose_first.position.y)/2.0 + pose_first.position.y
+                        new_pose.position.z = (pose_second.position.z - pose_first.position.z)/2.0 + pose_first.position.z
+                        new_pose.orientation = copy.deepcopy(pose_first.orientation)
+                    else :
+                        new_pose = copy.deepcopy(pose_first)
+                        new_pose.position.x +=0.025
+                        new_pose.position.y +=0.025
+                        new_pose.position.z +=0.025
+
+
                     r = range(waypoint_id,max_idx+1)
                     print "before: ", r
                     r.reverse()
@@ -825,6 +843,8 @@ class AffordanceTemplate(object) :
                     max_idx += 1
                     self.waypoint_max[ee_id] += 1
                     self.waypoints.append(new_last)
+
+                    self.objTwp[str(str(ee_id) + "." + str(waypoint_id))] = getFrameFromPose(new_pose)
                     self.waypoints.sort()
                     self.create_from_parameters()
 
@@ -834,6 +854,23 @@ class AffordanceTemplate(object) :
                 if handle == self.menu_handles[(feedback.marker_name,"Add Waypoint After")] :
                     print "Adding Waypoint after ", waypoint_id, "for end effector: ", ee_id
 
+                    new_pose = geometry_msgs.msg.Pose()
+                    frist_name = str(str(ee_id) + "." + str(waypoint_id))
+                    pose_first = getPoseFromFrame(self.objTwp[frist_name])
+                    new_id = waypoint_id+1
+                    if waypoint_id < max_idx :
+                        second_name = str(str(ee_id) + "." + str(new_id))
+                        pose_second = getPoseFromFrame(self.objTwp[second_name])
+                        new_pose.position.x = (pose_second.position.x - pose_first.position.x)/2.0 + pose_first.position.x
+                        new_pose.position.y = (pose_second.position.y - pose_first.position.y)/2.0 + pose_first.position.y
+                        new_pose.position.z = (pose_second.position.z - pose_first.position.z)/2.0 + pose_first.position.z
+                        new_pose.orientation = copy.deepcopy(pose_first.orientation)
+                    else :
+                        new_pose = copy.deepcopy(pose_first)
+                        new_pose.position.x +=0.025
+                        new_pose.position.y +=0.025
+                        new_pose.position.z +=0.025
+
                     r = range(waypoint_id,max_idx+1)
                     print "before: ", r
                     r.reverse()
@@ -844,10 +881,11 @@ class AffordanceTemplate(object) :
                         print "changing waypoint ", old_name, " to ", new_name
                         self.move_waypoint(ee_id, k, k+1)
                     new_last = str(str(ee_id) + "." + str(max_idx+1))
-                    print "new max_idx: ", new_last
                     max_idx += 1
                     self.waypoint_max[ee_id] += 1
                     self.waypoints.append(new_last)
+
+                    self.objTwp[str(str(ee_id) + "." + str(new_id))] = getFrameFromPose(new_pose)
                     self.waypoints.sort()
                     self.create_from_parameters()
 
