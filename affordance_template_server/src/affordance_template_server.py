@@ -61,9 +61,12 @@ class AffordanceTemplateServer(Thread):
         # # call getAvailableTemplates to parse out templates
         self.class_map, self.image_map, self.file_map, self.waypoint_map = self.getAvailableTemplates(self._template_path)
         self.robot_map = self.getRobots(self._robot_path)
-        self.recognition_object_map = self.getRecognitionObjects(self._recognition_object_path)
+        self.recognition_object_map, self.recognition_object_info = self.getRecognitionObjects(self._recognition_object_path)
 
-        for r in self.recognition_object_map.keys() : print self.recognition_object_map[r].print_yaml()
+        self.running_templates = {}
+        self.running_recog_objects = {}
+
+        # for r in self.recognition_object_map.keys() : print self.recognition_object_map[r].print_yaml()
         # import rospkg
         # rp = rospkg.RosPack()
         # robot_config_file = rp.get_path('affordance_template_library') + "/robots/r2.yaml"
@@ -174,14 +177,13 @@ class AffordanceTemplateServer(Thread):
                                 ee.pose_offset.orientation.z = self.robot_map[name].end_effector_pose_map[e].orientation.z
                                 ee.pose_offset.orientation.w = self.robot_map[name].end_effector_pose_map[e].orientation.w
 
-                        for rot in self.recognition_object_map.keys():
-                            print self.recognition_object_map[rot]
+                        for object_type in self.recognition_object_map.keys():
                             recognition_object = response.recognition_object.add()
-                            recognition_object.type = self.recognition_object_map[rot].type
-                            recognition_object.launch_file = self.recognition_object_map[rot].launch_file
-                            recognition_object.package = self.recognition_object_map[rot].package
-                            recognition_object.image_path = self.recognition_object_map[rot].image_path
-                            recognition_object.topic = self.recognition_object_map[rot].topic
+                            recognition_object.image_path = self.recognition_object_info[object_type].image_path
+                            recognition_object.type = object_type
+                            recognition_object.launch_file = self.recognition_object_info[object_type].launch_file
+                            recognition_object.package = self.recognition_object_info[object_type].package
+                            recognition_object.topic = self.recognition_object_info[object_type].topic
 
                         response.success = True
                     except:
@@ -194,20 +196,8 @@ class AffordanceTemplateServer(Thread):
                         ret = False
                         for template in request.affordance_template:
                             class_type = str(template.type)
-                            new_id = self.getNextID(class_type)
+                            new_id = self.getNextTemplateID(class_type)
                             ret = self.addTemplate(class_type, new_id)
-                            print "ret: ", ret
-                            # if popen != None:
-                            #     self.class_map[class_type][new_id] = popen
-                        # for rot in self.recognition_object_map.keys():
-                        #     print self.recognition_object_map[rot]
-                        #     recognition_object = response.recognition_object.add()
-                        #     recognition_object.type = self.recognition_object_map[rot].type
-                        #     recognition_object.launch_file = self.recognition_object_map[rot].launch_file
-                        #     recognition_object.package = self.recognition_object_map[rot].package
-                        #     recognition_object.image_path = self.recognition_object_map[rot].image_path
-                        #     recognition_object.topic = self.recognition_object_map[rot].topic
-
                         response.success = ret
                     except:
                         print 'Error adding template to server'
@@ -216,37 +206,28 @@ class AffordanceTemplateServer(Thread):
                     print "new START_RECOGNITION request"
                     try:
                         ret = False
-                        for rot in self.recognition_object_map.keys():
-                            print self.recognition_object_map[rot]
-                            recognition_object = response.recognition_object.add()
-                            recognition_object.type = self.recognition_object_map[rot].type
-                            recognition_object.launch_file = self.recognition_object_map[rot].launch_file
-                            recognition_object.package = self.recognition_object_map[rot].package
-                            recognition_object.image_path = self.recognition_object_map[rot].image_path
-                            recognition_object.topic = self.recognition_object_map[rot].topic
-                            ret = self.startRecognitionProcess(recognition_object.type, recognition_object.launch_file, recognition_object.package)
+                        for object_type in request.recognition_object:
+                            object_type = str(recognition_object.type)
+                            new_id = self.getNextRecogObjectID(object_type)
+                            ret = self.startRecognitionProcess(object_type, self.recognition_object_info[object_type].launch_file, self.recognition_object_info[object_type].package, new_id)
                         response.success = ret
                     except:
-                        print 'Error starting recongition object from server'
+                        print 'Error starting recognition object from server'
 
                 # respond with a list of the running templates on the server
                 elif request.type == request.RUNNING:
                     print "new RUNNING request"
                     try:
-                        # push the running templates into a temporary list so we can sort them
-                        running_templates = []
-                        for template in self.class_map.iterkeys():
-                            running_templates.append(template)
 
-                        for recog_object in self.recognition_object_map.iterkeys():
-                            running_templates.append(recog_object)
-                        running_templates.sort()
+                        for id in self.running_templates.iterkeys():
+                            at = response.affordance_template.add()
+                            at.type = self.running_templates[id]
+                            at.id = id
 
-                        for class_type in self.class_map.iterkeys():
-                            for id_ in self.class_map[class_type].iterkeys():
-                                template = response.affordance_template.add()
-                                template.type = class_type
-                                # template.id = id_
+                        for id in self.running_recog_objects.iterkeys():
+                            ro = response.recognition_object.add()
+                            ro.type = self.running_recog_objects[id]
+                            ro.id = id
 
                         response.success = True
                     except:
@@ -257,6 +238,8 @@ class AffordanceTemplateServer(Thread):
                     try:
                         for template in request.affordance_template:
                             self.removeTemplate(template.type, template.id)
+                        for obj in request.recognition_object:
+                            self.removeRecognitionObject(obj.type, obj.id)
                     except:
                         print 'Error trying to kill template'
 
@@ -327,6 +310,22 @@ class AffordanceTemplateServer(Thread):
             self.class_map[class_type][instance_id].terminate()
             del self.class_map[class_type][instance_id]
 
+    def removeRecognitionObject(self, object_type, instance_id):
+        """Stop a template process and remove it from the server's map.
+
+        @type class_type string
+        @param object_type The class type e.g. "Wheel", "Car", etc.
+
+        @type instance_id int
+        @param instance_id The ID of this instance.
+
+        @rtype bool
+        @returns True if process was stopped/removed.
+        """
+        if object_type in self.recognition_object_map and instance_id in self.recognition_object_map[object_type]:
+            self.recognition_object_map[object_type][instance_id].terminate()
+            del self.recognition_object_map[object_type][instance_id]
+
     def addTemplate(self, class_type, instance_id):
         """Start a template process using subprocess.Popen.
 
@@ -344,18 +343,12 @@ class AffordanceTemplateServer(Thread):
             filename = self.file_map[class_type]
             print "Trying to load: ", filename
             self.at.load_from_file(filename)
-            print "Success?"
-            # filename = os.path.join(self.template_path, ''.join([class_type, '.py']))
-            # if self.topic_arg is None:
-            #     args = [filename, str(instance_id), "True"]
-            # else:
-            #     args = [filename, str(instance_id)]
-            # args = [filename, str(instance_id)]
-            print args
+            self.running_templates[instance_id] = class_type
+            self.class_map[class_type][instance_id] = self.at  # TODO this is dumb, need to just have a local list of multiple ATs
             print("templateServer.addTemplate: adding template " + str(class_type))
             return True
 
-    def startRecognitionProcess(self, object_type, launch_file, package):
+    def startRecognitionProcess(self, object_type, launch_file, package, instance_id):
         """Start a template process using subprocess.Popen.
 
         @type object_type string
@@ -376,14 +369,34 @@ class AffordanceTemplateServer(Thread):
             print 'No package found: ', package
             return False
         # should check if launch file exists as well here
-        import os
-        ls = str('roslaunch ' + package + ' ' + launch_file)
-        print "cmd: ", ls
-        os.system(ls)
+
+
+
+        self.running_recog_objects[instance_id] = object_type
+
+        import subprocess
+        import time
+        cmd = str('roslaunch ' + package + ' ' + launch_file)
+        print "cmd: ", cmd
+        proc = subprocess.Popen([cmd], shell=True)
+        # time.sleep(2) # <-- There's no time.wait, but time.sleep.
+        pid = proc.pid # <--- access `pid` attribute to get the pid of the child process.
+
+        self.recognition_object_map[object_type][instance_id] = proc
+
         return True
 
-    def getNextID(self, class_type):
+    def getNextTemplateID(self, class_type):
         ids = self.class_map[class_type].keys()
+        i = 0
+        while True:
+            if i in ids:
+                i += 1
+            else:
+                return i
+
+    def getNextRecogObjectID(self, object_type):
+        ids = self.recognition_object_map[object_type].keys()
         i = 0
         while True:
             if i in ids:
@@ -457,15 +470,17 @@ class AffordanceTemplateServer(Thread):
     def getRecognitionObjects(self, path):
         """Parse parses available robots from fs."""
         recognition_object_map = {}
+        recognition_object_info = {}
         import glob, yaml
         os.chdir(path)
         for r in glob.glob("*.yaml") :
             print "found recognition_object yaml: ", r
             ro = RecognitionObject()
             ro.load_from_file(r)
-            recognition_object_map[r] = ro
+            recognition_object_map[ro.type] = {}
+            recognition_object_info[ro.type] = ro
 
-        return recognition_object_map
+        return recognition_object_map, recognition_object_info
 
     def loadRobotFromMsg(self, robot) :
         r = RobotConfig()

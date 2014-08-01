@@ -470,6 +470,7 @@ void RVizAffordanceTemplatePanel::sendPing() {
 }
 
 void RVizAffordanceTemplatePanel::getRunningItems() {
+    cout << "Requesting running Items..." << endl;
     Request req;
     req.set_type(Request::RUNNING);
     Response resp;
@@ -481,12 +482,14 @@ void RVizAffordanceTemplatePanel::getRunningItems() {
         _ui->server_output_status->addItem(QString::fromStdString(name));
         _ui->server_output_status->item(id)->setForeground(Qt::blue);
         id++;
+        cout << "Found running AT: " << name << endl;
     }
     for (auto& c: resp.recognition_object()) {
         string name = c.type() + ":" + to_string(c.id());
         _ui->server_output_status->addItem(QString::fromStdString(name));
         _ui->server_output_status->item(id)->setForeground(Qt::green);
         id++;
+        cout << "Found running RO: " << name << endl;
     }
     _ui->server_output_status->sortItems();
 }

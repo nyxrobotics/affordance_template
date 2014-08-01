@@ -1071,3 +1071,6 @@ class AffordanceTemplate(object) :
             rospy.loginfo(str("setting current waypoint idx: " + str(self.waypoint_index[ee_id])))
             self.waypoint_plan_valid[ee_id] = False
 
+
+    def terminate(self) :
+        print "TODO: (EX)TERMINATE!!!!!!!!!"
