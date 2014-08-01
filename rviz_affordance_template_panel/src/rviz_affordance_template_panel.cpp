@@ -477,12 +477,14 @@ void RVizAffordanceTemplatePanel::getRunningItems() {
     send_request(req, resp, 30000000);
     _ui->server_output_status->clear();
     int id = 0;
+    _ui->control_template_box->clear();
     for (auto& c: resp.affordance_template()) {
         string name = c.type() + ":" + to_string(c.id());
         _ui->server_output_status->addItem(QString::fromStdString(name));
         _ui->server_output_status->item(id)->setForeground(Qt::blue);
         id++;
         cout << "Found running AT: " << name << endl;
+        _ui->control_template_box->addItem(QString(name.c_str()));
     }
     for (auto& c: resp.recognition_object()) {
         string name = c.type() + ":" + to_string(c.id());
@@ -773,6 +775,13 @@ void RVizAffordanceTemplatePanel::go_to_start() {
     if (connected) {
         Request req;
         req.set_type(Request::COMMAND);
+
+        string key = _ui->control_template_box->currentText().toUtf8().constData();
+        vector<string> stuff = split(key, ':');
+        Template* temp(req.add_affordance_template());
+        temp->set_type(stuff[0]);
+        temp->set_id(atoi(stuff[1].c_str()));
+
         Command *cmd = req.mutable_command();
         cmd->set_type(Command::GO_TO_START);
         cmd->set_steps(_ui->num_steps->text().toInt());
@@ -804,6 +813,13 @@ void RVizAffordanceTemplatePanel::go_to_end() {
     if (connected) {
         Request req;
         req.set_type(Request::COMMAND);
+
+        string key = _ui->control_template_box->currentText().toUtf8().constData();
+        vector<string> stuff = split(key, ':');
+        Template* temp(req.add_affordance_template());
+        temp->set_type(stuff[0]);
+        temp->set_id(atoi(stuff[1].c_str()));
+
         Command *cmd = req.mutable_command();
         cmd->set_type(Command::GO_TO_END);
         cmd->set_steps(_ui->num_steps->text().toInt());
@@ -835,6 +851,13 @@ void RVizAffordanceTemplatePanel::pause() {
     if (connected) {
         Request req;
         req.set_type(Request::COMMAND);
+
+        string key = _ui->control_template_box->currentText().toUtf8().constData();
+        vector<string> stuff = split(key, ':');
+        Template* temp(req.add_affordance_template());
+        temp->set_type(stuff[0]);
+        temp->set_id(atoi(stuff[1].c_str()));
+
         Command *cmd = req.mutable_command();
         cmd->set_type(Command::PAUSE);
         cmd->set_steps(_ui->num_steps->text().toInt());
@@ -866,6 +889,13 @@ void RVizAffordanceTemplatePanel::stop() {
     if (connected) {
         Request req;
         req.set_type(Request::COMMAND);
+
+        string key = _ui->control_template_box->currentText().toUtf8().constData();
+        vector<string> stuff = split(key, ':');
+        Template* temp(req.add_affordance_template());
+        temp->set_type(stuff[0]);
+        temp->set_id(atoi(stuff[1].c_str()));
+
         Command *cmd = req.mutable_command();
         cmd->set_type(Command::STOP);
         cmd->set_steps(_ui->num_steps->text().toInt());
@@ -898,6 +928,13 @@ void RVizAffordanceTemplatePanel::play_backward() {
     if (connected) {
         Request req;
         req.set_type(Request::COMMAND);
+
+        string key = _ui->control_template_box->currentText().toUtf8().constData();
+        vector<string> stuff = split(key, ':');
+        Template* temp(req.add_affordance_template());
+        temp->set_type(stuff[0]);
+        temp->set_id(atoi(stuff[1].c_str()));
+
         Command *cmd = req.mutable_command();
         cmd->set_type(Command::PLAY_BACKWARD);
         cmd->set_steps(_ui->num_steps->text().toInt());
@@ -929,7 +966,14 @@ void RVizAffordanceTemplatePanel::play_forward() {
     if (connected) {
         Request req;
         req.set_type(Request::COMMAND);
+
+        string key = _ui->control_template_box->currentText().toUtf8().constData();
+        vector<string> stuff = split(key, ':');
+        Template* temp(req.add_affordance_template());
+        temp->set_type(stuff[0]);
+        temp->set_id(atoi(stuff[1].c_str()));
         Command *cmd = req.mutable_command();
+
         cmd->set_type(Command::PLAY_FORWARD);
         cmd->set_steps(_ui->num_steps->text().toInt());
         cmd->set_execute(_ui->execute_on_plan->isChecked());
@@ -960,7 +1004,14 @@ void RVizAffordanceTemplatePanel::step_backward() {
     if (connected) {
         Request req;
         req.set_type(Request::COMMAND);
+
+        string key = _ui->control_template_box->currentText().toUtf8().constData();
+        vector<string> stuff = split(key, ':');
+        Template* temp(req.add_affordance_template());
+        temp->set_type(stuff[0]);
+        temp->set_id(atoi(stuff[1].c_str()));
         Command *cmd = req.mutable_command();
+
         cmd->set_type(Command::STEP_BACKWARD);
         cmd->set_steps(_ui->num_steps->text().toInt());
         cmd->set_execute(_ui->execute_on_plan->isChecked());
@@ -991,6 +1042,13 @@ void RVizAffordanceTemplatePanel::step_forward() {
     if (connected) {
         Request req;
         req.set_type(Request::COMMAND);
+
+        string key = _ui->control_template_box->currentText().toUtf8().constData();
+        vector<string> stuff = split(key, ':');
+        Template* temp(req.add_affordance_template());
+        temp->set_type(stuff[0]);
+        temp->set_id(atoi(stuff[1].c_str()));
+
         Command *cmd = req.mutable_command();
         cmd->set_type(Command::STEP_FORWARD);
         cmd->set_steps(_ui->num_steps->text().toInt());

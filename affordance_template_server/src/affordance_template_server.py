@@ -39,46 +39,18 @@ class AffordanceTemplateServer(Thread):
 
         self.server = InteractiveMarkerServer("affordance_template_server")
 
-        self.at = None
-
-        # get exported templates from affordance_templates package
-        # self._plugin_description = self.getPluginDescription("affordance_template_markers")
-        # self._resource_path = self.getPackagePath("affordance_template_markers")
-        # self._resource_path = os.path.join(self._resource_path, 'resources', 'rviz')
-        # self._template_path = self.getTemplatePath()
-        # self.class_map = self.getAvailableTemplates(self.plugin_description)
-
         # get path to template marker package
         self._package_path = self.getPackagePath("affordance_template_library")
         # get path to actual template source files
         self._template_path    = os.path.join(self._package_path, 'templates')
         self._robot_path    = os.path.join(self._package_path, 'robots')
         self._recognition_object_path    = os.path.join(self._package_path, 'recognition_objects')
-        # # get path to resources
-        # self._resource_path = os.path.join(self._package_path, 'resources', 'rviz')
-        # # find plugin_description.xml file that holds all templates
-        # filename = self._package_path + "/plugin_description.xml"
-        # # call getAvailableTemplates to parse out templates
         self.class_map, self.image_map, self.file_map, self.waypoint_map = self.getAvailableTemplates(self._template_path)
         self.robot_map = self.getRobots(self._robot_path)
         self.recognition_object_map, self.recognition_object_info = self.getRecognitionObjects(self._recognition_object_path)
 
         self.running_templates = {}
         self.running_recog_objects = {}
-
-        # for r in self.recognition_object_map.keys() : print self.recognition_object_map[r].print_yaml()
-        # import rospkg
-        # rp = rospkg.RosPack()
-        # robot_config_file = rp.get_path('affordance_template_library') + "/robots/r2.yaml"
-        # self.robot_config = None
-        # try:
-        #     # load RobotConfig from yaml and moveit package
-        #     self.robot_config = RobotConfig()
-        #     if self.robot_config.load_from_file(robot_config_file) :
-        #         print "configuring R2:"
-        #         self.robot_config.configure()
-        # except rospy.ROSInterruptException:
-        #     pass
 
     @property
     def resource_path(self):
@@ -259,33 +231,37 @@ class AffordanceTemplateServer(Thread):
                         print "steps: ", request.command.steps
                         print "end_effectors: ", request.command.end_effector
                         print "execute on plan: ", request.command.execute
-                        for ee in request.command.end_effector :
 
-                            if request.command.type == request.command.GO_TO_START :
-                                idx = self.at.plan_path_to_waypoint(str(ee), backwards=True, steps=-999, direct=True)
-                            elif request.command.type == request.command.GO_TO_END :
-                                idx = self.at.plan_path_to_waypoint(str(ee), steps=999, direct=True)
-                            elif request.command.type == request.command.PLAY_BACKWARD :
-                                idx = self.at.plan_path_to_waypoint(str(ee), backwards=True, steps=-999, direct=False)
-                            elif request.command.type == request.command.PLAY_FORWARD :
-                                idx = self.at.plan_path_to_waypoint(str(ee), steps=999, direct=False)
-                            elif request.command.type == request.command.STEP_BACKWARD :
-                                idx = self.at.plan_path_to_waypoint(str(ee), backwards=True, steps=request.command.steps)
-                            elif request.command.type == request.command.STEP_FORWARD :
-                                idx = self.at.plan_path_to_waypoint(str(ee), steps=request.command.steps)
-                            elif request.command.type == request.command.STOP :
-                                self.at.stop(str(ee))
+                        for template in request.affordance_template :
+                            at = self.class_map[template.type][template.id]
 
-                            if request.command.execute :
-                                print "Executing!!!"
-                                self.at.move_to_waypoint(str(ee), idx)
-                                wp = response.waypoint_info.add()
-                                wp.id = int(self.at.robot_config.end_effector_id_map[str(ee)])
-                                wp.num_waypoints = idx
-                            else :
-                                wp = response.waypoint_info.add()
-                                wp.id = int(self.at.robot_config.end_effector_id_map[str(ee)])
-                                wp.num_waypoints = self.at.waypoint_index[wp.id]
+                            for ee in request.command.end_effector :
+
+                                if request.command.type == request.command.GO_TO_START :
+                                    idx = at.plan_path_to_waypoint(str(ee), backwards=True, steps=-999, direct=True)
+                                elif request.command.type == request.command.GO_TO_END :
+                                    idx = at.plan_path_to_waypoint(str(ee), steps=999, direct=True)
+                                elif request.command.type == request.command.PLAY_BACKWARD :
+                                    idx = at.plan_path_to_waypoint(str(ee), backwards=True, steps=-999, direct=False)
+                                elif request.command.type == request.command.PLAY_FORWARD :
+                                    idx = at.plan_path_to_waypoint(str(ee), steps=999, direct=False)
+                                elif request.command.type == request.command.STEP_BACKWARD :
+                                    idx = at.plan_path_to_waypoint(str(ee), backwards=True, steps=request.command.steps)
+                                elif request.command.type == request.command.STEP_FORWARD :
+                                    idx = at.plan_path_to_waypoint(str(ee), steps=request.command.steps)
+                                elif request.command.type == request.command.STOP :
+                                    at.stop(str(ee))
+
+                                if request.command.execute :
+                                    print "Executing!!!"
+                                    at.move_to_waypoint(str(ee), idx)
+                                    wp = response.waypoint_info.add()
+                                    wp.id = int(at.robot_config.end_effector_id_map[str(ee)])
+                                    wp.num_waypoints = idx
+                                else :
+                                    wp = response.waypoint_info.add()
+                                    wp.id = int(at.robot_config.end_effector_id_map[str(ee)])
+                                    wp.num_waypoints = at.waypoint_index[wp.id]
 
 
                         response.success = True
@@ -339,12 +315,12 @@ class AffordanceTemplateServer(Thread):
         @returns The Popen object started by the server.
         """
         if class_type in self.class_map:
-            self.at = AffordanceTemplate(self.server, instance_id, robot_config=self.robot_config)
+            at = AffordanceTemplate(self.server, instance_id, robot_config=self.robot_config)
             filename = self.file_map[class_type]
             print "Trying to load: ", filename
-            self.at.load_from_file(filename)
+            at.load_from_file(filename)
             self.running_templates[instance_id] = class_type
-            self.class_map[class_type][instance_id] = self.at  # TODO this is dumb, need to just have a local list of multiple ATs
+            self.class_map[class_type][instance_id] = at  # TODO this is dumb, need to just have a local list of multiple ATs
             print("templateServer.addTemplate: adding template " + str(class_type))
             return True
 
@@ -370,16 +346,11 @@ class AffordanceTemplateServer(Thread):
             return False
         # should check if launch file exists as well here
 
-
-
         self.running_recog_objects[instance_id] = object_type
 
         import subprocess
-        import time
         cmd = str('roslaunch ' + package + ' ' + launch_file)
-        print "cmd: ", cmd
         proc = subprocess.Popen([cmd], shell=True)
-        # time.sleep(2) # <-- There's no time.wait, but time.sleep.
         pid = proc.pid # <--- access `pid` attribute to get the pid of the child process.
 
         self.recognition_object_map[object_type][instance_id] = proc
