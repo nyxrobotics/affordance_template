@@ -11,7 +11,7 @@ import affordance_template_markers
 import affordance_template_server_protobuf
 
 from AffordanceTemplateServerCmd_pb2 import Template, Request, Response, Pose, Position, Orientation, EndEffector, Robot, EndEffectorMap, RecogObject
-from visualization_msgs.msg import Marker
+from visualization_msgs.msg import Marker, MarkerArray
 
 from threading import Thread
 
@@ -47,7 +47,7 @@ class AffordanceTemplateServer(Thread):
         self._recognition_object_path    = os.path.join(self._package_path, 'recognition_objects')
         self.class_map, self.image_map, self.file_map, self.waypoint_map = self.getAvailableTemplates(self._template_path)
         self.robot_map = self.getRobots(self._robot_path)
-        self.recognition_object_map, self.recognition_object_info = self.getRecognitionObjects(self._recognition_object_path)
+        self.recognition_object_map, self.recognition_object_info, self.recognition_object_subscribers = self.getRecognitionObjects(self._recognition_object_path)
 
         self.running_templates = {}
         self.running_recog_objects = {}
@@ -81,6 +81,8 @@ class AffordanceTemplateServer(Thread):
         self.poller = zmq.Poller()
         self.poller.register(self.socket, zmq.POLLIN)
         print "Affordance Template Server started on port 6789"
+
+        self.recognition_object_update_flags = {}
 
     def run(self):
 
@@ -181,7 +183,7 @@ class AffordanceTemplateServer(Thread):
                         for object_type in request.recognition_object:
                             object_type = str(recognition_object.type)
                             new_id = self.getNextRecogObjectID(object_type)
-                            ret = self.startRecognitionProcess(object_type, self.recognition_object_info[object_type].launch_file, self.recognition_object_info[object_type].package, new_id)
+                            ret = self.startRecognitionProcess(object_type, self.recognition_object_info[object_type].launch_file, self.recognition_object_info[object_type].package, self.recognition_object_info[object_type].topic, new_id)
                         response.success = ret
                     except:
                         print 'Error starting recognition object from server'
@@ -324,7 +326,7 @@ class AffordanceTemplateServer(Thread):
             print("templateServer.addTemplate: adding template " + str(class_type))
             return True
 
-    def startRecognitionProcess(self, object_type, launch_file, package, instance_id):
+    def startRecognitionProcess(self, object_type, launch_file, package, topic, instance_id):
         """Start a template process using subprocess.Popen.
 
         @type object_type string
@@ -346,7 +348,15 @@ class AffordanceTemplateServer(Thread):
             return False
         # should check if launch file exists as well here
 
+        print "test 1"
         self.running_recog_objects[instance_id] = object_type
+
+        print "test 2"
+        print self.recognition_object_subscribers.keys()
+        print self.recognition_object_subscribers[object_type].keys()
+        self.recognition_object_subscribers[object_type][instance_id] = rospy.Subscriber(topic, MarkerArray, self.recognitionObjectCallback)
+
+        print "test 3"
 
         import subprocess
         cmd = str('roslaunch ' + package + ' ' + launch_file)
@@ -354,6 +364,7 @@ class AffordanceTemplateServer(Thread):
         pid = proc.pid # <--- access `pid` attribute to get the pid of the child process.
 
         self.recognition_object_map[object_type][instance_id] = proc
+        print "test 4"
 
         return True
 
@@ -442,6 +453,7 @@ class AffordanceTemplateServer(Thread):
         """Parse parses available robots from fs."""
         recognition_object_map = {}
         recognition_object_info = {}
+        recognition_object_subscribers = {}
         import glob, yaml
         os.chdir(path)
         for r in glob.glob("*.yaml") :
@@ -450,8 +462,9 @@ class AffordanceTemplateServer(Thread):
             ro.load_from_file(r)
             recognition_object_map[ro.type] = {}
             recognition_object_info[ro.type] = ro
+            recognition_object_subscribers[ro.type] = {}
 
-        return recognition_object_map, recognition_object_info
+        return recognition_object_map, recognition_object_info, recognition_object_subscribers
 
     def loadRobotFromMsg(self, robot) :
         r = RobotConfig()
@@ -552,3 +565,12 @@ class AffordanceTemplateServer(Thread):
 
     def markerSub(self, data):
         print 'markerSub: ', data
+
+    def recognitionObjectCallback(self, data) :
+        for m in data.markers :
+            id = m.ns + str(m.id)
+            if not id in self.recognition_object_update_flags :
+                print "creating a new AT for a recognized object"
+                roat = AffordanceTemplate(self.server, m.id, m.ns, robot_config=self.robot_config)
+                roat.load_from_marker(m)
+                self.recognition_object_update_flags[id] = False

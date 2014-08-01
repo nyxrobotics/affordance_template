@@ -92,11 +92,15 @@ xmlr.reflect(Cylinder, params = [
 
 
 class Sphere(xmlr.Object):
-    def __init__(self, radius=0.0):
-        self.radius = radius
+    def __init__(self, x=0.0, y=0.0, z=0.0):
+        self.x = x
+        self.y = y
+        self.z = z
 
 xmlr.reflect(Sphere, params = [
-    xmlr.Attribute('radius', float)
+    xmlr.Attribute('x', float),
+    xmlr.Attribute('y', float),
+    xmlr.Attribute('z', float)
     ])
 
 
