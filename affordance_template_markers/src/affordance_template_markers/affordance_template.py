@@ -844,7 +844,7 @@ class AffordanceTemplate(object) :
                         self.move_waypoint(ee_id, k, k+1)
 
                     print "creating waypoint at : ", new_id
-                    self.create_waypoint(ee_id, new_id, new_pose, self.parent_map[str(str(ee_id) + "." + str(1))]) # is parent right here?
+                    self.create_waypoint(ee_id, waypoint_id, new_pose, self.parent_map[str(str(ee_id) + "." + str(1))]) # is parent right here?
                     self.create_from_parameters()
 
                 if handle == self.menu_handles[(feedback.marker_name,"Add Waypoint After")] :
