@@ -283,18 +283,14 @@ void RVizAffordanceTemplatePanel::setupRobotPanel(const string& key) {
     string frame_id = (*robotMap[key]).frame_id();
     vector<float> root_offset = (*robotMap[key]).root_offset();
 
-    cout << "test 1" << endl;
     _ui->robot_name->setText(QString(name.c_str()));
     _ui->moveit_package->setText(QString(pkg.c_str()));
     _ui->frame_id->setText(QString(frame_id.c_str()));
-
-    cout << "test 2" << endl;
 
     _ui->robot_tx->setText(QString::number(root_offset[0]));
     _ui->robot_ty->setText(QString::number(root_offset[1]));
     _ui->robot_tz->setText(QString::number(root_offset[2]));
 
-    cout << "test 3" << endl;
     cout << root_offset[3] << endl;
     cout << root_offset[4] << endl;
     cout << root_offset[5] << endl;
@@ -302,14 +298,9 @@ void RVizAffordanceTemplatePanel::setupRobotPanel(const string& key) {
 
     vector<float> rpy = quaternionToRPY(root_offset[3],root_offset[4],root_offset[5],root_offset[6]);
 
-    cout << "test 4" << endl;
     _ui->robot_rr->setText(QString::number(rpy[0]));
-    cout << "test 5" << endl;
     _ui->robot_rp->setText(QString::number(rpy[1]));
-    cout << "test 6" << endl;
     _ui->robot_ry->setText(QString::number(rpy[2]));
-
-    cout << "test 7" << endl;
 
     _ui->end_effector_select->clear();
 
@@ -318,15 +309,8 @@ void RVizAffordanceTemplatePanel::setupRobotPanel(const string& key) {
         _ui->end_effector_select->addItem(e.second->name().c_str());
     }
 
-    cout << "test 2" << endl;
-
     setupEndEffectorConfigPanel((*robotMap[key]).endeffectorMap.begin()->first);
-
-    cout << "test 3" << endl;
-
     QObject::connect(_ui->end_effector_select, SIGNAL(currentIndexChanged(int)), this, SLOT(changeEndEffector(int)));
-
-    cout << "test 4" << endl;
 
 }
 
