@@ -142,14 +142,20 @@ class AffordanceTemplateServer(Thread):
                             for e in self.robot_map[name].end_effector_names:
                                 ee = robot.end_effectors.end_effector.add()
                                 ee.name = e
-                                ee.id =self.robot_map[name].end_effector_id_map[e]
-                                ee.pose_offset.position.x = self.robot_map[name].end_effector_pose_map[e].position.x
-                                ee.pose_offset.position.y = self.robot_map[name].end_effector_pose_map[e].position.y
-                                ee.pose_offset.position.z = self.robot_map[name].end_effector_pose_map[e].position.z
-                                ee.pose_offset.orientation.x = self.robot_map[name].end_effector_pose_map[e].orientation.x
-                                ee.pose_offset.orientation.y = self.robot_map[name].end_effector_pose_map[e].orientation.y
-                                ee.pose_offset.orientation.z = self.robot_map[name].end_effector_pose_map[e].orientation.z
-                                ee.pose_offset.orientation.w = self.robot_map[name].end_effector_pose_map[e].orientation.w
+                                ee.id =self.robot_map[name].manipulator_id_map[e]
+                                ee.pose_offset.position.x = self.robot_map[name].manipulator_pose_map[e].position.x
+                                ee.pose_offset.position.y = self.robot_map[name].manipulator_pose_map[e].position.y
+                                ee.pose_offset.position.z = self.robot_map[name].manipulator_pose_map[e].position.z
+                                ee.pose_offset.orientation.x = self.robot_map[name].manipulator_pose_map[e].orientation.x
+                                ee.pose_offset.orientation.y = self.robot_map[name].manipulator_pose_map[e].orientation.y
+                                ee.pose_offset.orientation.z = self.robot_map[name].manipulator_pose_map[e].orientation.z
+                                ee.pose_offset.orientation.w = self.robot_map[name].manipulator_pose_map[e].orientation.w
+                            for ee_g in self.robot_map[name].end_effector_pose_map.iterkeys() :
+                                for ee_n in self.robot_map[name].end_effector_pose_map[ee_g].iterkeys() :
+                                    pid = robot.end_effector_pose_ids.pose_group.add()
+                                    pid.name = ee_n
+                                    pid.group = ee_g
+                                    pid.id =  self.robot_map[name].end_effector_pose_map[ee_g][ee_n]
 
                         for object_type in self.recognition_object_map.keys():
                             recognition_object = response.recognition_object.add()
@@ -258,11 +264,11 @@ class AffordanceTemplateServer(Thread):
                                     print "Executing!!!"
                                     at.move_to_waypoint(str(ee), idx)
                                     wp = response.waypoint_info.add()
-                                    wp.id = int(at.robot_config.end_effector_id_map[str(ee)])
+                                    wp.id = int(at.robot_config.manipulator_id_map[str(ee)])
                                     wp.num_waypoints = idx
                                 else :
                                     wp = response.waypoint_info.add()
-                                    wp.id = int(at.robot_config.end_effector_id_map[str(ee)])
+                                    wp.id = int(at.robot_config.manipulator_id_map[str(ee)])
                                     wp.num_waypoints = at.waypoint_index[wp.id]
 
 
@@ -348,15 +354,11 @@ class AffordanceTemplateServer(Thread):
             return False
         # should check if launch file exists as well here
 
-        print "test 1"
         self.running_recog_objects[instance_id] = object_type
 
-        print "test 2"
         print self.recognition_object_subscribers.keys()
         print self.recognition_object_subscribers[object_type].keys()
         self.recognition_object_subscribers[object_type][instance_id] = rospy.Subscriber(topic, MarkerArray, self.recognitionObjectCallback)
-
-        print "test 3"
 
         import subprocess
         cmd = str('roslaunch ' + package + ' ' + launch_file)
@@ -364,7 +366,6 @@ class AffordanceTemplateServer(Thread):
         pid = proc.pid # <--- access `pid` attribute to get the pid of the child process.
 
         self.recognition_object_map[object_type][instance_id] = proc
-        print "test 4"
 
         return True
 
@@ -487,13 +488,13 @@ class AffordanceTemplateServer(Thread):
 
             r.end_effector_names = []
             r.end_effector_name_map = {}
-            r.end_effector_id_map = {}
-            r.end_effector_pose_map = {}
+            r.manipulator_id_map = {}
+            r.manipulator_pose_map = {}
 
             for ee in robot.end_effectors.end_effector:
                 r.end_effector_names.append(ee.name)
                 r.end_effector_name_map[ee.id] = ee.name
-                r.end_effector_id_map[ee.name] = ee.id
+                r.manipulator_id_map[ee.name] = ee.id
                 p = geometry_msgs.msg.Pose()
                 p.position.x = ee.pose_offset.position.x
                 p.position.y = ee.pose_offset.position.y
@@ -502,7 +503,16 @@ class AffordanceTemplateServer(Thread):
                 p.orientation.y = ee.pose_offset.orientation.y
                 p.orientation.z = ee.pose_offset.orientation.z
                 p.orientation.w = ee.pose_offset.orientation.w
-                r.end_effector_pose_map[ee.name] = p
+                r.manipulator_pose_map[ee.name] = p
+
+            for ee_pid in robot.end_effector_pose_ids.pose_group:
+                if not ee_pid.group in r.end_effector_pose_map :
+                    r.end_effector_pose_map[ee_pid.group] = {}
+                if not ee_pid.group in r.end_effector_id_map :
+                    r.end_effector_id_map[ee_pid.group] = {}
+                print "*********************************ee[", ee_pid.group, "] adding group [", ee_pid.name, "] with id [", ee_pid.id, "]" 
+                r.end_effector_pose_map[ee_pid.group][ee_pid.name] = int(ee_pid.id)
+                r.end_effector_id_map[ee_pid.group][int(ee_pid.id)] = ee_pid.name
 
             print "done!"
             return r
@@ -532,13 +542,13 @@ class AffordanceTemplateServer(Thread):
 
             r.end_effector_names = []
             r.end_effector_name_map = {}
-            r.end_effector_id_map = {}
-            r.end_effector_pose_map = {}
+            r.manipulator_id_map = {}
+            r.manipulator_pose_map = {}
 
             for ee in robot.end_effectors.end_effector:
                 r.end_effector_names.append(ee.name)
                 r.end_effector_name_map[ee.id] = ee.name
-                r.end_effector_id_map[ee.name] = ee.id
+                r.manipulator_id_map[ee.name] = ee.id
                 p = geometry_msgs.msg.Pose()
                 p.position.x = ee.pose_offset.position.x
                 p.position.y = ee.pose_offset.position.y
@@ -547,7 +557,7 @@ class AffordanceTemplateServer(Thread):
                 p.orientation.y = ee.pose_offset.orientation.y
                 p.orientation.z = ee.pose_offset.orientation.z
                 p.orientation.w = ee.pose_offset.orientation.w
-                r.end_effector_pose_map[ee.name] = p
+                r.manipulator_pose_map[ee.name] = p
 
             print "done!"
             return r

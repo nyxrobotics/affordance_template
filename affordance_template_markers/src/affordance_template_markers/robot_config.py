@@ -24,9 +24,11 @@ class RobotConfig(object) :
         self.config_package =  ""
         self.moveit_ee_groups = []
         self.end_effector_names = []
-        self.end_effector_id_map = {}
         self.end_effector_name_map = {}
+        self.manipulator_pose_map = {}
+        self.manipulator_id_map = {}
         self.end_effector_pose_map = {}
+        self.end_effector_id_map = {}
         self.end_effector_link_data = {}
         self.end_effector_markers = {}
         self.frame_id = "world"
@@ -57,7 +59,7 @@ class RobotConfig(object) :
             for ee in self.yaml_config['end_effector_map']:
                 self.end_effector_names.append(ee['name'])
                 self.end_effector_name_map[ee['id']] = ee['name']
-                self.end_effector_id_map[ee['name']] = ee['id']
+                self.manipulator_id_map[ee['name']] = ee['id']
                 p = geometry_msgs.msg.Pose()
                 q = (kdl.Rotation.RPY(ee['pose_offset'][3],ee['pose_offset'][4],ee['pose_offset'][5])).GetQuaternion()
                 p.position.x = float(ee['pose_offset'][0])
@@ -67,7 +69,17 @@ class RobotConfig(object) :
                 p.orientation.y = q[1]
                 p.orientation.z = q[2]
                 p.orientation.w = q[3]
-                self.end_effector_pose_map[ee['name']] = p
+                self.manipulator_pose_map[ee['name']] = p
+            try :
+                for ee in self.yaml_config['end_effector_pose_map']:
+                    if not ee['group'] in self.end_effector_pose_map:
+                        self.end_effector_pose_map[ee['group']] = {}
+                        self.end_effector_id_map[ee['group']] = {}
+                    self.end_effector_pose_map[ee['group']][ee['name']] = int(ee['id'])
+                    self.end_effector_id_map[ee['group']][int(ee['id'])] = ee['name']
+                    print "ee[", ee['group'], "] adding group [", ee['name'], "] with id [", ee['id'], "]"
+            except :
+                rospy.logwarn("RobotConfig::load_from_file() -- no end effector pose map found ")
             return True
 
         except :

@@ -39,6 +39,16 @@ message EndEffectorMap {
     repeated EndEffector end_effector = 1;
 }
 
+message EndEffectorPoseID {
+    required string group = 1;           // robot end-effector group name
+    required string name = 2;           // robot end-effector pose name
+    required int32 id = 3;           // corresponding id ID of the group
+}
+
+message EndEffectorPoseIDMap {
+    repeated EndEffectorPoseID pose_group = 1;
+}
+
 message Robot {
     required string filename = 1;        // robot config filename
     required string name = 2;        // robot name
@@ -46,6 +56,8 @@ message Robot {
     required string frame_id = 4;        // robot base frame
     required Pose root_offset = 5;           // base offset pose
     required EndEffectorMap end_effectors = 6;        // list of end effector mapping
+    optional EndEffectorPoseIDMap end_effector_pose_ids = 7;   // mapping for end effector pose groups
+
 }
 
 message RecogObject {

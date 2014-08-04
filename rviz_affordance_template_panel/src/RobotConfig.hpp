@@ -27,10 +27,34 @@ namespace rviz_affordance_template_panel
         vector<float> pose_offset_;
     };
 
+
+    class EndEffectorPoseConfig
+    {
+    public:
+        EndEffectorPoseConfig(const string& name) {name_=name;};
+        ~EndEffectorPoseConfig() {}
+
+        string name() const { return name_; }
+        void name(const string& name ) { name_=name; }
+
+        string group() const { return group_; }
+        void group(const string& group ) { group_=group; }
+
+        int id() const { return id_; }
+        void id(int id) { id_=id; }
+
+    private:
+        string name_;
+        string group_;
+        int id_;
+    };
+
+
     class RobotConfig
     {
     public:
     	typedef boost::shared_ptr<EndEffectorConfig> EndEffectorConfigSharedPtr;
+        typedef boost::shared_ptr<EndEffectorPoseConfig> EndEffectorPoseIDConfigSharedPtr;
 
         RobotConfig(const string& uid) {uid_=uid;};
         ~RobotConfig() {}
@@ -51,6 +75,7 @@ namespace rviz_affordance_template_panel
         void root_offset(const vector<float> root_offset ) { root_offset_=root_offset; }
 
         std::map<std::string, EndEffectorConfigSharedPtr> endeffectorMap;
+        std::map<std::string, EndEffectorPoseIDConfigSharedPtr> endeffectorPoseMap;
 
 
     private:

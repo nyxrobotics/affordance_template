@@ -36,6 +36,7 @@ namespace rviz_affordance_template_panel
         typedef boost::shared_ptr<RecognitionObject> RecognitionObjectSharedPtr;
         typedef boost::shared_ptr<RobotConfig> RobotConfigSharedPtr;
         typedef boost::shared_ptr<EndEffectorConfig> EndEffectorConfigSharedPtr;
+        typedef boost::shared_ptr<EndEffectorPoseConfig> EndEffectorPoseIDConfigSharedPtr;
 
         // Constructors
         RVizAffordanceTemplatePanel(QWidget* parent = 0);

@@ -53,6 +53,7 @@ class AffordanceTemplate(object) :
         self.waypoint_controls = {}
         self.waypoint_end_effectors = {}
         self.waypoint_ids = {}
+        self.waypoint_pose_map = {}
 
         # menu stuff
         self.marker_menus = {}
@@ -265,8 +266,12 @@ class AffordanceTemplate(object) :
             else :
                 parent = self.get_root_object()
 
+            if wp.pose_group == None :
+                pose_id = None
+            else :
+                pose_id = int(wp.pose_group.id)
             wp_pose = self.pose_from_origin(wp.origin)
-            self.create_waypoint(int(wp.end_effector), int(wp.id), wp_pose, parent, wp.controls, wp.origin)
+            self.create_waypoint(int(wp.end_effector), int(wp.id), wp_pose, parent, wp.controls, wp.origin, pose_id)
             wp_ids += 1
 
     def load_initial_parameters_from_marker(self, m) :
@@ -450,7 +455,7 @@ class AffordanceTemplate(object) :
             robotTroot = self.robotTroot*self.get_chain_from_robot(self.parent_map[wp])
 
             if not self.parent_map[wp] in self.display_objects :
-                rospy.logerr(str("AffordanceTemplate::create_from_structure() -- end-effector display object " + self.parent_map[wp] + "not found!"))
+                rospy.logerr(str("AffordanceTemplate::create_from_parameters() -- end-effector display object " + self.parent_map[wp] + "not found!"))
 
             display_pose = getPoseFromFrame(robotTroot*self.objTwp[wp])
             # print "display pose: ", display_pose
@@ -509,7 +514,7 @@ class AffordanceTemplate(object) :
             wp_ids += 1
 
 
-    def create_waypoint(self, ee_id, wp_id, ps, parent, controls=None, origin=None) :
+    def create_waypoint(self, ee_id, wp_id, ps, parent, controls=None, origin=None, pose_id=None) :
 
         wp_name = str(ee_id) + "." + str(wp_id)
         ee_name = self.robot_config.end_effector_name_map[ee_id]
@@ -518,7 +523,7 @@ class AffordanceTemplate(object) :
 
         self.objTwp[wp_name] = getFrameFromPose(ps)
 
-        ee_offset = self.robot_config.end_effector_pose_map[ee_name]
+        ee_offset = self.robot_config.manipulator_pose_map[ee_name]
         self.wpTee[wp_name] = getFrameFromPose(ee_offset)
 
         if controls == None : controls = self.create_6dof_controls(0.25)
@@ -529,6 +534,9 @@ class AffordanceTemplate(object) :
 
         self.waypoint_end_effectors[wp_name] = ee_id
         self.waypoint_ids[wp_name] = wp_id
+
+        print "setting pose id: ", pose_id, "for wp: ", wp_name
+        self.waypoint_pose_map[wp_name] = pose_id
 
         if ee_id not in self.waypoint_max: self.waypoint_max[ee_id] = 0
         if self.waypoint_end_effectors[wp_name] not in self.waypoint_index :
@@ -549,8 +557,7 @@ class AffordanceTemplate(object) :
     def move_waypoint(self, ee_id, old_id, new_id) :
         old_name = str(str(ee_id) + "." + str(old_id))
         new_name = str(str(ee_id) + "." + str(new_id))
-        self.create_waypoint(ee_id, new_id, getPoseFromFrame(self.objTwp[old_name]), self.parent_map[old_name])
-
+        self.create_waypoint(ee_id, new_id, getPoseFromFrame(self.objTwp[old_name]), self.parent_map[old_name], self.waypoint_pose_map[old_name])
 
     def create_from_structure(self) :
         rospy.loginfo("AffordanceTemplate::create_from_structure() -- loading initial parameters")
@@ -558,6 +565,7 @@ class AffordanceTemplate(object) :
         rospy.loginfo("AffordanceTemplate::create_from_structure() -- creating from parameters")
         self.create_from_parameters()
         rospy.loginfo("AffordanceTemplate::create_from_structure() -- done")
+        # self.print_structure()
 
     def setup_object_menu(self, obj) :
         for m,c in self.object_menu_options :
@@ -593,6 +601,7 @@ class AffordanceTemplate(object) :
         print "AffordanceTemplate::load_from_file() -- creating RViz template from parameters"
         self.create_from_parameters()
         print "AffordanceTemplate::load_from_file() -- done"
+        # self.print_structure()
         return self.structure
 
     def load_from_marker(self, m) :
@@ -602,6 +611,7 @@ class AffordanceTemplate(object) :
         print "AffordanceTemplate::load_from_marker() -- creating RViz template from parameters"
         self.create_from_parameters()
         print "AffordanceTemplate::load_from_marker() -- done"
+        # self.print_structure()
         return self.structure
 
     def print_structure(self) :
@@ -649,6 +659,8 @@ class AffordanceTemplate(object) :
             print "\tcontrols xyz: ", wp.controls.xyz
             print "\tcontrols rpy: ", wp.controls.rpy
             print "----------------"
+            if not wp.pose_group == None :
+                print "\tee pose group id: ", wp.pose_group.id
 
     def process_feedback(self, feedback):
         # print "\n--------------------------------"
@@ -722,7 +734,7 @@ class AffordanceTemplate(object) :
 
                 ee_name = self.robot_config.get_end_effector_name(ee_id)
                 manipulator_name = self.robot_config.get_manipulator(ee_name)
-                ee_offset = self.robot_config.end_effector_pose_map[ee_name]
+                ee_offset = self.robot_config.manipulator_pose_map[ee_name]
                 max_idx = self.waypoint_max[ee_id]
 
                 print "ee_name: ", ee_name
@@ -754,6 +766,13 @@ class AffordanceTemplate(object) :
                         print "computing"
                         self.robot_config.moveit_interface.create_plan_to_target(manipulator_name, pt)
                         print "done computing"
+
+                        if not self.waypoint_pose_map[next_path_str] == None :
+                            id = self.waypoint_pose_map[next_path_str]
+                            pn = self.robot_config.end_effector_id_map[ee_name][id]
+                            print "################ pose name: ", pn
+                            self.robot_config.moveit_interface.create_joint_plan_to_target(ee_name, self.robot_config.stored_poses[ee_name][pn])
+
                         self.waypoint_plan_valid[ee_id] = True
 
                 if handle == self.menu_handles[(feedback.marker_name,"Display Full Path")] :
@@ -789,9 +808,22 @@ class AffordanceTemplate(object) :
 
                 if handle == self.menu_handles[(feedback.marker_name,"Execute Next Segment")] :
                     if self.waypoint_plan_valid[ee_id] :
+                        
+                        # move the manipulator (arm)
                         r = self.robot_config.moveit_interface.execute_plan(manipulator_name,from_stored=True)
                         if not r :
                             rospy.logerr(str("RobotTeleop::process_feedback(mouse) -- failed moveit execution for group: " + manipulator_name + ". re-synching..."))
+
+                        # move the end_effector (hand)
+                        r = self.robot_config.moveit_interface.execute_plan(ee_name,from_stored=True)
+                        if not r :
+                            rospy.logerr(str("RobotTeleop::process_feedback(mouse) -- failed moveit execution for group: " + ee_name + ". re-synching..."))
+
+                        # move to end effector pose if there is one
+                        # r = self.robot_config.moveit_interface.execute_plan(end_effector_name,from_stored=True)
+                        # if not r :
+                        #     rospy.logerr(str("RobotTeleop::process_feedback(mouse) -- failed moveit execution for group: " + end_effector_name + ". re-synching..."))
+
                         self.waypoint_index[ee_id] = next_path_idx
                         rospy.loginfo(str("setting current waypoint idx: " + str(self.waypoint_index[ee_id])))
                         self.waypoint_plan_valid[ee_id] = False
@@ -844,7 +876,8 @@ class AffordanceTemplate(object) :
                         self.move_waypoint(ee_id, k, k+1)
 
                     print "creating waypoint at : ", new_id
-                    self.create_waypoint(ee_id, waypoint_id, new_pose, self.parent_map[str(str(ee_id) + "." + str(1))]) # is parent right here?
+                    old_name = str(ee_id) + "." + str(1)
+                    self.create_waypoint(ee_id, waypoint_id, new_pose, self.parent_map[old_name], self.waypoint_pose_map[old_name]) # is parent right here?
                     self.create_from_parameters()
 
                 if handle == self.menu_handles[(feedback.marker_name,"Add Waypoint After")] :
@@ -875,7 +908,8 @@ class AffordanceTemplate(object) :
                         print "changing waypoint ", old_name, " to ", new_name
                         self.move_waypoint(ee_id, k, k+1)
 
-                    self.create_waypoint(ee_id, new_id, new_pose, self.parent_map[str(str(ee_id) + "." + str(max_idx))])
+                    old_name = str(ee_id) + "." + str(max_idx)
+                    self.create_waypoint(ee_id, new_id, new_pose, self.parent_map[old_name], self.waypoint_pose_map[old_name])
                     self.create_from_parameters()
 
                 if handle == self.menu_handles[(feedback.marker_name,"Delete Waypoint")] :
@@ -944,6 +978,7 @@ class AffordanceTemplate(object) :
                 print "need to add waypoint to the end of ", ee_name
                 wp_id = 0
                 ps = geometry_msgs.msg.Pose()
+                pose_id = None
                 if not ee_id in self.waypoint_max.keys() :
                     wp_name = str(str(ee_id) + "." + str(wp_id))
                     T = getFrameFromPose(feedback.pose)
@@ -959,41 +994,9 @@ class AffordanceTemplate(object) :
                     ps.position.x +=0.025
                     ps.position.y +=0.025
                     ps.position.z +=0.025
-                print wp_name
+                    pose_id = self.waypoint_pose_map[last_wp_name]
 
-
-                self.create_waypoint(ee_id, wp_id, ps, feedback.marker_name)
-                # self.objTwp[wp_name] = getFrameFromPose(ps)
-                # self.waypoints.append(wp_name)
-
-                # ee_offset = self.robot_config.end_effector_pose_map[ee_name]
-                # self.wpTee[wp_name] = getFrameFromPose(ee_offset)
-
-                # self.waypoint_ids[wp_name] = -1
-                # self.waypoint_end_effectors[wp_name] = ee_id
-
-                # origin = self.create_origin_from_pose(ps)
-                # controls = self.create_6dof_controls(0.25)
-
-                # self.waypoint_origin[wp_name] = origin
-                # self.waypoint_controls[wp_name] = controls
-
-                # self.parent_map[wp_name] = feedback.marker_name
-
-                # if self.waypoint_end_effectors[wp_name] not in self.waypoint_index :
-                #     id = int(self.waypoint_end_effectors[wp_name])
-                #     self.waypoint_index[id] = -1
-                #     self.waypoint_backwards_flag[id] = False
-                #     self.waypoint_auto_execute[id] = False
-                #     self.waypoint_plan_valid[id] = False
-                #     self.waypoint_loop[id] = False
-                #     self.waypoint_max[id] = int(self.waypoint_ids[wp_name])
-                # else :
-                #     # set max wp_name id for this ee
-                #     if int(self.waypoint_ids[wp_name]) > self.waypoint_max[id] :
-                #         self.waypoint_max[id] = int(self.waypoint_ids[wp_name])
-
-                # self.waypoints.sort()
+                self.create_waypoint(ee_id, wp_id, ps, feedback.marker_name, pose_id)
                 self.create_from_parameters()
 
             if self.menu_handles[(feedback.marker_name,"Add Waypoint Before",ee_name)] == feedback.menu_entry_id :
@@ -1001,6 +1004,7 @@ class AffordanceTemplate(object) :
                 wp_id = 0
                 wp_name = str(ee_id) + "." + str(0)
                 ps = geometry_msgs.msg.Pose()
+                pose_id = None
 
                 if not ee_id in self.waypoint_max.keys() :
                     ps = feedback.pose
@@ -1012,6 +1016,7 @@ class AffordanceTemplate(object) :
                     ps.position.x -=0.025
                     ps.position.y -=0.025
                     ps.position.z -=0.025
+                    pose_id = self.waypoint_pose_map[wp_name]
 
                     r = range(0,self.waypoint_max[ee_id]+1)
                     r.reverse()
@@ -1021,39 +1026,7 @@ class AffordanceTemplate(object) :
                         print "changing waypoint ", old_name, " to ", new_name
                         self.move_waypoint(ee_id, k, k+1)
 
-                print wp_name
-                self.create_waypoint(ee_id, wp_id, ps, feedback.marker_name)
-
-                # self.objTwp[wp_name] = getFrameFromPose(ps)
-
-                # ee_offset = self.robot_config.end_effector_pose_map[ee_name]
-                # self.wpTee[wp_name] = getFrameFromPose(ee_offset)
-
-                # self.waypoint_ids[wp_name] = -1
-                # self.waypoint_end_effectors[wp_name] = ee_id
-
-                # origin = self.create_origin_from_pose(ps)
-                # controls = self.create_6dof_controls(0.25)
-
-                # self.waypoint_origin[wp_name] = origin
-                # self.waypoint_controls[wp_name] = controls
-
-                # self.parent_map[wp_name] = feedback.marker_name
-
-                # if self.waypoint_end_effectors[wp_name] not in self.waypoint_index :
-                #     id = int(self.waypoint_end_effectors[wp_name])
-                #     self.waypoint_index[id] = -1
-                #     self.waypoint_backwards_flag[id] = False
-                #     self.waypoint_auto_execute[id] = False
-                #     self.waypoint_plan_valid[id] = False
-                #     self.waypoint_loop[id] = False
-                #     self.waypoint_max[id] = int(self.waypoint_ids[wp_name])
-                # else :
-                #     # set max wp_name id for this ee
-                #     if int(self.waypoint_ids[wp_name]) > self.waypoint_max[id] :
-                #         self.waypoint_max[id] = int(self.waypoint_ids[wp_name])
-
-                # self.waypoints.sort()
+                self.create_waypoint(ee_id, wp_id, ps, feedback.marker_name, pose_id)
                 self.create_from_parameters()
 
     def compute_path_ids(self, id, steps, backwards=False) :
@@ -1109,8 +1082,8 @@ class AffordanceTemplate(object) :
 
     def plan_path_to_waypoint(self, end_effector, steps=1, backwards=False, direct=False) :
 
-        ee_id = self.robot_config.end_effector_id_map[end_effector]
-        ee_offset = self.robot_config.end_effector_pose_map[end_effector]
+        ee_id = self.robot_config.manipulator_id_map[end_effector]
+        ee_offset = self.robot_config.manipulator_pose_map[end_effector]
         max_idx = self.waypoint_max[ee_id]
         manipulator_name = self.robot_config.get_manipulator(end_effector)
         print "manipulator_name: ", manipulator_name
@@ -1167,7 +1140,7 @@ class AffordanceTemplate(object) :
         return next_path_idx
 
     def move_to_waypoint(self, end_effector, next_path_idx) :
-        ee_id = self.robot_config.end_effector_id_map[end_effector]
+        ee_id = self.robot_config.manipulator_id_map[end_effector]
         manipulator_name = self.robot_config.get_manipulator(end_effector)
         if self.waypoint_plan_valid[ee_id] :
             r = self.robot_config.moveit_interface.execute_plan(manipulator_name,from_stored=True)

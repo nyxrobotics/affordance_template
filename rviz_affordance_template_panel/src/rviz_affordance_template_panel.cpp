@@ -266,6 +266,13 @@ void RVizAffordanceTemplatePanel::getAvailableInfo() {
                 eitem->pose_offset(pose_offset);
                 pitem->endeffectorMap[(*eitem).name()] = eitem;
             }
+            for (auto& p: r.end_effector_pose_ids().pose_group()) {
+                EndEffectorPoseIDConfigSharedPtr piditem(new EndEffectorPoseConfig(p.name()));
+                piditem->id(p.id());
+                piditem->group(p.group());
+                pitem->endeffectorPoseMap[(*piditem).name()] = piditem;
+            }
+
             addRobot(pitem);
 
             _ui->robot_select->addItem(QString(pitem->uid().c_str()));
@@ -411,10 +418,6 @@ void RVizAffordanceTemplatePanel::sendRecognitionObjectAdd(const string& object_
     req.set_type(Request::START_RECOGNITION);
     RecogObject* temp(req.add_recognition_object());
     temp->set_type(object_name);
-    /*temp->set_image_path(object_name);
-    temp->set_package(object_name);
-    temp->set_launch_file(object_name);
-    */
     Response resp;
     send_request(req, resp);
 }
@@ -505,6 +508,7 @@ void RVizAffordanceTemplatePanel::loadConfig() {
     Robot *robot = req.mutable_robot();
     Pose *robot_offset = robot->mutable_root_offset();
     EndEffectorMap *ee_map = robot->mutable_end_effectors();
+    EndEffectorPoseIDMap *ee_pose_map = robot->mutable_end_effector_pose_ids();
     string key = _ui->robot_select->currentText().toUtf8().constData();
     string name = (*robotMap[key]).name();
     string pkg = (*robotMap[key]).moveit_config_package();
@@ -565,6 +569,15 @@ void RVizAffordanceTemplatePanel::loadConfig() {
 
         r++;
 
+    }
+
+    cout << "ADDED END EFFECTOR POSE MAP TO REQUEST MESSAGE" << endl;
+    for (auto& e: (*robotMap[key]).endeffectorPoseMap) {
+        cout << "...adding " << e.second->name() << endl;
+        EndEffectorPoseID *pid = ee_pose_map->add_pose_group();
+        pid->set_name(e.second->name());
+        pid->set_group(e.second->group());
+        pid->set_id(e.second->id());
     }
 
     _ui->end_effector_table->resizeColumnsToContents();

@@ -44,6 +44,13 @@ xmlr.reflect(Controls, params = [
     xmlr.Attribute('scale', float),
     ])
 
+class PoseGroup(xmlr.Object):
+    def __init__(self, id=None):
+        self.id = id
+
+xmlr.reflect(PoseGroup, params = [
+    xmlr.Attribute('id', str, True)
+    ])
 
 # Common stuff
 name_attribute = xmlr.Attribute('name', str)
@@ -202,22 +209,22 @@ xmlr.reflect(DisplayObjects, params = [
     ])
 
 
-
-
 class EndEffectorWaypoint(xmlr.Object):
-    def __init__(self, end_effector = None, id = None, display_object = None, origin = None, controls = None):
+    def __init__(self, end_effector = None, id = None, display_object = None, origin = None, controls = None, pose_group = None):
         self.id = id
         self.end_effector = end_effector
         self.display_object = display_object
         self.controls = controls
         self.origin = origin
+        self.pose_group = pose_group
 
 xmlr.reflect(EndEffectorWaypoint, params = [
     origin_element,
     controls_element,
     xmlr.Attribute('id', str, True),
     xmlr.Attribute('end_effector', str, True),
-    xmlr.Attribute('display_object', str, True)
+    xmlr.Attribute('display_object', str, True),
+    xmlr.Element('pose_group', PoseGroup, False)
     ])
 
 class EndEffectorWaypoints(xmlr.Object):
