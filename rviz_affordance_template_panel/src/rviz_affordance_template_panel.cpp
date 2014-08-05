@@ -1,5 +1,4 @@
-/* Qt Includes */
-//#include <QObjectList>
+#include "rviz_affordance_template_panel.hpp"
 
 // TODO: don't like these
 #define PIXMAP_SIZE 100
@@ -13,71 +12,8 @@
 #define PACKAGE 1
 #define LAUNCH_FILE 2
 
-
-/* Project Includes */
-#include "rviz_affordance_template_panel.hpp"
-//#include "rviz_control_panel.hpp"
-
-
 using namespace rviz_affordance_template_panel;
 using namespace std;
-
-/** \brief Helper function to return a new socket.
- */
-static zmq::socket_t* client_socket (zmq::context_t& context, const string& addr) {
-    zmq::socket_t* client = new zmq::socket_t (context, ZMQ_REQ);
-    string serv = "tcp://" + addr;
-    client->connect(serv.c_str());
-
-    // configure socket to not wait at close time
-    int linger = 0;
-    client->setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
-    return client;
-}
-
-static vector<string> &split(const string &s, char delim, vector<string> &elems) {
-    stringstream ss(s);
-    string item;
-    while (getline(ss, item, delim)) {
-        elems.push_back(item);
-    }
-    return elems;
-}
-
-/** \brief Split a string by a delimiter and return it in a vector.
- */
-static vector<string> split(const string &s, char delim) {
-    vector<string> elems;
-    split(s, delim, elems);
-    return elems;
-}
-
-/** \brief KDL helper function convert quaternion to rpy angles
-*/
-static vector<float> quaternionToRPY(float x, float y, float z, float w) {
-    vector<float> rpy(3);
-    double rr, rp, ry;
-    KDL::Rotation::Quaternion(x,y,z,w).GetRPY(rr,rp,ry);
-    rpy[0] = (float)rr;
-    rpy[1] = (float)rp;
-    rpy[2] = (float)ry;
-    cout << "converted quaternion(" << x << ", " << y << ", " << z << ", " << w << ") to rpy(" << rpy[0] << ", " << rpy[1] << ", " << rpy[2] << ")" << endl;
-    return rpy;
-}
-
-/** \brief KDL helper function convert rpy angles to quaternion
-*/
-static vector<float> RPYToQuaternion(float rr, float rp, float ry) {
-    vector<float> q(4);
-    double x,y,z,w;
-    KDL::Rotation::RPY(rr,rp,ry).GetQuaternion(x,y,z,w);
-    q[0] = (float)x;
-    q[1] = (float)y;
-    q[2] = (float)z;
-    q[3] = (float)w;
-    return q;
-}
-
 
 RVizAffordanceTemplatePanel::RVizAffordanceTemplatePanel(QWidget *parent) :
     rviz::Panel(parent),
@@ -85,7 +21,8 @@ RVizAffordanceTemplatePanel::RVizAffordanceTemplatePanel(QWidget *parent) :
     connected(false),
     _ui(new Ui::RVizAffordanceTemplatePanel),
     descriptionRobot(""),
-    force_load(true)
+    force_load(true),
+    controls(new Controls(_ui))
 {
     // Setup the panel.
     _ui->setupUi(this);
@@ -165,7 +102,8 @@ void RVizAffordanceTemplatePanel::connect() {
     } else {
         try {
             string addr = _ui->server_text->text().toStdString();
-            socket = client_socket(context, addr);
+            socket = util::client_socket(context, addr);
+            controls->setSocket(socket);
             connected = true;
             sendPing();
             getAvailableInfo();
@@ -181,6 +119,7 @@ void RVizAffordanceTemplatePanel::connect() {
             _ui->connect_button->setText("Disconnect");
         }
     }
+    controls->setConnected(connected);
 }
 
 void RVizAffordanceTemplatePanel::getAvailableInfo() {
@@ -285,6 +224,9 @@ void RVizAffordanceTemplatePanel::getAvailableInfo() {
         setupRobotPanel(robotMap.begin()->first);
         QObject::connect(_ui->robot_select, SIGNAL(currentIndexChanged(int)), this, SLOT(changeRobot(int)));
         QObject::connect(_ui->end_effector_select, SIGNAL(currentIndexChanged(int)), this, SLOT(changeEndEffector(int)));
+
+        // set Controls
+        controls->setRobotMap(robotMap);
     }
 }
 
@@ -309,7 +251,7 @@ void RVizAffordanceTemplatePanel::setupRobotPanel(const string& key) {
     cout << root_offset[5] << endl;
     cout << root_offset[6] << endl;
 
-    vector<float> rpy = quaternionToRPY(root_offset[3],root_offset[4],root_offset[5],root_offset[6]);
+    vector<float> rpy = util::quaternionToRPY(root_offset[3],root_offset[4],root_offset[5],root_offset[6]);
 
     _ui->robot_rr->setText(QString::number(rpy[0]));
     _ui->robot_rp->setText(QString::number(rpy[1]));
@@ -340,7 +282,7 @@ void RVizAffordanceTemplatePanel::setupEndEffectorConfigPanel(const string& key)
             _ui->ee_ty->setText(QString::number(pose_offset[1]));
             _ui->ee_tz->setText(QString::number(pose_offset[2]));
 
-            vector<float> rpy = quaternionToRPY(pose_offset[3],pose_offset[4],pose_offset[5],pose_offset[6]);
+            vector<float> rpy = util::quaternionToRPY(pose_offset[3],pose_offset[4],pose_offset[5],pose_offset[6]);
             _ui->ee_rr->setText(QString::number(rpy[0]));
             _ui->ee_rp->setText(QString::number(rpy[1]));
             _ui->ee_ry->setText(QString::number(rpy[2]));
@@ -401,7 +343,7 @@ void RVizAffordanceTemplatePanel::sendAffordanceTemplateKill(const string& class
 }
 
 void RVizAffordanceTemplatePanel::killAffordanceTemplate(QListWidgetItem* item) {
-    vector<string> template_info = split(item->text().toUtf8().constData(), ':');
+    vector<string> template_info = util::split(item->text().toUtf8().constData(), ':');
     int id;
     istringstream(template_info[1]) >> id;
     sendAffordanceTemplateKill(template_info[0], id);
@@ -438,7 +380,7 @@ void RVizAffordanceTemplatePanel::sendRecognitionObjectKill(const string& object
 }
 
 void RVizAffordanceTemplatePanel::killRecognitionObject(QListWidgetItem* item) {
-    vector<string> object_info = split(item->text().toUtf8().constData(), ':');
+    vector<string> object_info = util::split(item->text().toUtf8().constData(), ':');
     int id;
     istringstream(object_info[1]) >> id;
     sendRecognitionObjectKill(object_info[0], id);
@@ -592,6 +534,7 @@ void RVizAffordanceTemplatePanel::loadConfig() {
     send_request(req, resp, 20000000);
 
     robot_name = key;
+    controls->setRobotName(robot_name);
 }
 
 
@@ -762,322 +705,13 @@ std::string RVizAffordanceTemplatePanel::getRobotFromDescription() {
     return robot;
 }
 
-vector<string> RVizAffordanceTemplatePanel::getSelectedEndEffectors() {
-
-    vector<string> selectedEndEffectors;
-    for (int r=0; r<_ui->end_effector_table->rowCount(); r++ ) {
-        if (_ui->end_effector_table->item(r,3)->checkState() == Qt::Checked ) {
-            selectedEndEffectors.push_back(_ui->end_effector_table->item(r,0)->text().toStdString());
-        }
-    }
-    return selectedEndEffectors;
-}
-
-void RVizAffordanceTemplatePanel::go_to_start() {
-    if (connected) {
-        Request req;
-        req.set_type(Request::COMMAND);
-
-        string key = _ui->control_template_box->currentText().toUtf8().constData();
-        vector<string> stuff = split(key, ':');
-        Template* temp(req.add_affordance_template());
-        temp->set_type(stuff[0]);
-        temp->set_id(atoi(stuff[1].c_str()));
-
-        Command *cmd = req.mutable_command();
-        cmd->set_type(Command::GO_TO_START);
-        cmd->set_steps(_ui->num_steps->text().toInt());
-        cmd->set_execute(_ui->execute_on_plan->isChecked());
-        vector<string> ee_list = getSelectedEndEffectors();
-        for(int i=0; i<ee_list.size(); i++) {
-            cmd->add_end_effector(ee_list[i]);
-        }
-        Response rep;
-        send_request(req, rep, 10000000);
-        cout << "got response" << endl;
-        for (auto& c: rep.waypoint_info()) {
-            cout << c.id() << endl;
-            cout << c.num_waypoints() << endl;
-            for (auto& e: (*robotMap[robot_name]).endeffectorMap) {
-                if (e.second->id() == c.id()) {
-                    for (int r=0; r<_ui->end_effector_table->rowCount(); r++ ) {
-                        if (e.second->name() == _ui->end_effector_table->item(r,0)->text().toStdString() ) {
-                            _ui->end_effector_table->setItem(r,1,new QTableWidgetItem(QString::number(c.num_waypoints())));
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-void RVizAffordanceTemplatePanel::go_to_end() {
-    if (connected) {
-        Request req;
-        req.set_type(Request::COMMAND);
-
-        string key = _ui->control_template_box->currentText().toUtf8().constData();
-        vector<string> stuff = split(key, ':');
-        Template* temp(req.add_affordance_template());
-        temp->set_type(stuff[0]);
-        temp->set_id(atoi(stuff[1].c_str()));
-
-        Command *cmd = req.mutable_command();
-        cmd->set_type(Command::GO_TO_END);
-        cmd->set_steps(_ui->num_steps->text().toInt());
-        cmd->set_execute(_ui->execute_on_plan->isChecked());
-        vector<string> ee_list = getSelectedEndEffectors();
-        for(int i=0; i<ee_list.size(); i++) {
-            cmd->add_end_effector(ee_list[i]);
-        }
-        Response rep;
-        send_request(req, rep, 10000000);
-        cout << "got response" << endl;
-        for (auto& c: rep.waypoint_info()) {
-            cout << c.id() << endl;
-            cout << c.num_waypoints() << endl;
-            for (auto& e: (*robotMap[robot_name]).endeffectorMap) {
-                if (e.second->id() == c.id()) {
-                    for (int r=0; r<_ui->end_effector_table->rowCount(); r++ ) {
-                        if (e.second->name() == _ui->end_effector_table->item(r,0)->text().toStdString() ) {
-                            _ui->end_effector_table->setItem(r,1,new QTableWidgetItem(QString::number(c.num_waypoints())));
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-void RVizAffordanceTemplatePanel::pause() {
-    if (connected) {
-        Request req;
-        req.set_type(Request::COMMAND);
-
-        string key = _ui->control_template_box->currentText().toUtf8().constData();
-        vector<string> stuff = split(key, ':');
-        Template* temp(req.add_affordance_template());
-        temp->set_type(stuff[0]);
-        temp->set_id(atoi(stuff[1].c_str()));
-
-        Command *cmd = req.mutable_command();
-        cmd->set_type(Command::PAUSE);
-        cmd->set_steps(_ui->num_steps->text().toInt());
-        cmd->set_execute(_ui->execute_on_plan->isChecked());
-        vector<string> ee_list = getSelectedEndEffectors();
-        for(int i=0; i<ee_list.size(); i++) {
-            cmd->add_end_effector(ee_list[i]);
-        }
-        Response rep;
-        send_request(req, rep, 10000000);
-        cout << "got response" << endl;
-        for (auto& c: rep.waypoint_info()) {
-            cout << c.id() << endl;
-            cout << c.num_waypoints() << endl;
-            for (auto& e: (*robotMap[robot_name]).endeffectorMap) {
-                if (e.second->id() == c.id()) {
-                    for (int r=0; r<_ui->end_effector_table->rowCount(); r++ ) {
-                        if (e.second->name() == _ui->end_effector_table->item(r,0)->text().toStdString() ) {
-                            _ui->end_effector_table->setItem(r,1,new QTableWidgetItem(QString::number(c.num_waypoints())));
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-void RVizAffordanceTemplatePanel::stop() {
-    if (connected) {
-        Request req;
-        req.set_type(Request::COMMAND);
-
-        string key = _ui->control_template_box->currentText().toUtf8().constData();
-        vector<string> stuff = split(key, ':');
-        Template* temp(req.add_affordance_template());
-        temp->set_type(stuff[0]);
-        temp->set_id(atoi(stuff[1].c_str()));
-
-        Command *cmd = req.mutable_command();
-        cmd->set_type(Command::STOP);
-        cmd->set_steps(_ui->num_steps->text().toInt());
-        cmd->set_execute(_ui->execute_on_plan->isChecked());
-        vector<string> ee_list = getSelectedEndEffectors();
-        for(int i=0; i<ee_list.size(); i++) {
-            cmd->add_end_effector(ee_list[i]);
-        }
-        Response rep;
-        send_request(req, rep, 10000000);
-        cout << "got response" << endl;
-        for (auto& c: rep.waypoint_info()) {
-            cout << c.id() << endl;
-            cout << c.num_waypoints() << endl;
-            for (auto& e: (*robotMap[robot_name]).endeffectorMap) {
-                if (e.second->id() == c.id()) {
-                    for (int r=0; r<_ui->end_effector_table->rowCount(); r++ ) {
-                        if (e.second->name() == _ui->end_effector_table->item(r,0)->text().toStdString() ) {
-                            _ui->end_effector_table->setItem(r,1,new QTableWidgetItem(QString::number(c.num_waypoints())));
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-
-void RVizAffordanceTemplatePanel::play_backward() {
-    if (connected) {
-        Request req;
-        req.set_type(Request::COMMAND);
-
-        string key = _ui->control_template_box->currentText().toUtf8().constData();
-        vector<string> stuff = split(key, ':');
-        Template* temp(req.add_affordance_template());
-        temp->set_type(stuff[0]);
-        temp->set_id(atoi(stuff[1].c_str()));
-
-        Command *cmd = req.mutable_command();
-        cmd->set_type(Command::PLAY_BACKWARD);
-        cmd->set_steps(_ui->num_steps->text().toInt());
-        cmd->set_execute(_ui->execute_on_plan->isChecked());
-        vector<string> ee_list = getSelectedEndEffectors();
-        for(int i=0; i<ee_list.size(); i++) {
-            cmd->add_end_effector(ee_list[i]);
-        }
-        Response rep;
-        send_request(req, rep, 10000000);
-        cout << "got response" << endl;
-        for (auto& c: rep.waypoint_info()) {
-            cout << c.id() << endl;
-            cout << c.num_waypoints() << endl;
-            for (auto& e: (*robotMap[robot_name]).endeffectorMap) {
-                if (e.second->id() == c.id()) {
-                    for (int r=0; r<_ui->end_effector_table->rowCount(); r++ ) {
-                        if (e.second->name() == _ui->end_effector_table->item(r,0)->text().toStdString() ) {
-                            _ui->end_effector_table->setItem(r,1,new QTableWidgetItem(QString::number(c.num_waypoints())));
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-void RVizAffordanceTemplatePanel::play_forward() {
-    if (connected) {
-        Request req;
-        req.set_type(Request::COMMAND);
-
-        string key = _ui->control_template_box->currentText().toUtf8().constData();
-        vector<string> stuff = split(key, ':');
-        Template* temp(req.add_affordance_template());
-        temp->set_type(stuff[0]);
-        temp->set_id(atoi(stuff[1].c_str()));
-        Command *cmd = req.mutable_command();
-
-        cmd->set_type(Command::PLAY_FORWARD);
-        cmd->set_steps(_ui->num_steps->text().toInt());
-        cmd->set_execute(_ui->execute_on_plan->isChecked());
-        vector<string> ee_list = getSelectedEndEffectors();
-        for(int i=0; i<ee_list.size(); i++) {
-            cmd->add_end_effector(ee_list[i]);
-        }
-        Response rep;
-        send_request(req, rep, 10000000);
-        cout << "got response" << endl;
-        for (auto& c: rep.waypoint_info()) {
-            cout << c.id() << endl;
-            cout << c.num_waypoints() << endl;
-            for (auto& e: (*robotMap[robot_name]).endeffectorMap) {
-                if (e.second->id() == c.id()) {
-                    for (int r=0; r<_ui->end_effector_table->rowCount(); r++ ) {
-                        if (e.second->name() == _ui->end_effector_table->item(r,0)->text().toStdString() ) {
-                            _ui->end_effector_table->setItem(r,1,new QTableWidgetItem(QString::number(c.num_waypoints())));
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-void RVizAffordanceTemplatePanel::step_backward() {
-    if (connected) {
-        Request req;
-        req.set_type(Request::COMMAND);
-
-        string key = _ui->control_template_box->currentText().toUtf8().constData();
-        vector<string> stuff = split(key, ':');
-        Template* temp(req.add_affordance_template());
-        temp->set_type(stuff[0]);
-        temp->set_id(atoi(stuff[1].c_str()));
-        Command *cmd = req.mutable_command();
-
-        cmd->set_type(Command::STEP_BACKWARD);
-        cmd->set_steps(_ui->num_steps->text().toInt());
-        cmd->set_execute(_ui->execute_on_plan->isChecked());
-        vector<string> ee_list = getSelectedEndEffectors();
-        for(int i=0; i<ee_list.size(); i++) {
-            cmd->add_end_effector(ee_list[i]);
-        }
-        Response rep;
-        send_request(req, rep, 10000000);
-        cout << "got response" << endl;
-        for (auto& c: rep.waypoint_info()) {
-            cout << c.id() << endl;
-            cout << c.num_waypoints() << endl;
-            for (auto& e: (*robotMap[robot_name]).endeffectorMap) {
-                if (e.second->id() == c.id()) {
-                    for (int r=0; r<_ui->end_effector_table->rowCount(); r++ ) {
-                        if (e.second->name() == _ui->end_effector_table->item(r,0)->text().toStdString() ) {
-                            _ui->end_effector_table->setItem(r,1,new QTableWidgetItem(QString::number(c.num_waypoints())));
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-void RVizAffordanceTemplatePanel::step_forward() {
-    if (connected) {
-        Request req;
-        req.set_type(Request::COMMAND);
-
-        string key = _ui->control_template_box->currentText().toUtf8().constData();
-        vector<string> stuff = split(key, ':');
-        Template* temp(req.add_affordance_template());
-        temp->set_type(stuff[0]);
-        temp->set_id(atoi(stuff[1].c_str()));
-
-        Command *cmd = req.mutable_command();
-        cmd->set_type(Command::STEP_FORWARD);
-        cmd->set_steps(_ui->num_steps->text().toInt());
-        cmd->set_execute(_ui->execute_on_plan->isChecked());
-        vector<string> ee_list = getSelectedEndEffectors();
-        for(int i=0; i<ee_list.size(); i++) {
-            cmd->add_end_effector(ee_list[i]);
-        }
-        Response rep;
-        send_request(req, rep, 10000000);
-        for (auto& c: rep.waypoint_info()) {
-            cout << "end effector: " << c.id() << endl;
-            cout << "now at waypoint : " << (c.num_waypoints()+1) << endl;
-            for (auto& e: (*robotMap[robot_name]).endeffectorMap) {
-                if (e.second->id() == c.id()) {
-                    for (int r=0; r<_ui->end_effector_table->rowCount(); r++ ) {
-                        if (e.second->name() == _ui->end_effector_table->item(r,0)->text().toStdString() ) {
-                            _ui->end_effector_table->setItem(r,1,new QTableWidgetItem(QString::number(c.num_waypoints()+1)));
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-
+void RVizAffordanceTemplatePanel::go_to_start() { controls->go_to_start(); }
+void RVizAffordanceTemplatePanel::go_to_end() { controls->go_to_end(); }
+void RVizAffordanceTemplatePanel::pause() { controls->pause(); }
+void RVizAffordanceTemplatePanel::play_backward() { controls->play_backward(); }
+void RVizAffordanceTemplatePanel::play_forward() { controls->play_forward(); }
+void RVizAffordanceTemplatePanel::step_backward() { controls->step_backward(); }
+void RVizAffordanceTemplatePanel::step_forward() { controls->step_forward(); }
 
 #include <pluginlib/class_list_macros.h>
 #if ROS_VERSION_MINIMUM(1,9,41)

@@ -16,6 +16,8 @@
 #include "Affordance.hpp"
 #include "RecognitionObject.hpp"
 #include "RobotConfig.hpp"
+#include "Controls.hpp"
+#include "util.hpp"
 #include "ui_rviz_affordance_template_panel.h"
 
 // zmq
@@ -37,6 +39,7 @@ namespace rviz_affordance_template_panel
         typedef boost::shared_ptr<RobotConfig> RobotConfigSharedPtr;
         typedef boost::shared_ptr<EndEffectorConfig> EndEffectorConfigSharedPtr;
         typedef boost::shared_ptr<EndEffectorPoseConfig> EndEffectorPoseIDConfigSharedPtr;
+        typedef boost::shared_ptr<Controls> ControlsSharedPtr;
 
         // Constructors
         RVizAffordanceTemplatePanel(QWidget* parent = 0);
@@ -89,32 +92,32 @@ namespace rviz_affordance_template_panel
          */
         void go_to_start();
 
-        /** \brief Go To End Command.
-         */
+        // /** \brief Go To End Command.
+        //  */
         void go_to_end();
 
-        /** \brief Pause Command.
-         */
+        // /** \brief Pause Command.
+        //  */
         void pause();
 
-        /** \brief Stop Command.
-         */
+        // /** \brief Stop Command.
+        //  */
         void stop();
 
-        /** \brief Play Backward Command.
-         */
+        // * \brief Play Backward Command.
+
         void play_backward();
 
-        /** \brief Play Forward Command.
-         */
+        // /** \brief Play Forward Command.
+        //  */
         void play_forward();
 
-        /** \brief Step Backward Command.
-         */
+        // /** \brief Step Backward Command.
+        //  */
         void step_backward();
 
-        /** \brief Step Forward Command.
-         */
+        // /** \brief Step Forward Command.
+        //  */
         void step_forward();
 
 
@@ -175,7 +178,7 @@ namespace rviz_affordance_template_panel
 
         ros::NodeHandle _nh;
 
-
+        ControlsSharedPtr controls;
     };
 }
 #endif // RVIZ_AFFORDANCE_TEMPLATE_PANEL_HPP
