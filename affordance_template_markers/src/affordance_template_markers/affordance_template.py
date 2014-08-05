@@ -555,7 +555,6 @@ class AffordanceTemplate(object) :
             self.waypoints.append(wp_name)
             self.waypoints.sort()
 
-
     def move_waypoint(self, ee_id, old_id, new_id) :
         old_name = str(ee_id) + "." + str(old_id)
         new_name = str(ee_id) + "." + str(new_id)
