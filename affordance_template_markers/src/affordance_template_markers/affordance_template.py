@@ -100,7 +100,6 @@ class AffordanceTemplate(object) :
         self.waypoint_menu_options.append(("Delete Waypoint", False))
         self.waypoint_menu_options.append(("Move Forward", False))
         self.waypoint_menu_options.append(("Move Back", False))
-        self.waypoint_menu_options.append(("Test", False))
 
         self.object_menu_options = []
         self.object_menu_options.append(("Display Next Path Segment", False))
@@ -196,7 +195,6 @@ class AffordanceTemplate(object) :
     def get_chain_from_robot(self, child) :
         return self.get_chain("robot",child)
 
-
     def pose_from_origin(self, origin) :
         p = geometry_msgs.msg.Pose()
         p.orientation.w = 1
@@ -274,7 +272,9 @@ class AffordanceTemplate(object) :
             else :
                 pose_id = int(wp.pose_group.id)
             wp_pose = self.pose_from_origin(wp.origin)
+
             self.create_waypoint(int(wp.end_effector), int(wp.id), wp_pose, parent, wp.controls, wp.origin, pose_id)
+
             wp_ids += 1
 
     def load_initial_parameters_from_marker(self, m) :
@@ -860,33 +860,6 @@ class AffordanceTemplate(object) :
                         rospy.loginfo(str("setting current waypoint idx: " + str(self.waypoint_index[ee_id])))
                         self.waypoint_plan_valid[ee_id] = False
 
-                if handle == self.menu_handles[(feedback.marker_name,"Test")] :
-
-                    for e in range(0,2) :
-                        next_path_idx = (self.waypoint_index[e] + 1) % self.waypoint_max[e]
-                        ee_name = self.robot_config.get_end_effector_name(e)
-                        manipulator_name = self.robot_config.get_manipulator(ee_name)
-                        ee_offset = self.robot_config.manipulator_pose_map[ee_name]
-                        max_idx = self.waypoint_max[e]
-
-                        next_path_str = str(e) + "." + str(next_path_idx)
-                        rospy.loginfo(str("AffordanceTemplate::process_feedback() -- computing path to index[" + str(next_path_str) + "]"))
-                        k = str(next_path_str)
-                        pt = geometry_msgs.msg.PoseStamped()
-                        pt.header = self.server.get(k).header
-                        pt.pose = self.server.get(k).pose
-                        T_goal = getFrameFromPose(pt.pose)
-                        T_offset = getFrameFromPose(ee_offset)
-                        T = T_goal*T_offset
-                        pt.pose = getPoseFromFrame(T)
-                        self.robot_config.moveit_interface.groups[manipulator_name].clear_pose_targets()
-                        self.robot_config.moveit_interface.create_plan_to_target(manipulator_name, pt)
-                        self.waypoint_plan_valid[e] = True
-                        self.waypoint_index[e] = next_path_idx
-
-
-                    r = self.robot_config.moveit_interface.execute_plan("left_arm", wait=False)
-                    r = self.robot_config.moveit_interface.execute_plan("right_arm", wait=False)
 
                 if handle == self.menu_handles[(feedback.marker_name,"Compute Backwards Path")] :
                     state = self.marker_menus[feedback.marker_name].getCheckState( handle )
@@ -924,7 +897,6 @@ class AffordanceTemplate(object) :
                     for k in r:
                         old_name = str(str(ee_id) + "." + str(k))
                         new_name = str(str(ee_id) + "." + str(k+1))
-                        print "changing waypoint ", old_name, " to ", new_name
                         self.move_waypoint(ee_id, k, k+1)
 
                     print "creating waypoint at : ", new_id
@@ -957,7 +929,6 @@ class AffordanceTemplate(object) :
                     for k in r:
                         old_name = str(str(ee_id) + "." + str(k))
                         new_name = str(str(ee_id) + "." + str(k+1))
-                        print "changing waypoint ", old_name, " to ", new_name
                         self.move_waypoint(ee_id, k, k+1)
 
                     old_name = str(ee_id) + "." + str(max_idx)
@@ -1085,7 +1056,6 @@ class AffordanceTemplate(object) :
                     for k in r:
                         old_name = str(str(ee_id) + "." + str(k))
                         new_name = str(str(ee_id) + "." + str(k+1))
-                        print "changing waypoint ", old_name, " to ", new_name
                         self.move_waypoint(ee_id, k, k+1)
 
                 self.create_waypoint(ee_id, wp_id, ps, feedback.marker_name, pose_id)
@@ -1148,6 +1118,8 @@ class AffordanceTemplate(object) :
         ee_offset = self.robot_config.manipulator_pose_map[end_effector]
         max_idx = self.waypoint_max[ee_id]
         manipulator_name = self.robot_config.get_manipulator(end_effector)
+        ee_name = self.robot_config.get_end_effector_name(ee_id)
+
         print "manipulator_name: ", manipulator_name
         print "steps: ", steps
         # next_path_idx = self.compute_next_path_id(ee_id, steps, backwards)
@@ -1196,6 +1168,13 @@ class AffordanceTemplate(object) :
                 T = T_goal*T_offset
                 pt.pose = getPoseFromFrame(T)
                 waypoints.append(pt.pose)
+
+            if not self.waypoint_pose_map[next_path_str] == None :
+                id = self.waypoint_pose_map[next_path_str]
+                pn = self.robot_config.end_effector_id_map[ee_name][id]
+                print "################ pose name: ", pn
+                self.robot_config.moveit_interface.create_joint_plan_to_target(ee_name, self.robot_config.stored_poses[ee_name][pn])
+
         self.robot_config.moveit_interface.create_path_plan(manipulator_name, frame_id, waypoints)
         self.waypoint_plan_valid[ee_id] = True
 
@@ -1203,11 +1182,17 @@ class AffordanceTemplate(object) :
 
     def move_to_waypoint(self, end_effector, next_path_idx) :
         ee_id = self.robot_config.manipulator_id_map[end_effector]
+        ee_name = self.robot_config.get_end_effector_name(ee_id)
         manipulator_name = self.robot_config.get_manipulator(end_effector)
         if self.waypoint_plan_valid[ee_id] :
             r = self.robot_config.moveit_interface.execute_plan(manipulator_name,from_stored=True)
             if not r :
                 rospy.logerr(str("RobotTeleop::move_to_waypoint(mouse) -- failed moveit execution for group: " + manipulator_name + ". re-synching..."))
+
+            r = self.robot_config.moveit_interface.execute_plan(ee_name,from_stored=True)
+            if not r :
+                rospy.logerr(str("RobotTeleop::process_feedback(mouse) -- failed moveit execution for group: " + ee_name + ". re-synching..."))
+
             self.waypoint_index[ee_id] = next_path_idx
             rospy.loginfo(str("setting current waypoint idx: " + str(self.waypoint_index[ee_id])))
             self.waypoint_plan_valid[ee_id] = False
