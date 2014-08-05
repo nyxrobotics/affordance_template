@@ -98,6 +98,8 @@ class AffordanceTemplate(object) :
         self.waypoint_menu_options.append(("Add Waypoint Before", False))
         self.waypoint_menu_options.append(("Add Waypoint After", False))
         self.waypoint_menu_options.append(("Delete Waypoint", False))
+        self.waypoint_menu_options.append(("Move Forward", False))
+        self.waypoint_menu_options.append(("Move Back", False))
 
         self.object_menu_options = []
         self.object_menu_options.append(("Display Next Path Segment", False))
@@ -555,9 +557,25 @@ class AffordanceTemplate(object) :
 
 
     def move_waypoint(self, ee_id, old_id, new_id) :
-        old_name = str(str(ee_id) + "." + str(old_id))
-        new_name = str(str(ee_id) + "." + str(new_id))
+        old_name = str(ee_id) + "." + str(old_id)
+        new_name = str(ee_id) + "." + str(new_id)
         self.create_waypoint(ee_id, new_id, getPoseFromFrame(self.objTwp[old_name]), self.parent_map[old_name], self.waypoint_pose_map[old_name])
+
+    def swap_waypoints(self, ee_id, wp_id1, wp_id2) :
+        wp_name1 = str(ee_id) + "." + str(wp_id1)
+        wp_name2 = str(ee_id) + "." + str(wp_id2)
+
+        objTwp1 = self.objTwp[wp_name1]
+        objTwp2 = self.objTwp[wp_name2]
+
+        parent1 = self.parent_map[wp_name1]
+        parent2 = self.parent_map[wp_name2]
+
+        pose_map1 = self.waypoint_pose_map[wp_name1]
+        pose_map2 = self.waypoint_pose_map[wp_name2]
+
+        self.create_waypoint(ee_id, wp_id1, objTwp2, parent2, pose_map2)
+        self.create_waypoint(ee_id, wp_id2, objTwp1, parent1, pose_map1)
 
     def create_from_structure(self) :
         rospy.loginfo("AffordanceTemplate::create_from_structure() -- loading initial parameters")
@@ -808,9 +826,9 @@ class AffordanceTemplate(object) :
 
                 if handle == self.menu_handles[(feedback.marker_name,"Execute Next Segment")] :
                     if self.waypoint_plan_valid[ee_id] :
-                        
+
                         # move the manipulator (arm)
-                        r = self.robot_config.moveit_interface.execute_plan(manipulator_name,from_stored=True)
+                        r = self.robot_config.moveit_interface.execute_plan(manipulator_name,from_stored=True, wait=False)
                         if not r :
                             rospy.logerr(str("RobotTeleop::process_feedback(mouse) -- failed moveit execution for group: " + manipulator_name + ". re-synching..."))
 
@@ -924,6 +942,9 @@ class AffordanceTemplate(object) :
                 #         self.marker_menus[feedback.marker_name].setCheckState( handle, MenuHandler.CHECKED )
                 #         self.waypoint_auto_execute[ee_id] = True
                 #     rospy.loginfo(str("AffordanceTemplate::process_feedback() -- setting AutoExecute flag for ee[" + str(ee_id) + "] to " + str(self.waypoint_auto_execute[ee_id])))
+
+                if handle == self.menu_handles[(feedback.marker_name,"Move Forward")] :
+                if handle == self.menu_handles[(feedback.marker_name,"Move Back")] :
 
                 # waypoint specific menu options
                 if not feedback.marker_name in self.display_objects :
