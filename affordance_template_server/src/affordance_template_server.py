@@ -510,11 +510,11 @@ class AffordanceTemplateServer(Thread):
                     r.end_effector_pose_map[ee_pid.group] = {}
                 if not ee_pid.group in r.end_effector_id_map :
                     r.end_effector_id_map[ee_pid.group] = {}
-                print "*********************************ee[", ee_pid.group, "] adding group [", ee_pid.name, "] with id [", ee_pid.id, "]" 
+                # print "*********************************ee[", ee_pid.group, "] adding group [", ee_pid.name, "] with id [", ee_pid.id, "]" 
                 r.end_effector_pose_map[ee_pid.group][ee_pid.name] = int(ee_pid.id)
                 r.end_effector_id_map[ee_pid.group][int(ee_pid.id)] = ee_pid.name
 
-            print "done!"
+            # print "done!"
             return r
 
         except :
