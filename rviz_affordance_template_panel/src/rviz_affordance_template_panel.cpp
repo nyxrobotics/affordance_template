@@ -137,6 +137,8 @@ void RVizAffordanceTemplatePanel::setupWidgets() {
     QObject::connect(_ui->step_backwards_button, SIGNAL(clicked()), this, SLOT(step_backward()));
     QObject::connect(_ui->step_forward_button, SIGNAL(clicked()), this, SLOT(step_forward()));
 
+    QObject::connect(_ui->refresh_button, SIGNAL(clicked()), this, SLOT(getAvailableInfo()));
+
 }
 
 void RVizAffordanceTemplatePanel::connect() {
