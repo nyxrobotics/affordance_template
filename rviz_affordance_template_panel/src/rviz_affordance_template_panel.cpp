@@ -712,6 +712,7 @@ void RVizAffordanceTemplatePanel::play_backward() { controls->play_backward(); }
 void RVizAffordanceTemplatePanel::play_forward() { controls->play_forward(); }
 void RVizAffordanceTemplatePanel::step_backward() { controls->step_backward(); }
 void RVizAffordanceTemplatePanel::step_forward() { controls->step_forward(); }
+void RVizAffordanceTemplatePanel::stop() { controls->stop(); }
 
 #include <pluginlib/class_list_macros.h>
 #if ROS_VERSION_MINIMUM(1,9,41)

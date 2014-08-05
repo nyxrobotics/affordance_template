@@ -1,11 +1,12 @@
 #ifndef UTIL_HPP
 #define UTIL_HPP
 
+#include <ros/ros.h>
+
 #include <zmq.hpp>
 #include <vector>
 #include <iostream>
 #include <sstream>
-#include <string>
 #include <kdl/frames.hpp>
 
 using namespace std;
