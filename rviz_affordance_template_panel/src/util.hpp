@@ -5,7 +5,7 @@
 #include <vector>
 #include <iostream>
 #include <sstream>
-#include <algorithm>
+#include <string>
 #include <kdl/frames.hpp>
 
 using namespace std;
