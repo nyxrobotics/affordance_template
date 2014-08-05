@@ -100,6 +100,7 @@ class AffordanceTemplate(object) :
         self.waypoint_menu_options.append(("Delete Waypoint", False))
         self.waypoint_menu_options.append(("Move Forward", False))
         self.waypoint_menu_options.append(("Move Back", False))
+        self.waypoint_menu_options.append(("Test", False))
 
         self.object_menu_options = []
         self.object_menu_options.append(("Display Next Path Segment", False))
@@ -859,6 +860,34 @@ class AffordanceTemplate(object) :
                         rospy.loginfo(str("setting current waypoint idx: " + str(self.waypoint_index[ee_id])))
                         self.waypoint_plan_valid[ee_id] = False
 
+                if handle == self.menu_handles[(feedback.marker_name,"Test")] :
+
+                    for e in range(0,2) :
+                        next_path_idx = (self.waypoint_index[e] + 1) % self.waypoint_max[e]
+                        ee_name = self.robot_config.get_end_effector_name(e)
+                        manipulator_name = self.robot_config.get_manipulator(ee_name)
+                        ee_offset = self.robot_config.manipulator_pose_map[ee_name]
+                        max_idx = self.waypoint_max[e]
+
+                        next_path_str = str(e) + "." + str(next_path_idx)
+                        rospy.loginfo(str("AffordanceTemplate::process_feedback() -- computing path to index[" + str(next_path_str) + "]"))
+                        k = str(next_path_str)
+                        pt = geometry_msgs.msg.PoseStamped()
+                        pt.header = self.server.get(k).header
+                        pt.pose = self.server.get(k).pose
+                        T_goal = getFrameFromPose(pt.pose)
+                        T_offset = getFrameFromPose(ee_offset)
+                        T = T_goal*T_offset
+                        pt.pose = getPoseFromFrame(T)
+                        self.robot_config.moveit_interface.groups[manipulator_name].clear_pose_targets()
+                        self.robot_config.moveit_interface.create_plan_to_target(manipulator_name, pt)
+                        self.waypoint_plan_valid[e] = True
+                        self.waypoint_index[e] = next_path_idx
+
+
+                    r = self.robot_config.moveit_interface.execute_plan("left_arm", wait=False)
+                    r = self.robot_config.moveit_interface.execute_plan("right_arm", wait=False)
+
                 if handle == self.menu_handles[(feedback.marker_name,"Compute Backwards Path")] :
                     state = self.marker_menus[feedback.marker_name].getCheckState( handle )
                     if state == MenuHandler.CHECKED:
@@ -952,6 +981,7 @@ class AffordanceTemplate(object) :
                     if waypoint_id < max_idx :
                         self.swap_waypoints(ee_id, waypoint_id, waypoint_id+1)
                         self.create_from_parameters()
+
                 if handle == self.menu_handles[(feedback.marker_name,"Move Back")] :
                     if waypoint_id > 0:
                         self.swap_waypoints(ee_id, waypoint_id-1, waypoint_id)
