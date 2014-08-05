@@ -50,10 +50,8 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 find_package(orocos_kdl REQUIRED)
-# Find the absolute path to the orocos-kdl library
-find_library(orocos_kdl_LIBRARY NAMES ${orocos_kdl_LIBRARIES} PATHS
-${orocos_kdl_LIBRARY_DIRS} NO_DEFAULT_PATH)
-set(orocos_kdl_LIBRARIES ${orocos_kdl_LIBRARY})
+link_directories(${orocos_kdl_LIBRARY_DIRS})
+find_library(KDL_LIBRARY REQUIRED NAMES orocos-kdl HINTS ${orocos_kdl_LIBRARY_DIRS})
 
 ###################################
 ## catkin specific configuration ##
@@ -66,7 +64,7 @@ set(orocos_kdl_LIBRARIES ${orocos_kdl_LIBRARY})
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   # INCLUDE_DIRS include
-  LIBRARIES rviz_affordance_template_panel
+  LIBRARIES rviz_affordance_template_panel ${KDL_LIBRARY}
   CATKIN_DEPENDS geometry_msgs interactive_markers roscpp roslib rviz affordance_template_server affordance_template_server_protobuf visualization_msgs
   DEPENDS system_lib orocos_kdl
 )
@@ -84,7 +82,6 @@ include_directories(
   ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-
 #set the default path for built executables to the "bin" directory
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 #set the default path for built libraries to the "lib" directory
@@ -94,5 +91,5 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 add_library(${PROJECT_NAME} ${SRC_FILES} ${QT_FORMS_HPP} ${QT_RESOURCES})
 
 # Specify libraries to link a library or executable target against
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${ZeroMQ_LIBRARIES} ${PROTOBUF_LIBRARY} AffordanceTemplateServerCmd)
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${ZeroMQ_LIBRARIES} ${PROTOBUF_LIBRARY} ${orocos_kdl_LIBRARIES} AffordanceTemplateServerCmd)
 
