@@ -574,8 +574,14 @@ class AffordanceTemplate(object) :
         pose_map1 = self.waypoint_pose_map[wp_name1]
         pose_map2 = self.waypoint_pose_map[wp_name2]
 
-        self.create_waypoint(ee_id, wp_id1, objTwp2, parent2, pose_map2)
-        self.create_waypoint(ee_id, wp_id2, objTwp1, parent1, pose_map1)
+        controls1 = self.waypoint_controls[wp_name1]
+        controls2 = self.waypoint_controls[wp_name2]
+
+        origin1 = self.waypoint_origin[wp_name1]
+        origin2 = self.waypoint_origin[wp_name2]
+
+        self.create_waypoint(ee_id, wp_id1, getPoseFromFrame(objTwp2), parent2, controls2, origin2, pose_map2)
+        self.create_waypoint(ee_id, wp_id2, getPoseFromFrame(objTwp1), parent1, controls1, origin1, pose_map1)
 
     def create_from_structure(self) :
         rospy.loginfo("AffordanceTemplate::create_from_structure() -- loading initial parameters")
@@ -902,7 +908,7 @@ class AffordanceTemplate(object) :
                     print "Adding Waypoint after ", waypoint_id, "for end effector: ", ee_id
 
                     new_pose = geometry_msgs.msg.Pose()
-                    first_name = str(str(ee_id) + "." + str(waypoint_id))
+                    first_name = str(ee_id) + "." + str(waypoint_id)
                     pose_first = getPoseFromFrame(self.objTwp[first_name])
                     new_id = waypoint_id+1
                     if waypoint_id < max_idx :
@@ -944,7 +950,13 @@ class AffordanceTemplate(object) :
                 #     rospy.loginfo(str("AffordanceTemplate::process_feedback() -- setting AutoExecute flag for ee[" + str(ee_id) + "] to " + str(self.waypoint_auto_execute[ee_id])))
 
                 if handle == self.menu_handles[(feedback.marker_name,"Move Forward")] :
+                    if waypoint_id < max_idx :
+                        self.swap_waypoints(ee_id, waypoint_id, waypoint_id+1)
+                        self.create_from_parameters()
                 if handle == self.menu_handles[(feedback.marker_name,"Move Back")] :
+                    if waypoint_id > 0:
+                        self.swap_waypoints(ee_id, waypoint_id-1, waypoint_id)
+                        self.create_from_parameters()
 
                 # waypoint specific menu options
                 if not feedback.marker_name in self.display_objects :
