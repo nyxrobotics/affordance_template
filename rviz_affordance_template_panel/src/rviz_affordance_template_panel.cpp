@@ -231,6 +231,8 @@ void RVizAffordanceTemplatePanel::getAvailableInfo() {
         recognitionObjectGraphicsScene->update();
 
         // load stuff for robot config sub panel
+        _ui->robot_select->disconnect(SIGNAL(currentIndexChanged(int)));
+        _ui->end_effector_select->disconnect(SIGNAL(currentIndexChanged(int)));
         _ui->robot_select->clear();
         _ui->end_effector_select->clear();
 
@@ -279,6 +281,8 @@ void RVizAffordanceTemplatePanel::getAvailableInfo() {
         }
 
         setupRobotPanel(robotMap.begin()->first);
+        QObject::connect(_ui->robot_select, SIGNAL(currentIndexChanged(int)), this, SLOT(changeRobot(int)));
+        QObject::connect(_ui->end_effector_select, SIGNAL(currentIndexChanged(int)), this, SLOT(changeEndEffector(int)));
     }
 }
 
@@ -317,7 +321,6 @@ void RVizAffordanceTemplatePanel::setupRobotPanel(const string& key) {
     }
 
     setupEndEffectorConfigPanel((*robotMap[key]).endeffectorMap.begin()->first);
-    QObject::connect(_ui->end_effector_select, SIGNAL(currentIndexChanged(int)), this, SLOT(changeEndEffector(int)));
 
 }
 
