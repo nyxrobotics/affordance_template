@@ -520,7 +520,6 @@ void RVizAffordanceTemplatePanel::loadConfig() {
 
     cout << "ADDED END EFFECTOR POSE MAP TO REQUEST MESSAGE" << endl;
     for (auto& e: (*robotMap[key]).endeffectorPoseMap) {
-        cout << "...adding " << e.second->name() << endl;
         EndEffectorPoseID *pid = ee_pose_map->add_pose_group();
         pid->set_name(e.second->name());
         pid->set_group(e.second->group());
