@@ -556,10 +556,27 @@ class AffordanceTemplate(object) :
             self.waypoints.append(wp_name)
             self.waypoints.sort()
 
+    def remove_waypoint(self, ee_id, wp_id) :
+        max_idx = self.waypoint_max[ee_id]
+        for k in range(wp_id, max_idx) : self.move_waypoint(ee_id, k+1, k)
+        last_wp_name = str(ee_id) + "." + str(self.waypoint_max[ee_id])
+        del self.parent_map[last_wp_name]
+        del self.objTwp[last_wp_name]
+        del self.wpTee[last_wp_name]
+        del self.waypoint_controls[last_wp_name]
+        del self.waypoint_origin[last_wp_name]
+        del self.waypoint_end_effectors[last_wp_name]
+        del self.waypoint_ids[last_wp_name]
+        del self.waypoint_pose_map[last_wp_name]
+        self.waypoint_max[ee_id] -= 1
+        while last_wp_name in self.waypoints: self.waypoints.remove(last_wp_name)
+        self.waypoints.sort()
+        self.remove_interactive_marker(last_wp_name)
+
     def move_waypoint(self, ee_id, old_id, new_id) :
         old_name = str(ee_id) + "." + str(old_id)
         new_name = str(ee_id) + "." + str(new_id)
-        self.create_waypoint(ee_id, new_id, getPoseFromFrame(self.objTwp[old_name]), self.parent_map[old_name], self.waypoint_pose_map[old_name])
+        self.create_waypoint(ee_id, new_id, getPoseFromFrame(self.objTwp[old_name]), self.parent_map[old_name], self.waypoint_controls[old_name], self.waypoint_origin[old_name], self.waypoint_pose_map[old_name])
 
     def swap_waypoints(self, ee_id, wp_id1, wp_id2) :
         wp_name1 = str(ee_id) + "." + str(wp_id1)
@@ -936,7 +953,9 @@ class AffordanceTemplate(object) :
                     self.create_from_parameters()
 
                 if handle == self.menu_handles[(feedback.marker_name,"Delete Waypoint")] :
-                    print "TODO: Deleting Waypoint after ", waypoint_id, "for end effector: ", ee_id
+                    print "TODO: Deleting Waypoint ", waypoint_id, "for end effector: ", ee_id
+                    self.remove_waypoint(ee_id, waypoint_id)
+                    self.create_from_parameters()
 
                 # if handle == self.menu_handles[(feedback.marker_name,"Execute On Move")] :
                 #     state = self.marker_menus[feedback.marker_name].getCheckState( handle )

@@ -347,10 +347,8 @@ class AffordanceTemplateServer(Thread):
         @rtype int
         @returns The Popen object started by the server.
         """
-        try:
-            self.getPackagePath(package)
-        except:
-            print 'No package found: ', package
+        if not self.getPackagePath(package) :
+            rospy.loginfo("AffordanceTemplateServer::startRecognitionProcess(" + object_type + ") No package found: " + package)
             return False
         # should check if launch file exists as well here
 
@@ -390,8 +388,12 @@ class AffordanceTemplateServer(Thread):
     def getPackagePath(self, pkg):
         """Return the path to the ROS package."""
         import rospkg
-        rp = rospkg.RosPack()
-        return rp.get_path(pkg)
+        try:
+            rp = rospkg.RosPack()
+            return rp.get_path(pkg)
+        except:
+            # print 'No package found: ', pkg
+            return False
 
     def getTemplatePath(self):
         """Return the path to the template nodes."""
@@ -447,7 +449,13 @@ class AffordanceTemplateServer(Thread):
             print "found robot yaml: ", r
             rc = RobotConfig()
             rc.load_from_file(r)
-            robot_map[r] = rc
+
+            # check to see if package actually is "installed" and only add it if it is.
+            if self.getPackagePath(rc.config_package) :
+                robot_map[r] = rc
+            else :
+                rospy.loginfo("AffordanceTemplateServer::getRobots(" + r + ") not found, not adding...")
+
         return robot_map
 
     def getRecognitionObjects(self, path):
@@ -510,7 +518,7 @@ class AffordanceTemplateServer(Thread):
                     r.end_effector_pose_map[ee_pid.group] = {}
                 if not ee_pid.group in r.end_effector_id_map :
                     r.end_effector_id_map[ee_pid.group] = {}
-                # print "*********************************ee[", ee_pid.group, "] adding group [", ee_pid.name, "] with id [", ee_pid.id, "]" 
+                # print "*********************************ee[", ee_pid.group, "] adding group [", ee_pid.name, "] with id [", ee_pid.id, "]"
                 r.end_effector_pose_map[ee_pid.group][ee_pid.name] = int(ee_pid.id)
                 r.end_effector_id_map[ee_pid.group][int(ee_pid.id)] = ee_pid.name
 
