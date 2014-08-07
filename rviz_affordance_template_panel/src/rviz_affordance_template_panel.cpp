@@ -123,111 +123,111 @@ void RVizAffordanceTemplatePanel::connect() {
 }
 
 void RVizAffordanceTemplatePanel::getAvailableInfo() {
-    if (connected) {
-        // templates must be exported in plugin_description.xml of affordance_template package
-        Request req;
-        req.set_type(Request::QUERY);
-        Response rep;
-        send_request(req, rep);
-        int yoffset = YOFFSET;
-
-        string package_path = ros::package::getPath("affordance_template_library");
-
-        // set up Affordance Template select menu
-        for (auto& c: rep.affordance_template()) {
-            cout << c.type() << endl;
-            string image_path = resolvePackagePath(c.image_path());
-            QMap<QString, QVariant> waypoint_map;
-            for (auto& wp: c.waypoint_info()) {
-                waypoint_map[QString::number(wp.id())] = QVariant(wp.num_waypoints());
-            }
-            AffordanceSharedPtr pitem(new Affordance(c.type(), image_path, waypoint_map));
-            std::cout << image_path << std::endl;
-            pitem->setPos(XOFFSET, yoffset);
-            yoffset += PIXMAP_SIZE + YOFFSET;
-            affordanceTemplateGraphicsScene->addItem(pitem.get());
-            addAffordance(pitem);
-        }
-        cout << "setting up addAffordanceDisplayItem callback" << endl;
-        QObject::connect(affordanceTemplateGraphicsScene, SIGNAL(selectionChanged()), this, SLOT(addAffordanceDisplayItem()));
-        affordanceTemplateGraphicsScene->update();
-
-        // set up Recognition Object select menu
-        for (auto& c: rep.recognition_object()) {
-            cout << c.type() << endl;
-            cout << c.launch_file() << endl;
-            cout << c.package() << endl;
-            cout << c.image_path() << endl;
-            cout << c.topic() << endl;
-            string image_path = resolvePackagePath(c.image_path());
-            RecognitionObjectSharedPtr pitem(new RecognitionObject(c.type(), c.launch_file(), c.package(), image_path));
-            cout << image_path << endl;
-            pitem->setPos(XOFFSET, yoffset);
-            yoffset += PIXMAP_SIZE + YOFFSET;
-            recognitionObjectGraphicsScene->addItem(pitem.get());
-            addRecognitionObject(pitem);
-        }
-        cout << "setting up addObjectDisplayItem callback" << endl;
-        QObject::connect(recognitionObjectGraphicsScene, SIGNAL(selectionChanged()), this, SLOT(addObjectDisplayItem()));
-        recognitionObjectGraphicsScene->update();
-
-        // load stuff for robot config sub panel
-        _ui->robot_select->disconnect(SIGNAL(currentIndexChanged(int)));
-        _ui->end_effector_select->disconnect(SIGNAL(currentIndexChanged(int)));
-        _ui->robot_select->clear();
-        _ui->end_effector_select->clear();
-
-        for (auto& r: rep.robot()) {
-
-            RobotConfigSharedPtr pitem(new RobotConfig(r.filename()));
-            pitem->uid(r.filename());
-            pitem->name(r.name());
-            pitem->moveit_config_package(r.moveit_config_package());
-            pitem->frame_id(r.frame_id());
-
-            vector<float> root_offset(7);
-            root_offset[0] = (float)(r.root_offset().position().x());
-            root_offset[1] = (float)(r.root_offset().position().y());
-            root_offset[2] = (float)(r.root_offset().position().z());
-            root_offset[3] = (float)(r.root_offset().orientation().x());
-            root_offset[4] = (float)(r.root_offset().orientation().y());
-            root_offset[5] = (float)(r.root_offset().orientation().z());
-            root_offset[6] = (float)(r.root_offset().orientation().w());
-            pitem->root_offset(root_offset);
-
-            for (auto& e: r.end_effectors().end_effector()) {
-                EndEffectorConfigSharedPtr eitem(new EndEffectorConfig(e.name()));
-                eitem->id(e.id());
-                vector<float> pose_offset(7);
-                pose_offset[0] = (float)(e.pose_offset().position().x());
-                pose_offset[1] = (float)(e.pose_offset().position().y());
-                pose_offset[2] = (float)(e.pose_offset().position().z());
-                pose_offset[3] = (float)(e.pose_offset().orientation().x());
-                pose_offset[4] = (float)(e.pose_offset().orientation().y());
-                pose_offset[5] = (float)(e.pose_offset().orientation().z());
-                pose_offset[6] = (float)(e.pose_offset().orientation().w());
-                eitem->pose_offset(pose_offset);
-                pitem->endeffectorMap[(*eitem).name()] = eitem;
-            }
-            for (auto& p: r.end_effector_pose_ids().pose_group()) {
-                EndEffectorPoseIDConfigSharedPtr piditem(new EndEffectorPoseConfig(p.name()));
-                piditem->id(p.id());
-                piditem->group(p.group());
-                pitem->endeffectorPoseMap[(*piditem).name()] = piditem;
-            }
-
-            addRobot(pitem);
-
-            _ui->robot_select->addItem(QString(pitem->uid().c_str()));
-        }
-
-        setupRobotPanel(robotMap.begin()->first);
-        QObject::connect(_ui->robot_select, SIGNAL(currentIndexChanged(int)), this, SLOT(changeRobot(int)));
-        QObject::connect(_ui->end_effector_select, SIGNAL(currentIndexChanged(int)), this, SLOT(changeEndEffector(int)));
-
-        // set Controls
-        controls->setRobotMap(robotMap);
+    if (!connected) {
+        return;
     }
+
+    // templates must be exported in plugin_description.xml of affordance_template package
+    Request req;
+    req.set_type(Request::QUERY);
+    Response rep;
+    send_request(req, rep);
+    int yoffset = YOFFSET;
+
+    // set up Affordance Template select menu
+    for (auto& c: rep.affordance_template()) {
+        cout << c.type() << endl;
+        string image_path = util::resolvePackagePath(c.image_path());
+        QMap<QString, QVariant> waypoint_map;
+        for (auto& wp: c.waypoint_info()) {
+            waypoint_map[QString::number(wp.id())] = QVariant(wp.num_waypoints());
+        }
+        AffordanceSharedPtr pitem(new Affordance(c.type(), image_path, waypoint_map));
+        std::cout << image_path << std::endl;
+        pitem->setPos(XOFFSET, yoffset);
+        yoffset += PIXMAP_SIZE + YOFFSET;
+        affordanceTemplateGraphicsScene->addItem(pitem.get());
+        addAffordance(pitem);
+    }
+    cout << "setting up addAffordanceDisplayItem callback" << endl;
+    QObject::connect(affordanceTemplateGraphicsScene, SIGNAL(selectionChanged()), this, SLOT(addAffordanceDisplayItem()));
+    affordanceTemplateGraphicsScene->update();
+
+    // set up Recognition Object select menu
+    for (auto& c: rep.recognition_object()) {
+        cout << c.type() << endl;
+        cout << c.launch_file() << endl;
+        cout << c.package() << endl;
+        cout << c.image_path() << endl;
+        cout << c.topic() << endl;
+        string image_path = util::resolvePackagePath(c.image_path());
+        RecognitionObjectSharedPtr pitem(new RecognitionObject(c.type(), c.launch_file(), c.package(), image_path));
+        cout << image_path << endl;
+        pitem->setPos(XOFFSET, yoffset);
+        yoffset += PIXMAP_SIZE + YOFFSET;
+        recognitionObjectGraphicsScene->addItem(pitem.get());
+        addRecognitionObject(pitem);
+    }
+    cout << "setting up addObjectDisplayItem callback" << endl;
+    QObject::connect(recognitionObjectGraphicsScene, SIGNAL(selectionChanged()), this, SLOT(addObjectDisplayItem()));
+    recognitionObjectGraphicsScene->update();
+
+    // load stuff for robot config sub panel
+    _ui->robot_select->disconnect(SIGNAL(currentIndexChanged(int)));
+    _ui->end_effector_select->disconnect(SIGNAL(currentIndexChanged(int)));
+    _ui->robot_select->clear();
+    _ui->end_effector_select->clear();
+
+    for (auto& r: rep.robot()) {
+
+        RobotConfigSharedPtr pitem(new RobotConfig(r.filename()));
+        pitem->uid(r.filename());
+        pitem->name(r.name());
+        pitem->moveit_config_package(r.moveit_config_package());
+        pitem->frame_id(r.frame_id());
+
+        vector<float> root_offset(7);
+        root_offset[0] = (float)(r.root_offset().position().x());
+        root_offset[1] = (float)(r.root_offset().position().y());
+        root_offset[2] = (float)(r.root_offset().position().z());
+        root_offset[3] = (float)(r.root_offset().orientation().x());
+        root_offset[4] = (float)(r.root_offset().orientation().y());
+        root_offset[5] = (float)(r.root_offset().orientation().z());
+        root_offset[6] = (float)(r.root_offset().orientation().w());
+        pitem->root_offset(root_offset);
+
+        for (auto& e: r.end_effectors().end_effector()) {
+            EndEffectorConfigSharedPtr eitem(new EndEffectorConfig(e.name()));
+            eitem->id(e.id());
+            vector<float> pose_offset(7);
+            pose_offset[0] = (float)(e.pose_offset().position().x());
+            pose_offset[1] = (float)(e.pose_offset().position().y());
+            pose_offset[2] = (float)(e.pose_offset().position().z());
+            pose_offset[3] = (float)(e.pose_offset().orientation().x());
+            pose_offset[4] = (float)(e.pose_offset().orientation().y());
+            pose_offset[5] = (float)(e.pose_offset().orientation().z());
+            pose_offset[6] = (float)(e.pose_offset().orientation().w());
+            eitem->pose_offset(pose_offset);
+            pitem->endeffectorMap[(*eitem).name()] = eitem;
+        }
+        for (auto& p: r.end_effector_pose_ids().pose_group()) {
+            EndEffectorPoseIDConfigSharedPtr piditem(new EndEffectorPoseConfig(p.name()));
+            piditem->id(p.id());
+            piditem->group(p.group());
+            pitem->endeffectorPoseMap[(*piditem).name()] = piditem;
+        }
+
+        addRobot(pitem);
+
+        _ui->robot_select->addItem(QString(pitem->uid().c_str()));
+    }
+
+    setupRobotPanel(robotMap.begin()->first);
+    QObject::connect(_ui->robot_select, SIGNAL(currentIndexChanged(int)), this, SLOT(changeRobot(int)));
+    QObject::connect(_ui->end_effector_select, SIGNAL(currentIndexChanged(int)), this, SLOT(changeEndEffector(int)));
+
+    // set Controls
+    controls->setRobotMap(robotMap);
 }
 
 void RVizAffordanceTemplatePanel::setupRobotPanel(const string& key) {
@@ -300,18 +300,6 @@ void RVizAffordanceTemplatePanel::changeRobot(int id) {
 void RVizAffordanceTemplatePanel::changeEndEffector(int id) {
     QString ee = _ui->end_effector_select->itemText(id);
     setupEndEffectorConfigPanel(ee.toUtf8().constData());
-}
-
-string RVizAffordanceTemplatePanel::resolvePackagePath(const string& str) {
-  string package_prefix_str ("package://");
-  size_t found = str.find(package_prefix_str);
-  if (found==string::npos) return str;
-  string sub_str = str.substr(package_prefix_str.length(),str.length()-1);
-  string delimiter = "/";
-  string package_name = sub_str.substr(0, sub_str.find(delimiter));
-  string package_path = ros::package::getPath(package_name);
-  string file_path = sub_str.substr(package_name.length(),sub_str.length()-1);
-  return package_path + file_path;
 }
 
 void RVizAffordanceTemplatePanel::removeAffordanceTemplates() {
@@ -580,35 +568,11 @@ void RVizAffordanceTemplatePanel::addObjectDisplayItem() {
 
 
 void RVizAffordanceTemplatePanel::send_request(const Request& request, Response& response, long timeout) {
-    if (connected) {
-        try {
-            string req;
-            request.SerializeToString(&req);
-
-            zmq::message_t msg(req.size());
-            memcpy((void*) msg.data(), req.data(), req.size());
-            socket->send(msg);
-
-            string rep;
-            zmq::pollitem_t poller[] = { {*socket, 0, ZMQ_POLLIN, 0} };
-            zmq::poll(&poller[0], 1, timeout);
-
-            // poll for 1 second
-            if (poller[0].revents & ZMQ_POLLIN) {
-
-                zmq::message_t reply;
-                socket->recv(&reply);
-
-                response.ParseFromArray(reply.data(), reply.size());
-
-            } else {
-                cout << "RVizAffordanceTemplatePanel::send_request() disconnecting" << endl;
-                disconnect();
-            }
-        } catch (const zmq::error_t& ex) {
-            cerr << ex.what() << endl;
-        }
+    if (!connected) {
+        return;
     }
+
+    bool success = util::send_request(socket, request, response, timeout);
 }
 
 bool RVizAffordanceTemplatePanel::addAffordance(const AffordanceSharedPtr& obj) {
@@ -703,15 +667,6 @@ std::string RVizAffordanceTemplatePanel::getRobotFromDescription() {
     }
     return robot;
 }
-
-void RVizAffordanceTemplatePanel::go_to_start() { controls->send_command(Command::GO_TO_START); }
-void RVizAffordanceTemplatePanel::go_to_end() { controls->send_command(Command::GO_TO_END); }
-void RVizAffordanceTemplatePanel::pause() { controls->send_command(Command::PAUSE); }
-void RVizAffordanceTemplatePanel::play_backward() { controls->send_command(Command::PLAY_BACKWARD); }
-void RVizAffordanceTemplatePanel::play_forward() { controls->send_command(Command::PLAY_FORWARD); }
-void RVizAffordanceTemplatePanel::step_backward() { controls->send_command(Command::STEP_BACKWARD); }
-void RVizAffordanceTemplatePanel::step_forward() { controls->send_command(Command::STEP_FORWARD); }
-void RVizAffordanceTemplatePanel::stop() { controls->send_command(Command::STOP); }
 
 #include <pluginlib/class_list_macros.h>
 #if ROS_VERSION_MINIMUM(1,9,41)

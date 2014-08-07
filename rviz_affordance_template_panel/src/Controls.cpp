@@ -60,33 +60,7 @@ void Controls::send_request(const Request& request, Response& response, long tim
         return;
     }
 
-    try {
-        string req;
-        request.SerializeToString(&req);
-
-        zmq::message_t msg(req.size());
-        memcpy((void*) msg.data(), req.data(), req.size());
-        socket->send(msg);
-
-        string rep;
-        zmq::pollitem_t poller[] = { {*socket, 0, ZMQ_POLLIN, 0} };
-        zmq::poll(&poller[0], 1, timeout);
-
-        // poll for 1 second
-        if (poller[0].revents & ZMQ_POLLIN) {
-
-            zmq::message_t reply;
-            socket->recv(&reply);
-
-            response.ParseFromArray(reply.data(), reply.size());
-
-        } else {
-            cout << "RVizAffordanceTemplatePanel::send_request() disconnecting" << endl;
-            // disconnect();
-        }
-    } catch (const zmq::error_t& ex) {
-        cerr << ex.what() << endl;
-    }
+    bool success = util::send_request(socket, request, response, timeout);
 }
 
 vector<string> Controls::getSelectedEndEffectors() {

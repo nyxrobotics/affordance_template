@@ -90,35 +90,35 @@ namespace rviz_affordance_template_panel
 
         /** \brief Go To Start Command.
          */
-        void go_to_start();
+        void go_to_start() { controls->send_command(Command::GO_TO_START); };
 
         // /** \brief Go To End Command.
         //  */
-        void go_to_end();
+        void go_to_end() { controls->send_command(Command::GO_TO_END); };
 
         // /** \brief Pause Command.
         //  */
-        void pause();
+        void pause() { controls->send_command(Command::PAUSE); };
 
         // /** \brief Stop Command.
         //  */
-        void stop();
+        void stop() { controls->send_command(Command::STOP); };
 
         // * \brief Play Backward Command.
 
-        void play_backward();
+        void play_backward() { controls->send_command(Command::PLAY_BACKWARD); };
 
         // /** \brief Play Forward Command.
         //  */
-        void play_forward();
+        void play_forward() { controls->send_command(Command::PLAY_FORWARD); };
 
         // /** \brief Step Backward Command.
         //  */
-        void step_backward();
+        void step_backward() { controls->send_command(Command::STEP_BACKWARD); };
 
         // /** \brief Step Forward Command.
         //  */
-        void step_forward();
+        void step_forward() { controls->send_command(Command::STEP_FORWARD); };
 
 
     private:
@@ -156,8 +156,6 @@ namespace rviz_affordance_template_panel
         std::vector<std::string> getSelectedEndEffectors();
 
         void send_request(const Request& request, Response& response, long timeout=1000000);
-        std::string resolvePackagePath(const string& str);
-
 
         // GUI Widgets
         QGraphicsScene* affordanceTemplateGraphicsScene;
