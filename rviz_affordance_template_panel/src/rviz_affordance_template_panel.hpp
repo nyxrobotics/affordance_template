@@ -60,9 +60,9 @@ namespace rviz_affordance_template_panel
          */
         void getRunningItems();
 
-        /** \brief Connect/Disconnect to the template server.
+        /** \brief Connect/Disconnect from the Template server.
          */
-        void connect();
+        void connect_callback();
 
         /** \brief Load Robot Config.
          */
@@ -90,40 +90,42 @@ namespace rviz_affordance_template_panel
 
         /** \brief Go To Start Command.
          */
-        void go_to_start() { controls->send_command(Command::GO_TO_START); };
+        void go_to_start() { _controls->send_command(Command::GO_TO_START); };
 
         // /** \brief Go To End Command.
         //  */
-        void go_to_end() { controls->send_command(Command::GO_TO_END); };
+        void go_to_end() { _controls->send_command(Command::GO_TO_END); };
 
         // /** \brief Pause Command.
         //  */
-        void pause() { controls->send_command(Command::PAUSE); };
+        void pause() { _controls->send_command(Command::PAUSE); };
 
         // /** \brief Stop Command.
         //  */
-        void stop() { controls->send_command(Command::STOP); };
+        void stop() { _controls->send_command(Command::STOP); };
 
         // * \brief Play Backward Command.
 
-        void play_backward() { controls->send_command(Command::PLAY_BACKWARD); };
+        void play_backward() { _controls->send_command(Command::PLAY_BACKWARD); };
 
         // /** \brief Play Forward Command.
         //  */
-        void play_forward() { controls->send_command(Command::PLAY_FORWARD); };
+        void play_forward() { _controls->send_command(Command::PLAY_FORWARD); };
 
         // /** \brief Step Backward Command.
         //  */
-        void step_backward() { controls->send_command(Command::STEP_BACKWARD); };
+        void step_backward() { _controls->send_command(Command::STEP_BACKWARD); };
 
         // /** \brief Step Forward Command.
         //  */
-        void step_forward() { controls->send_command(Command::STEP_FORWARD); };
+        void step_forward() { _controls->send_command(Command::STEP_FORWARD); };
 
 
     private:
-        // Pointer to ui.
         Ui::RVizAffordanceTemplatePanel* _ui;
+
+        void connect();
+        void disconnect();
 
         void setupWidgets();
         void setupRobotPanel(const string& key);
@@ -158,25 +160,24 @@ namespace rviz_affordance_template_panel
         void send_request(const Request& request, Response& response, long timeout=1000000);
 
         // GUI Widgets
-        QGraphicsScene* affordanceTemplateGraphicsScene;
-        QGraphicsScene* recognitionObjectGraphicsScene;
+        QGraphicsScene* _affordanceTemplateGraphicsScene;
+        QGraphicsScene* _recognitionObjectGraphicsScene;
 
         // map to track instantiated object templates
-        std::map<std::string, AffordanceSharedPtr> affordanceMap;
-        std::map<std::string, RecognitionObjectSharedPtr> recognitionObjectMap;
-        std::map<std::string, RobotConfigSharedPtr> robotMap;
-        std::string descriptionRobot;
-        std::string robot_name;
-        bool force_load;
+        std::map<std::string, AffordanceSharedPtr> _affordanceMap;
+        std::map<std::string, RecognitionObjectSharedPtr> _recognitionObjectMap;
+        std::map<std::string, RobotConfigSharedPtr> _robotMap;
+        std::string _descriptionRobot;
+        std::string _robot_name;
 
         // zmq
-        zmq::context_t context;
-        zmq::socket_t* socket;
-        bool connected;
+        zmq::context_t _context;
+        zmq::socket_t* _socket;
+        bool _connected;
 
         ros::NodeHandle _nh;
 
-        ControlsSharedPtr controls;
+        ControlsSharedPtr _controls;
     };
 }
 #endif // RVIZ_AFFORDANCE_TEMPLATE_PANEL_HPP
