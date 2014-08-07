@@ -82,7 +82,6 @@ void RVizAffordanceTemplatePanel::connect_callback() {
     } else {
         connect();
     }
-    controls_->setConnected(connected_);
 }
 
 void RVizAffordanceTemplatePanel::disconnect() {
@@ -103,6 +102,7 @@ void RVizAffordanceTemplatePanel::disconnect() {
         ui_->server_connection_label->setStyleSheet("QLabel {color: red;}");
         ui_->connect_button->setText("Connect");
     }
+    controls_->setConnected(connected_);
 }
 
 void RVizAffordanceTemplatePanel::connect() {
@@ -126,6 +126,7 @@ void RVizAffordanceTemplatePanel::connect() {
         ui_->server_connection_label->setStyleSheet("QLabel {color: green;}");
         ui_->connect_button->setText("Disconnect");
     }
+    controls_->setConnected(connected_);
 }
 
 void RVizAffordanceTemplatePanel::getAvailableInfo() {
