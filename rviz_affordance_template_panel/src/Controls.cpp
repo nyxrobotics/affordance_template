@@ -5,12 +5,32 @@ using namespace std;
 
 Controls::Controls(Ui::RVizAffordanceTemplatePanel* ui) :
     connected(false),
+    timeout(10000000),
     _ui(ui) {}
 
-void Controls::go_to_start() {
-    if (!connected) {
-        return;
+void Controls::update_table(const Response& rep) {
+    for (auto& c: rep.waypoint_info()) {
+        for (auto& e: (*robotMap[robot_name]).endeffectorMap) {
+
+            if (e.second->id() != c.id()) {
+                continue;
+            }
+
+            for (int r=0; r<_ui->end_effector_table->rowCount(); r++ ) {
+
+                if (e.second->name() != _ui->end_effector_table->item(r,0)->text().toStdString()) {
+                    continue;
+                }
+
+                QTableWidgetItem* item = _ui->end_effector_table->item(r, 1);
+                item->setText(QString::number(c.num_waypoints()));
+            }
+
+        }
     }
+}
+
+void Controls::send_command(Command_CommandType command_type) {
 
     Request req;
     req.set_type(Request::COMMAND);
@@ -22,311 +42,18 @@ void Controls::go_to_start() {
     temp->set_id(atoi(stuff[1].c_str()));
 
     Command *cmd = req.mutable_command();
-    cmd->set_type(Command::GO_TO_START);
+    cmd->set_type(command_type);
     cmd->set_steps(_ui->num_steps->text().toInt());
     cmd->set_execute(_ui->execute_on_plan->isChecked());
     vector<string> ee_list = getSelectedEndEffectors();
     for(int i=0; i<ee_list.size(); i++) {
         cmd->add_end_effector(ee_list[i]);
     }
+
     Response rep;
-    send_request(req, rep, 10000000);
-    cout << "got response" << endl;
-    for (auto& c: rep.waypoint_info()) {
-        cout << c.id() << endl;
-        cout << c.num_waypoints() << endl;
-        for (auto& e: (*robotMap[robot_name]).endeffectorMap) {
-            if (e.second->id() == c.id()) {
-                for (int r=0; r<_ui->end_effector_table->rowCount(); r++ ) {
-                    if (e.second->name() == _ui->end_effector_table->item(r,0)->text().toStdString() ) {
-                        _ui->end_effector_table->setItem(r,1,new QTableWidgetItem(QString::number(c.num_waypoints())));
-                    }
-                }
-            }
-        }
-    }
+    send_request(req, rep, timeout);
+    update_table(rep);
 }
-
-void Controls::go_to_end() {
-    if (!connected) {
-        return;
-    }
-
-    Request req;
-    req.set_type(Request::COMMAND);
-
-    string key = _ui->control_template_box->currentText().toUtf8().constData();
-    vector<string> stuff = util::split(key, ':');
-    Template* temp(req.add_affordance_template());
-    temp->set_type(stuff[0]);
-    temp->set_id(atoi(stuff[1].c_str()));
-
-    Command *cmd = req.mutable_command();
-    cmd->set_type(Command::GO_TO_END);
-    cmd->set_steps(_ui->num_steps->text().toInt());
-    cmd->set_execute(_ui->execute_on_plan->isChecked());
-    vector<string> ee_list = getSelectedEndEffectors();
-    for(int i=0; i<ee_list.size(); i++) {
-        cmd->add_end_effector(ee_list[i]);
-    }
-    Response rep;
-    send_request(req, rep, 10000000);
-    cout << "got response" << endl;
-    for (auto& c: rep.waypoint_info()) {
-        cout << c.id() << endl;
-        cout << c.num_waypoints() << endl;
-        for (auto& e: (*robotMap[robot_name]).endeffectorMap) {
-            if (e.second->id() == c.id()) {
-                for (int r=0; r<_ui->end_effector_table->rowCount(); r++ ) {
-                    if (e.second->name() == _ui->end_effector_table->item(r,0)->text().toStdString() ) {
-                        _ui->end_effector_table->setItem(r,1,new QTableWidgetItem(QString::number(c.num_waypoints())));
-                    }
-                }
-            }
-        }
-    }
-}
-
-void Controls::pause() {
-    if (!connected) {
-        return;
-    }
-
-    Request req;
-    req.set_type(Request::COMMAND);
-
-    string key = _ui->control_template_box->currentText().toUtf8().constData();
-    vector<string> stuff = util::split(key, ':');
-    Template* temp(req.add_affordance_template());
-    temp->set_type(stuff[0]);
-    temp->set_id(atoi(stuff[1].c_str()));
-
-    Command *cmd = req.mutable_command();
-    cmd->set_type(Command::PAUSE);
-    cmd->set_steps(_ui->num_steps->text().toInt());
-    cmd->set_execute(_ui->execute_on_plan->isChecked());
-    vector<string> ee_list = getSelectedEndEffectors();
-    for(int i=0; i<ee_list.size(); i++) {
-        cmd->add_end_effector(ee_list[i]);
-    }
-    Response rep;
-    send_request(req, rep, 10000000);
-    cout << "got response" << endl;
-    for (auto& c: rep.waypoint_info()) {
-        cout << c.id() << endl;
-        cout << c.num_waypoints() << endl;
-        for (auto& e: (*robotMap[robot_name]).endeffectorMap) {
-            if (e.second->id() == c.id()) {
-                for (int r=0; r<_ui->end_effector_table->rowCount(); r++ ) {
-                    if (e.second->name() == _ui->end_effector_table->item(r,0)->text().toStdString() ) {
-                        _ui->end_effector_table->setItem(r,1,new QTableWidgetItem(QString::number(c.num_waypoints())));
-                    }
-                }
-            }
-        }
-    }
-}
-
-void Controls::stop() {
-    if (!connected) {
-        return;
-    }
-
-    Request req;
-    req.set_type(Request::COMMAND);
-
-    string key = _ui->control_template_box->currentText().toUtf8().constData();
-    vector<string> stuff = util::split(key, ':');
-    Template* temp(req.add_affordance_template());
-    temp->set_type(stuff[0]);
-    temp->set_id(atoi(stuff[1].c_str()));
-
-    Command *cmd = req.mutable_command();
-    cmd->set_type(Command::STOP);
-    cmd->set_steps(_ui->num_steps->text().toInt());
-    cmd->set_execute(_ui->execute_on_plan->isChecked());
-    vector<string> ee_list = getSelectedEndEffectors();
-    for(int i=0; i<ee_list.size(); i++) {
-        cmd->add_end_effector(ee_list[i]);
-    }
-    Response rep;
-    send_request(req, rep, 10000000);
-    cout << "got response" << endl;
-    for (auto& c: rep.waypoint_info()) {
-        cout << c.id() << endl;
-        cout << c.num_waypoints() << endl;
-        for (auto& e: (*robotMap[robot_name]).endeffectorMap) {
-            if (e.second->id() == c.id()) {
-                for (int r=0; r<_ui->end_effector_table->rowCount(); r++ ) {
-                    if (e.second->name() == _ui->end_effector_table->item(r,0)->text().toStdString() ) {
-                        _ui->end_effector_table->setItem(r,1,new QTableWidgetItem(QString::number(c.num_waypoints())));
-                    }
-                }
-            }
-        }
-    }
-}
-
-
-void Controls::play_backward() {
-    if (!connected) {
-        return;
-    }
-
-    Request req;
-    req.set_type(Request::COMMAND);
-
-    string key = _ui->control_template_box->currentText().toUtf8().constData();
-    vector<string> stuff = util::split(key, ':');
-    Template* temp(req.add_affordance_template());
-    temp->set_type(stuff[0]);
-    temp->set_id(atoi(stuff[1].c_str()));
-
-    Command *cmd = req.mutable_command();
-    cmd->set_type(Command::PLAY_BACKWARD);
-    cmd->set_steps(_ui->num_steps->text().toInt());
-    cmd->set_execute(_ui->execute_on_plan->isChecked());
-    vector<string> ee_list = getSelectedEndEffectors();
-    for(int i=0; i<ee_list.size(); i++) {
-        cmd->add_end_effector(ee_list[i]);
-    }
-    Response rep;
-    send_request(req, rep, 10000000);
-    cout << "got response" << endl;
-    for (auto& c: rep.waypoint_info()) {
-        cout << c.id() << endl;
-        cout << c.num_waypoints() << endl;
-        for (auto& e: (*robotMap[robot_name]).endeffectorMap) {
-            if (e.second->id() == c.id()) {
-                for (int r=0; r<_ui->end_effector_table->rowCount(); r++ ) {
-                    if (e.second->name() == _ui->end_effector_table->item(r,0)->text().toStdString() ) {
-                        _ui->end_effector_table->setItem(r,1,new QTableWidgetItem(QString::number(c.num_waypoints())));
-                    }
-                }
-            }
-        }
-    }
-}
-
-void Controls::play_forward() {
-    if (!connected) {
-        return;
-    }
-
-    Request req;
-    req.set_type(Request::COMMAND);
-
-    string key = _ui->control_template_box->currentText().toUtf8().constData();
-    vector<string> stuff = util::split(key, ':');
-    Template* temp(req.add_affordance_template());
-    temp->set_type(stuff[0]);
-    temp->set_id(atoi(stuff[1].c_str()));
-    Command *cmd = req.mutable_command();
-
-    cmd->set_type(Command::PLAY_FORWARD);
-    cmd->set_steps(_ui->num_steps->text().toInt());
-    cmd->set_execute(_ui->execute_on_plan->isChecked());
-    vector<string> ee_list = getSelectedEndEffectors();
-    for(int i=0; i<ee_list.size(); i++) {
-        cmd->add_end_effector(ee_list[i]);
-    }
-    Response rep;
-    send_request(req, rep, 10000000);
-    cout << "got response" << endl;
-    for (auto& c: rep.waypoint_info()) {
-        cout << c.id() << endl;
-        cout << c.num_waypoints() << endl;
-        for (auto& e: (*robotMap[robot_name]).endeffectorMap) {
-            if (e.second->id() == c.id()) {
-                for (int r=0; r<_ui->end_effector_table->rowCount(); r++ ) {
-                    if (e.second->name() == _ui->end_effector_table->item(r,0)->text().toStdString() ) {
-                        _ui->end_effector_table->setItem(r,1,new QTableWidgetItem(QString::number(c.num_waypoints())));
-                    }
-                }
-            }
-        }
-    }
-}
-
-void Controls::step_backward() {
-    if (!connected) {
-        return;
-    }
-
-    Request req;
-    req.set_type(Request::COMMAND);
-
-    string key = _ui->control_template_box->currentText().toUtf8().constData();
-    vector<string> stuff = util::split(key, ':');
-    Template* temp(req.add_affordance_template());
-    temp->set_type(stuff[0]);
-    temp->set_id(atoi(stuff[1].c_str()));
-    Command *cmd = req.mutable_command();
-
-    cmd->set_type(Command::STEP_BACKWARD);
-    cmd->set_steps(_ui->num_steps->text().toInt());
-    cmd->set_execute(_ui->execute_on_plan->isChecked());
-    vector<string> ee_list = getSelectedEndEffectors();
-    for(int i=0; i<ee_list.size(); i++) {
-        cmd->add_end_effector(ee_list[i]);
-    }
-    Response rep;
-    send_request(req, rep, 10000000);
-    cout << "got response" << endl;
-    for (auto& c: rep.waypoint_info()) {
-        cout << c.id() << endl;
-        cout << c.num_waypoints() << endl;
-        for (auto& e: (*robotMap[robot_name]).endeffectorMap) {
-            if (e.second->id() == c.id()) {
-                for (int r=0; r<_ui->end_effector_table->rowCount(); r++ ) {
-                    if (e.second->name() == _ui->end_effector_table->item(r,0)->text().toStdString() ) {
-                        _ui->end_effector_table->setItem(r,1,new QTableWidgetItem(QString::number(c.num_waypoints())));
-                    }
-                }
-            }
-        }
-    }
-}
-
-void Controls::step_forward() {
-    if (!connected) {
-        return;
-    }
-
-    Request req;
-    req.set_type(Request::COMMAND);
-
-    string key = _ui->control_template_box->currentText().toUtf8().constData();
-    vector<string> stuff = util::split(key, ':');
-    Template* temp(req.add_affordance_template());
-    temp->set_type(stuff[0]);
-    temp->set_id(atoi(stuff[1].c_str()));
-
-    Command *cmd = req.mutable_command();
-    cmd->set_type(Command::STEP_FORWARD);
-    cmd->set_steps(_ui->num_steps->text().toInt());
-    cmd->set_execute(_ui->execute_on_plan->isChecked());
-    vector<string> ee_list = getSelectedEndEffectors();
-    for(int i=0; i<ee_list.size(); i++) {
-        cmd->add_end_effector(ee_list[i]);
-    }
-    Response rep;
-    send_request(req, rep, 10000000);
-    for (auto& c: rep.waypoint_info()) {
-        cout << "end effector: " << c.id() << endl;
-        cout << "now at waypoint : " << (c.num_waypoints()+1) << endl;
-        for (auto& e: (*robotMap[robot_name]).endeffectorMap) {
-            if (e.second->id() == c.id()) {
-                for (int r=0; r<_ui->end_effector_table->rowCount(); r++ ) {
-                    if (e.second->name() == _ui->end_effector_table->item(r,0)->text().toStdString() ) {
-                        _ui->end_effector_table->setItem(r,1,new QTableWidgetItem(QString::number(c.num_waypoints()+1)));
-                    }
-                }
-            }
-        }
-    }
-}
-
 
 void Controls::send_request(const Request& request, Response& response, long timeout) {
     if (!connected) {

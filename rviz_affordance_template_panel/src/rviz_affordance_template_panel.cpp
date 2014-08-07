@@ -705,14 +705,14 @@ std::string RVizAffordanceTemplatePanel::getRobotFromDescription() {
     return robot;
 }
 
-void RVizAffordanceTemplatePanel::go_to_start() { controls->go_to_start(); }
-void RVizAffordanceTemplatePanel::go_to_end() { controls->go_to_end(); }
-void RVizAffordanceTemplatePanel::pause() { controls->pause(); }
-void RVizAffordanceTemplatePanel::play_backward() { controls->play_backward(); }
-void RVizAffordanceTemplatePanel::play_forward() { controls->play_forward(); }
-void RVizAffordanceTemplatePanel::step_backward() { controls->step_backward(); }
-void RVizAffordanceTemplatePanel::step_forward() { controls->step_forward(); }
-void RVizAffordanceTemplatePanel::stop() { controls->stop(); }
+void RVizAffordanceTemplatePanel::go_to_start() { controls->send_command(Command::GO_TO_START); }
+void RVizAffordanceTemplatePanel::go_to_end() { controls->send_command(Command::GO_TO_END); }
+void RVizAffordanceTemplatePanel::pause() { controls->send_command(Command::PAUSE); }
+void RVizAffordanceTemplatePanel::play_backward() { controls->send_command(Command::PLAY_BACKWARD); }
+void RVizAffordanceTemplatePanel::play_forward() { controls->send_command(Command::PLAY_FORWARD); }
+void RVizAffordanceTemplatePanel::step_backward() { controls->send_command(Command::STEP_BACKWARD); }
+void RVizAffordanceTemplatePanel::step_forward() { controls->send_command(Command::STEP_FORWARD); }
+void RVizAffordanceTemplatePanel::stop() { controls->send_command(Command::STOP); }
 
 #include <pluginlib/class_list_macros.h>
 #if ROS_VERSION_MINIMUM(1,9,41)
