@@ -90,39 +90,39 @@ namespace rviz_affordance_template_panel
 
         /** \brief Go To Start Command.
          */
-        void go_to_start() { _controls->send_command(Command::GO_TO_START); };
+        void go_to_start() { controls_->send_command(Command::GO_TO_START); };
 
         // /** \brief Go To End Command.
         //  */
-        void go_to_end() { _controls->send_command(Command::GO_TO_END); };
+        void go_to_end() { controls_->send_command(Command::GO_TO_END); };
 
         // /** \brief Pause Command.
         //  */
-        void pause() { _controls->send_command(Command::PAUSE); };
+        void pause() { controls_->send_command(Command::PAUSE); };
 
         // /** \brief Stop Command.
         //  */
-        void stop() { _controls->send_command(Command::STOP); };
+        void stop() { controls_->send_command(Command::STOP); };
 
         // * \brief Play Backward Command.
 
-        void play_backward() { _controls->send_command(Command::PLAY_BACKWARD); };
+        void play_backward() { controls_->send_command(Command::PLAY_BACKWARD); };
 
         // /** \brief Play Forward Command.
         //  */
-        void play_forward() { _controls->send_command(Command::PLAY_FORWARD); };
+        void play_forward() { controls_->send_command(Command::PLAY_FORWARD); };
 
         // /** \brief Step Backward Command.
         //  */
-        void step_backward() { _controls->send_command(Command::STEP_BACKWARD); };
+        void step_backward() { controls_->send_command(Command::STEP_BACKWARD); };
 
         // /** \brief Step Forward Command.
         //  */
-        void step_forward() { _controls->send_command(Command::STEP_FORWARD); };
+        void step_forward() { controls_->send_command(Command::STEP_FORWARD); };
 
 
     private:
-        Ui::RVizAffordanceTemplatePanel* _ui;
+        Ui::RVizAffordanceTemplatePanel* ui_;
 
         void connect();
         void disconnect();
@@ -160,24 +160,24 @@ namespace rviz_affordance_template_panel
         void send_request(const Request& request, Response& response, long timeout=1000000);
 
         // GUI Widgets
-        QGraphicsScene* _affordanceTemplateGraphicsScene;
-        QGraphicsScene* _recognitionObjectGraphicsScene;
+        QGraphicsScene* affordanceTemplateGraphicsScene_;
+        QGraphicsScene* recognitionObjectGraphicsScene_;
 
         // map to track instantiated object templates
-        std::map<std::string, AffordanceSharedPtr> _affordanceMap;
-        std::map<std::string, RecognitionObjectSharedPtr> _recognitionObjectMap;
-        std::map<std::string, RobotConfigSharedPtr> _robotMap;
-        std::string _descriptionRobot;
-        std::string _robot_name;
+        std::map<std::string, AffordanceSharedPtr> affordanceMap_;
+        std::map<std::string, RecognitionObjectSharedPtr> recognitionObjectMap_;
+        std::map<std::string, RobotConfigSharedPtr> robotMap_;
+        std::string descriptionRobot_;
+        std::string robot_name_;
 
         // zmq
-        zmq::context_t _context;
-        zmq::socket_t* _socket;
-        bool _connected;
+        zmq::context_t context_;
+        zmq::socket_t* socket_;
+        bool connected_;
 
-        ros::NodeHandle _nh;
+        ros::NodeHandle nh_;
 
-        ControlsSharedPtr _controls;
+        ControlsSharedPtr controls_;
     };
 }
 #endif // RVIZ_AFFORDANCE_TEMPLATE_PANEL_HPP

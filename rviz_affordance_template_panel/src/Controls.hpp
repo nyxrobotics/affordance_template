@@ -27,21 +27,21 @@ namespace rviz_affordance_template_panel
         ~Controls() {};
 
         void send_command(Command_CommandType command_type);
-        void setConnected(bool value) { connected = value; };
-        void setRobotMap(std::map<std::string, RobotConfigSharedPtr> map) { robotMap = map; };
-        void setRobotName(std::string name) { robot_name = name; };
-        void setSocket(zmq::socket_t* sock) { socket = sock; };
+        void setConnected(bool value) { connected_ = value; };
+        void setRobotMap(std::map<std::string, RobotConfigSharedPtr> map) { robotMap_ = map; };
+        void setRobotName(std::string name) { robot_name_ = name; };
+        void setSocket(zmq::socket_t* sock) { socket_ = sock; };
 
     private:
-        Ui::RVizAffordanceTemplatePanel* _ui;
-        void send_request(const Request& request, Response& response, long timeout=1000000);
+        Ui::RVizAffordanceTemplatePanel* ui_;
+        void send_request(const Request& request, Response& response, long timeout_=1000000);
         void update_table(const Response& rep);
-        std::map<std::string, RobotConfigSharedPtr> robotMap;
-        std::string robot_name;
+        std::map<std::string, RobotConfigSharedPtr> robotMap_;
+        std::string robot_name_;
         std::vector<std::string> getSelectedEndEffectors();
-        zmq::socket_t* socket;
-        bool connected;
-        long timeout;
+        zmq::socket_t* socket_;
+        bool connected_;
+        long timeout_;
     };
 }
 
