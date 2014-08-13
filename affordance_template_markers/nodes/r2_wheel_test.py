@@ -10,7 +10,6 @@ from interactive_markers.interactive_marker_server import *
 from affordance_template_markers.robot_config import *
 from affordance_template_markers.affordance_template import *
 from affordance_template_markers.template_utilities import *
-from affordance_template_markers.robot_config import *
 from affordance_template_markers.recognition_object import *
 import affordance_template_markers.atdf_parser
 
@@ -25,7 +24,7 @@ if __name__ == '__main__':
     server = InteractiveMarkerServer("affordance_template_server")
 
     template_filename = atl_path + "/templates/wheel.atdf"
-    robot_config_filename = tm_path + "/robots/r2.yaml"
+    robot_config_filename = atl_path + "/robots/r2.yaml"
 
     try:
 
