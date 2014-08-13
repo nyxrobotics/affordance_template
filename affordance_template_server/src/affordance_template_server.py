@@ -361,8 +361,51 @@ class AffordanceTemplateServer(Thread):
             return r
 
         except :
-            rospy.logerr("AffordanceTemplateServer::loadRobotFromMsg() -- error parsing robot protobuf file")
-            return None
+            rospy.logerr("AffordanceTemplateServer::loadRobotFromMsg() -- error parsing robot protobuf file - trying JSON")
+            r.robot_name = robot['name']
+            r.config_package = robot['moveit_config_package']
+            r.frame_id = robot['frame_id']
+            print "loading robot: " , r.robot_name
+
+            r.root_offset.position.x = robot['root_offset']['position']['x']
+            r.root_offset.position.y = robot['root_offset']['position']['y']
+            r.root_offset.position.z = robot['root_offset']['position']['z']
+            r.root_offset.orientation.x = robot['root_offset']['orientation']['x']
+            r.root_offset.orientation.y = robot['root_offset']['orientation']['y']
+            r.root_offset.orientation.z = robot['root_offset']['orientation']['z']
+            r.root_offset.orientation.w = robot['root_offset']['orientation']['w']
+
+            r.end_effector_names = []
+            r.end_effector_name_map = {}
+            r.manipulator_id_map = {}
+            r.manipulator_pose_map = {}
+
+            for ee in robot['end_effectors']:
+                r.end_effector_names.append(ee['name'])
+                r.end_effector_name_map[ee['id']] = ee['name']
+                r.manipulator_id_map[ee['name']] = ee['id']
+                p = geometry_msgs.msg.Pose()
+                p.position.x = ee['pose_offset']['position']['x']
+                p.position.y = ee['pose_offset']['position']['y']
+                p.position.z = ee['pose_offset']['position']['z']
+                p.orientation.x = ee['pose_offset']['orientation']['x']
+                p.orientation.y = ee['pose_offset']['orientation']['y']
+                p.orientation.z = ee['pose_offset']['orientation']['z']
+                p.orientation.w = ee['pose_offset']['orientation']['w']
+                r.manipulator_pose_map[ee['name']] = p
+
+            for ee_pid in robot['end_effector_pose_ids']:
+                if not ee_pid['group'] in r.end_effector_pose_map :
+                    r.end_effector_pose_map[ee_pid['group']] = {}
+                if not ee_pid['group'] in r.end_effector_id_map :
+                    r.end_effector_id_map[ee_pid['group']] = {}
+                # print "*********************************ee[", ee_pid.group, "] adding group [", ee_pid.name, "] with id [", ee_pid.id, "]"
+                r.end_effector_pose_map[ee_pid['group']][ee_pid['name']] = int(ee_pid['id'])
+                r.end_effector_id_map[ee_pid['group']][int(ee_pid['id'])] = ee_pid['name']
+
+            # print "done!"
+            return r
+            # return None
 
     def loadRecognitionObjectFromMsg(self, recognition_object) :
         r = RecogntionObject()

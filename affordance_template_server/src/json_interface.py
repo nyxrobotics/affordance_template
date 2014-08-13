@@ -189,9 +189,9 @@ class JSONInterface(object):
         response['success'] = False
         print "new KILL request"
         try:
-            for template in request['affordance_template']:
+            for template in request.get('affordance_template', []):
                 self.server.removeTemplate(template['type'], template['id'])
-            for obj in request['recognition_object']:
+            for obj in request.get('recognition_object', []):
                 self.server.removeRecognitionObject(obj['type'], obj['id'])
         except:
             print 'Error trying to kill template'
