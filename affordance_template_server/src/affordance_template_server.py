@@ -23,7 +23,6 @@ from interactive_markers.interactive_marker_server import *
 from affordance_template_markers.robot_config import *
 from affordance_template_markers.affordance_template import *
 from affordance_template_markers.template_utilities import *
-from affordance_template_markers.robot_config import *
 from affordance_template_markers.recognition_object import *
 import affordance_template_markers.atdf_parser
 
