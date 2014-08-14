@@ -1,0 +1,4 @@
+string affordance
+bool add
+---
+bool success
