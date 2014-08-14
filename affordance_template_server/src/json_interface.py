@@ -144,7 +144,7 @@ class JSONInterface(object):
         print "new START_RECOGNITION request"
         try:
             ret = False
-            for object_type in request['recognition_object']:
+            for recognition_object in request['recognition_object']:
                 object_type = str(recognition_object['type'])
                 obj = self.server.recognition_object_info[object_type]
                 new_id = self.server.getNextRecogObjectID(object_type)
