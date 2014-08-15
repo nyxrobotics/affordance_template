@@ -212,6 +212,7 @@ class ProtobufInterface(object):
             for template in request.affordance_template :
                 at = self.server.class_map[template.type][template.id]
 
+                # plan first
                 for ee in request.command.end_effector :
 
                     if request.command.type == request.command.GO_TO_START :
@@ -228,6 +229,9 @@ class ProtobufInterface(object):
                         idx = at.plan_path_to_waypoint(str(ee), steps=request.command.steps)
                     elif request.command.type == request.command.STOP :
                         at.stop(str(ee))
+
+                # execute after
+                for ee in request.command.end_effector :
 
                     if request.command.execute :
                         print "Executing!!!"
