@@ -12,8 +12,9 @@ def get_robot_name():
     return None
 
 class ATRosControl:
-    def __init__(self, hostname='alien', port=6789):
+    def __init__(self, hostname='localhost', port=6789):
         rospy.init_node('atros_control')
+        self.blocking = False
         context = zmq.Context()
         self.socket = context.socket(zmq.REQ)
         self.socket.connect('tcp://%s:%d'%(hostname, port))
@@ -30,7 +31,6 @@ class ATRosControl:
 
         a = AffordanceList()
         a.affordances = [j['type'] for j in self.templates]
-        print a
         self.afford_pub.publish(a)
 
         self.robots = {}
@@ -43,8 +43,14 @@ class ATRosControl:
 
     def send(self, command):
         s = json.dumps(command)
+
+        while self.blocking:
+            rospy.sleep(.1)
+        self.blocking = True
         self.socket.send(s)
-        return json.loads(self.socket.recv())
+        s = json.loads(self.socket.recv())
+        self.blocking = False
+        return s
 
     def change_affordance(self, req):
         if req.add:
@@ -62,7 +68,7 @@ class ATRosControl:
                    'command': {'type': req.type, 'end_effector': req.end_effectors,
                    'steps': req.steps, 'execute': req.execute}})
 
-        return AffordanceCommand(True)
+        return AffordanceCommandResponse(True)
 
 atrc = ATRosControl()
 rospy.spin()
