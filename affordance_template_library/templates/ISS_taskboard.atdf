@@ -1,0 +1,32 @@
+<?xml version="1.0" ?>
+<affordance_template name="ISS_Taskboard" image="package://affordance_template_library/images/ISS_taskboard_button.jpg">
+
+    <display_objects>
+        <display_object name="Taskboard">
+            <geometry>
+                <mesh filename="package://affordance_template_library/models/tskbd_panel_assembly_slot1.dae" scale="1 1 1"/>
+            </geometry>
+            <origin xyz=".5 .2 -.1" rpy="1.57 0 -1.57"/>
+            <controls xyz="1 1 1" rpy="1 1 1" scale="0.3"/>
+        </display_object>
+    </display_objects>
+
+    <end_effector_waypoints>
+        <end_effector_waypoint end_effector="0" id="0" display_object="Taskboard">
+            <origin xyz="-0.06 0.0 0.3" rpy="-1.57 1.57 0"/>
+            <controls xyz="1 1 1" rpy="1 1 1" scale="0.25"/>
+            <pose_group id="3"/>
+        </end_effector_waypoint>
+        <end_effector_waypoint end_effector="0" id="1" display_object="Taskboard">
+            <origin xyz="-0.06 0.0 0.22" rpy="-1.57 1.57 0"/>
+            <controls xyz="1 1 1" rpy="1 1 1" scale="0.25"/>
+            <pose_group id="3"/>
+        </end_effector_waypoint>
+        <!-- <end_effector_waypoint end_effector="0" id="2" display_object="Taskboard">
+            <origin xyz="-0.06 0.0 0.3" rpy="-1.57 1.57 0"/>
+            <controls xyz="1 1 1" rpy="1 1 1" scale="0.25"/>
+            <pose_group id="3"/>
+        </end_effector_waypoint> -->
+    </end_effector_waypoints>
+
+</affordance_template>
