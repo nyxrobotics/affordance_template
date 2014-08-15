@@ -302,7 +302,7 @@ class AffordanceTemplate(object) :
         ps = geometry_msgs.msg.PoseStamped()
         ps.header.frame_id = m.header.frame_id
         ps.pose = m.pose
-        ps.header.stamp = rospy.get_rostime()
+        # ps.header.stamp = rospy.get_rostime()
 
         self.tf_listener.waitForTransform(ps.header.frame_id, self.frame_id, rospy.Time(0), rospy.Duration(5.0))
         ps = self.tf_listener.transformPose(self.frame_id, ps)
@@ -469,7 +469,7 @@ class AffordanceTemplate(object) :
             control = InteractiveMarkerControl()
 
             int_marker.header.frame_id = self.frame_id
-            int_marker.header.stamp = rospy.get_rostime()
+            # int_marker.header.stamp = rospy.get_rostime()
             int_marker.pose = display_pose
             int_marker.name = wp
             int_marker.description = wp
@@ -500,7 +500,7 @@ class AffordanceTemplate(object) :
             for m in self.robot_config.end_effector_markers[ee_name].markers :
                 ee_m = copy.deepcopy(m)
                 ee_m.header.frame_id = self.frame_id
-                ee_m.header.stamp = rospy.get_rostime()
+                # ee_m.header.stamp = rospy.get_rostime()
                 ee_m.pose = getPoseFromFrame(getFrameFromPose(display_pose)*self.wpTee[wp]*getFrameFromPose(m.pose))
                 ee_m.color.r = .2
                 ee_m.color.g = .5
@@ -712,6 +712,7 @@ class AffordanceTemplate(object) :
     def process_feedback(self, feedback):
         # print "\n--------------------------------"
         # print "Process Feedback on marker: ", feedback.marker_name
+        # print feedback.pose
 
         for m in self.marker_map.keys() :
             if self.is_parent(m, feedback.marker_name) :
@@ -736,7 +737,7 @@ class AffordanceTemplate(object) :
             if feedback.marker_name in self.display_objects :
                 robotTobj_new = getFrameFromPose(feedback.pose)
                 Tstore = robotTobj_new
-                robotTroot = self.robotTroot
+                # robotTroot = self.robotTroot
                 robotTroot = self.get_chain_from_robot(feedback.marker_name)
                 T = self.robotTroot*robotTroot
                 Tdelta = T.Inverse()*robotTobj_new
@@ -754,7 +755,6 @@ class AffordanceTemplate(object) :
                 Tdelta = T.Inverse()*robotTwp_new
                 self.objTwp[feedback.marker_name] = self.objTwp[feedback.marker_name]*Tdelta
                 ps  = getPoseFromFrame(self.objTwp[feedback.marker_name])
-                print (kdl.Rotation.Quaternion(ps.orientation.x,ps.orientation.y,ps.orientation.z,ps.orientation.w)).GetRPY()
                 self.waypoint_origin[feedback.marker_name] = self.objTwp[feedback.marker_name]
 
         elif feedback.event_type == InteractiveMarkerFeedback.MENU_SELECT:
@@ -918,8 +918,8 @@ class AffordanceTemplate(object) :
                     r = range(new_id,max_idx+1)
                     r.reverse()
                     for k in r:
-                        old_name = str(str(ee_id) + "." + str(k))
-                        new_name = str(str(ee_id) + "." + str(k+1))
+                        old_name = str(ee_id) + "." + str(k)
+                        new_name = str(ee_id) + "." + str(k+1)
                         self.move_waypoint(ee_id, k, k+1)
 
                     # print "creating waypoint at : ", new_id
