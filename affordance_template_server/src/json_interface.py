@@ -223,6 +223,7 @@ class JSONInterface(object):
             for template in request['affordance_template']:
                 at = self.server.class_map[template['type']][template['id']]
 
+                # plan first
                 for ee in request['command']['end_effector'] :
 
                     command_type = request['command']['type']
@@ -241,6 +242,9 @@ class JSONInterface(object):
                         idx = at.plan_path_to_waypoint(str(ee), steps=request['command']['steps'])
                     elif command_type == 'STOP':
                         at.stop(str(ee))
+
+                # execute after
+                for ee in request['command']['end_effector'] :
 
                     response['waypoint_info'] = []
                     if request['command']['execute']:
