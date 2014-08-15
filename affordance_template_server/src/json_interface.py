@@ -244,9 +244,9 @@ class JSONInterface(object):
                         at.stop(str(ee))
 
                 # execute after
+                response['waypoint_info'] = []
                 for ee in request['command']['end_effector'] :
 
-                    response['waypoint_info'] = []
                     if request['command']['execute']:
                         print "Executing!!!"
                         at.move_to_waypoint(str(ee), idx)
