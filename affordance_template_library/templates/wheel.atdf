@@ -4,7 +4,7 @@
     <display_objects>
         <display_object name="wheel">
             <geometry>
-                <mesh filename="package://affordance_template_library/models/torus.stl" scale="0.3 0.3 0.3"/>
+                <mesh filename="package://affordance_template_library/models/torus.dae" scale="1.0 1.0 1.0"/>
             </geometry>
             <origin xyz="0 0 0" rpy="0 1.57 0"/>
             <controls xyz="1 1 1" rpy="1 1 1" scale="0.3"/>

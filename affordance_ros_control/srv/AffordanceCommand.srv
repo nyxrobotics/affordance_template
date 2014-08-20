@@ -1,0 +1,9 @@
+string[] affordances
+int16[] ids
+string type
+string[] end_effectors
+int16 steps
+bool execute
+---
+bool success
+
