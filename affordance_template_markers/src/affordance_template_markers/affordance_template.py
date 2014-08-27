@@ -38,6 +38,8 @@ class AffordanceTemplate(object) :
         self.display_objects = []
 
         self.tf_listener = tf.TransformListener()
+        self.tf_broadcaster = tf.TransformBroadcaster()
+        self.tf_frame = "template:0"
 
         self.waypoints = []
         self.structure = None
@@ -714,6 +716,14 @@ class AffordanceTemplate(object) :
         # print "Process Feedback on marker: ", feedback.marker_name
         # print feedback.pose
 
+        if self.get_root_object() == feedback.marker_name :
+            self.tf_broadcaster.sendTransform((feedback.pose.position.x,feedback.pose.position.y,feedback.pose.position.z),
+                                              (feedback.pose.orientation.x,feedback.pose.orientation.y,feedback.pose.orientation.z,feedback.pose.orientation.w),
+                                              rospy.Time.now(),
+                                              str(self.name + ":" + str(self.id)),
+                                              feedback.header.frame_id)
+            print "updating frame for ", feedback
+            print "name ", self.name
         for m in self.marker_map.keys() :
             if self.is_parent(m, feedback.marker_name) :
                 if m in self.display_objects :
