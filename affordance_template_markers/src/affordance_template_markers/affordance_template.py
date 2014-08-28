@@ -471,7 +471,6 @@ class AffordanceTemplate(threading.Thread) :
 
             ids += 1
 
-
         # parse end effector information
         wp_ids = 0
         for wp in self.waypoints :
