@@ -2,6 +2,7 @@ import yaml
 import copy
 import PyKDL as kdl
 import tf
+import threading
 
 import rospy
 import rospkg
@@ -17,18 +18,21 @@ from interactive_markers.menu_handler import *
 from nasa_robot_teleop.moveit_interface import *
 
 from affordance_template_markers.robot_config import *
+from affordance_template_markers.frame_store import *
 from affordance_template_markers.template_utilities import *
 import affordance_template_markers.atdf_parser
 
-class AffordanceTemplate(object) :
+class AffordanceTemplate(threading.Thread) :
 
     def __init__(self, server, id, name="affordance_template", initial_pose=None, robot_config=None):
+        super(AffordanceTemplate,self).__init__()
+        self.mutex = threading.Lock()
         self.menu_handler = MenuHandler()
         self.menu_handler.insert("Delete", callback=self.delete_callback)
         self.server = server
         self.frame_id = "world"
         self.id = 0
-        self.key = name + str(self.id)
+        self.key = name + ":" + str(self.id)
         self.name = name
         self.root_object = ""
         self.parent_map = {}
@@ -36,6 +40,7 @@ class AffordanceTemplate(object) :
         self.callback_map = {}
         self.marker_pose_offset = {}
         self.display_objects = []
+        self.frame_store_map = {}
 
         self.tf_listener = tf.TransformListener()
         self.tf_broadcaster = tf.TransformBroadcaster()
@@ -116,6 +121,7 @@ class AffordanceTemplate(object) :
         self.object_menu_options.append(("Reset", False))
         self.object_menu_options.append(("Save as..", False))
 
+        self.start()
         rospy.loginfo("AffordanceTemplate::init() -- Done Creating new Empty AffordanceTemplate")
 
     def set_root_object(self, name) :
@@ -215,6 +221,10 @@ class AffordanceTemplate(object) :
 
     def load_initial_parameters(self) :
 
+        objs = self.frame_store_map.keys()
+        for k in objs: del self.frame_store_map[k]
+        self.frame_store_map = {}
+
         if self.robot_config == None :
             rospy.error("AffordanceTemplate::load_initial_parameters() -- no robot config")
             return False
@@ -229,7 +239,8 @@ class AffordanceTemplate(object) :
         self.frame_id = self.robot_config.frame_id
         self.robotTroot = getFrameFromPose(self.robot_config.root_offset)
 
-        self.key = self.structure.name + str(self.id)
+        self.name = self.structure.name
+        self.key = self.name + ":" + str(self.id)
 
         # parse objects
         ids = 0
@@ -291,7 +302,7 @@ class AffordanceTemplate(object) :
         self.frame_id = self.robot_config.frame_id
         self.robotTroot = getFrameFromPose(self.robot_config.root_offset)
 
-        self.key = self.name + str(m.id)
+        self.key = self.name + ":" + str(m.id)
         self.id = m.id
         # parse objects
         ids = 0
@@ -358,23 +369,19 @@ class AffordanceTemplate(object) :
         self.object_material[self.key] = material
 
 
-    def create_from_parameters(self) :
+    def create_from_parameters(self, keep_poses=False) :
 
-        self.key = self.name + str(self.id)
+        self.key = self.name + ":" + str(self.id)
+
+        self.frame_store_map[self.name] = FrameStore()
+        self.frame_store_map[self.name].frame_id = self.key
+        self.frame_store_map[self.name].root_frame_id = self.robot_config.frame_id
+        self.frame_store_map[self.name].pose = getPoseFromFrame(self.robotTroot)
 
         # parse objects
         ids = 0
         debug_id = 0
         for obj in self.display_objects :
-
-            robotTfirst_object = self.robotTroot
-            robotTroot = robotTfirst_object # this might be the case if root and first_object are the same
-
-            if obj in self.parent_map :
-                robotTroot = robotTroot*self.get_chain_from_robot(self.parent_map[obj])
-
-            self.rootTobj[obj] = getFrameFromPose(self.marker_pose_offset[obj])
-            p = getPoseFromFrame(robotTroot*self.rootTobj[obj])
 
             int_marker = InteractiveMarker()
             control = InteractiveMarkerControl()
@@ -382,12 +389,16 @@ class AffordanceTemplate(object) :
             self.marker_menus[obj] = MenuHandler()
             self.setup_object_menu(obj)
 
-            p0 = geometry_msgs.msg.Pose()
-            p0.orientation.w = 1
+            root_frame = str(self.name + ":" + str(self.id))
+            obj_frame = str(obj + ":" + str(self.id))
 
-            int_marker.header.frame_id = self.frame_id
-            # int_marker.header.stamp = rospy.get_rostime()
-            int_marker.pose = p
+            if self.get_root_object() == obj :
+                root_frame = self.key
+            else :
+                if obj in self.parent_map :
+                     root_frame = str(self.parent_map[obj] + ":" + str(self.id))
+
+            int_marker.header.frame_id = str("/" + root_frame)
             int_marker.name = obj
             int_marker.description = obj
             int_marker.scale = self.object_controls[obj].scale
@@ -396,6 +407,15 @@ class AffordanceTemplate(object) :
             marker = Marker()
             marker.ns = obj
             marker.id = ids
+
+            if not keep_poses or not obj in self.frame_store_map.keys() :
+                self.frame_store_map[obj] = FrameStore()
+                self.frame_store_map[obj].frame_id = obj_frame
+                self.frame_store_map[obj].root_frame_id = root_frame
+                self.frame_store_map[obj].pose = copy.deepcopy(self.marker_pose_offset[obj])
+                int_marker.pose = copy.deepcopy(self.marker_pose_offset[obj])
+            else :
+                int_marker.pose = copy.deepcopy(self.frame_store_map[obj].pose)
 
             if isinstance(self.object_geometry[obj], affordance_template_markers.atdf_parser.Mesh) :
                 marker.type = Marker.MESH_RESOURCE
@@ -459,25 +479,22 @@ class AffordanceTemplate(object) :
             # print "creating marker for wp: ", wp
             ee_name = self.robot_config.end_effector_name_map[int(self.waypoint_end_effectors[wp])]
 
-            robotTroot = self.robotTroot*self.get_chain_from_robot(self.parent_map[wp])
+            root_frame = str(self.name + ":" + str(self.id))
+            if wp in self.parent_map :
+                root_frame = str(self.parent_map[wp] + ":" + str(self.id))
 
-            if not self.parent_map[wp] in self.display_objects :
-                rospy.logerr(str("AffordanceTemplate::create_from_parameters() -- end-effector display object " + str(self.parent_map[wp]) + "not found!"))
+                if not self.parent_map[wp] in self.display_objects :
+                    rospy.logerr(str("AffordanceTemplate::create_from_parameters() -- end-effector display object " + str(self.parent_map[wp]) + "not found!"))
 
-            display_pose = getPoseFromFrame(robotTroot*self.objTwp[wp])
-            # print "display pose: ", display_pose
+            display_pose = getPoseFromFrame(self.objTwp[wp])
 
             int_marker = InteractiveMarker()
             control = InteractiveMarkerControl()
 
-            int_marker.header.frame_id = self.frame_id
-            # int_marker.header.stamp = rospy.get_rostime()
+            int_marker.header.frame_id = str("/" + root_frame)
             int_marker.pose = display_pose
             int_marker.name = wp
             int_marker.description = wp
-            # print self.waypoint_controls.keys()
-            # print self.waypoint_controls[wp]
-
             int_marker.scale = self.waypoint_controls[wp].scale
 
             menu_control = InteractiveMarkerControl()
@@ -485,7 +502,6 @@ class AffordanceTemplate(object) :
 
             self.marker_menus[wp] = MenuHandler()
             self.setup_waypoint_menu(wp, ee_name)
-            # self.setup_stored_pose_menus(wp,ee_name)
 
             id = int(self.waypoint_end_effectors[wp])
             if self.waypoint_backwards_flag[id] :
@@ -501,9 +517,8 @@ class AffordanceTemplate(object) :
 
             for m in self.robot_config.end_effector_markers[ee_name].markers :
                 ee_m = copy.deepcopy(m)
-                ee_m.header.frame_id = self.frame_id
-                # ee_m.header.stamp = rospy.get_rostime()
-                ee_m.pose = getPoseFromFrame(getFrameFromPose(display_pose)*self.wpTee[wp]*getFrameFromPose(m.pose))
+                ee_m.header.frame_id = ""
+                ee_m.pose = getPoseFromFrame(self.wpTee[wp]*getFrameFromPose(m.pose))
                 ee_m.color.r = .2
                 ee_m.color.g = .5
                 ee_m.color.b = .2
@@ -716,56 +731,13 @@ class AffordanceTemplate(object) :
         # print "Process Feedback on marker: ", feedback.marker_name
         # print feedback.pose
 
-        if self.get_root_object() == feedback.marker_name :
-            self.tf_broadcaster.sendTransform((feedback.pose.position.x,feedback.pose.position.y,feedback.pose.position.z),
-                                              (feedback.pose.orientation.x,feedback.pose.orientation.y,feedback.pose.orientation.z,feedback.pose.orientation.w),
-                                              rospy.Time.now(),
-                                              str(self.name + ":" + str(self.id)),
-                                              feedback.header.frame_id)
-            print "updating frame for ", feedback
-            print "name ", self.name
-        for m in self.marker_map.keys() :
-            if self.is_parent(m, feedback.marker_name) :
-                if m in self.display_objects :
-                    robotTroot_new = getFrameFromPose(feedback.pose)
-                    Tint = self.get_chain(feedback.marker_name,m)
-                    T = robotTroot_new*Tint
-                    p = getPoseFromFrame(T)
-                    self.server.setPose(m, p)
-                if m in self.waypoints :
-                    robotTobj_new = getFrameFromPose(feedback.pose)
-                    Tint = self.get_chain(feedback.marker_name,self.parent_map[m])*self.objTwp[m]#*self.wpTee[m]
-                    T = robotTobj_new*Tint
-                    p = getPoseFromFrame(T)
-                    self.server.setPose(m, p)
+        if feedback.marker_name in self.display_objects :
+            self.frame_store_map[feedback.marker_name].pose = feedback.pose
 
         if feedback.event_type == InteractiveMarkerFeedback.MOUSE_UP :
 
-            TInverse = kdl.Frame()
-            Tdelta = kdl.Frame()
-
-            if feedback.marker_name in self.display_objects :
-                robotTobj_new = getFrameFromPose(feedback.pose)
-                Tstore = robotTobj_new
-                # robotTroot = self.robotTroot
-                robotTroot = self.get_chain_from_robot(feedback.marker_name)
-                T = self.robotTroot*robotTroot
-                Tdelta = T.Inverse()*robotTobj_new
-                self.rootTobj[feedback.marker_name] = self.rootTobj[feedback.marker_name]*Tdelta
-                if feedback.marker_name == self.get_root_object() :
-                    self.robotTroot = getFrameFromPose(feedback.pose)*Tdelta*self.rootTobj[feedback.marker_name].Inverse()
-
             if feedback.marker_name in self.waypoints :
-                rootTobj = self.rootTobj[self.parent_map[feedback.marker_name]]
-                rootTwp = rootTobj*self.objTwp[feedback.marker_name]
-                robotTwp_new = getFrameFromPose(feedback.pose)
-                robotTroot = self.get_chain_from_robot(self.parent_map[feedback.marker_name])*self.objTwp[feedback.marker_name]#*self.wpTee[feedback.marker_name]
-                T = self.robotTroot*rootTobj*self.objTwp[feedback.marker_name]
-                TInverse = T.Inverse()
-                Tdelta = T.Inverse()*robotTwp_new
-                self.objTwp[feedback.marker_name] = self.objTwp[feedback.marker_name]*Tdelta
-                ps  = getPoseFromFrame(self.objTwp[feedback.marker_name])
-                self.waypoint_origin[feedback.marker_name] = self.objTwp[feedback.marker_name]
+                self.objTwp[feedback.marker_name] = getFrameFromPose(feedback.pose)
 
         elif feedback.event_type == InteractiveMarkerFeedback.MENU_SELECT:
 
@@ -935,7 +907,7 @@ class AffordanceTemplate(object) :
                     # print "creating waypoint at : ", new_id
                     old_name = str(ee_id) + "." + str(1)
                     self.create_waypoint(ee_id, waypoint_id, new_pose, self.parent_map[old_name], self.waypoint_controls[old_name], self.waypoint_origin[old_name], self.waypoint_pose_map[old_name]) # is parent right here?
-                    self.create_from_parameters()
+                    self.create_from_parameters(True)
 
                 if handle == self.menu_handles[(feedback.marker_name,"Add Waypoint After")] :
                     print "Adding Waypoint after ", waypoint_id, "for end effector: ", ee_id
@@ -966,12 +938,12 @@ class AffordanceTemplate(object) :
 
                     old_name = str(ee_id) + "." + str(max_idx)
                     self.create_waypoint(ee_id, new_id, new_pose, self.parent_map[old_name], self.waypoint_controls[old_name], self.waypoint_origin[old_name], self.waypoint_pose_map[old_name])
-                    self.create_from_parameters()
+                    self.create_from_parameters(True)
 
                 if handle == self.menu_handles[(feedback.marker_name,"Delete Waypoint")] :
                     print "TODO: Deleting Waypoint ", waypoint_id, "for end effector: ", ee_id
                     self.remove_waypoint(ee_id, waypoint_id)
-                    self.create_from_parameters()
+                    self.create_from_parameters(True)
 
                 # if handle == self.menu_handles[(feedback.marker_name,"Execute On Move")] :
                 #     state = self.marker_menus[feedback.marker_name].getCheckState( handle )
@@ -986,12 +958,12 @@ class AffordanceTemplate(object) :
                 if handle == self.menu_handles[(feedback.marker_name,"Move Forward")] :
                     if waypoint_id < max_idx :
                         self.swap_waypoints(ee_id, waypoint_id, waypoint_id+1)
-                        self.create_from_parameters()
+                        self.create_from_parameters(True)
 
                 if handle == self.menu_handles[(feedback.marker_name,"Move Back")] :
                     if waypoint_id > 0:
                         self.swap_waypoints(ee_id, waypoint_id-1, waypoint_id)
-                        self.create_from_parameters()
+                        self.create_from_parameters(True)
 
                 # waypoint specific menu options
                 if not feedback.marker_name in self.display_objects :
@@ -1005,8 +977,9 @@ class AffordanceTemplate(object) :
                             self.marker_menus[feedback.marker_name].setCheckState( handle, MenuHandler.CHECKED )
                             self.waypoint_controls_display_on = False
 
+                        # this is wrong
                         self.remove_all_markers()
-                        self.create_from_parameters()
+                        self.create_from_parameters(True)
 
                         rospy.loginfo(str("AffordanceTemplate::process_feedback() -- setting Hide Controls flag to " + str(self.waypoint_controls_display_on)))
 
@@ -1066,7 +1039,7 @@ class AffordanceTemplate(object) :
                     pose_id = self.waypoint_pose_map[last_wp_name]
                     self.create_waypoint(ee_id, wp_id, ps, feedback.marker_name, self.waypoint_controls[last_wp_name], self.waypoint_origin[last_wp_name], pose_id)
 
-                self.create_from_parameters()
+                self.create_from_parameters(True)
 
             if self.menu_handles[(feedback.marker_name,"Add Waypoint Before",ee_name)] == feedback.menu_entry_id :
 
@@ -1097,7 +1070,7 @@ class AffordanceTemplate(object) :
 
                     self.create_waypoint(ee_id, wp_id, ps, feedback.marker_name, self.waypoint_controls[wp_name], self.waypoint_origin[wp_name], pose_id)
 
-                self.create_from_parameters()
+                self.create_from_parameters(True)
 
     def compute_path_ids(self, id, steps, backwards=False) :
         idx  = self.waypoint_index[id]
@@ -1264,3 +1237,26 @@ class AffordanceTemplate(object) :
 
     def terminate(self) :
         print "TODO: (EX)TERMINATE!!!!!!!!!"
+
+
+    def run(self) :
+        while True :
+            self.mutex.acquire()
+            try :
+                try :
+                    for obj in self.frame_store_map.keys() :
+                        # print "broadcasting frame: ", self.frame_store_map[obj].frame_id
+                        # print "-----------\n-----------"
+                        # print " obj_frame: ", self.frame_store_map[obj].frame_id
+                        # print " root_frame: ", self.frame_store_map[obj].root_frame_id
+                        # print " ", self.frame_store_map[obj].pose
+                        self.tf_broadcaster.sendTransform((self.frame_store_map[obj].pose.position.x,self.frame_store_map[obj].pose.position.y,self.frame_store_map[obj].pose.position.z),
+                                                  (self.frame_store_map[obj].pose.orientation.x,self.frame_store_map[obj].pose.orientation.y,self.frame_store_map[obj].pose.orientation.z,self.frame_store_map[obj].pose.orientation.w),
+                                                  rospy.Time.now(), self.frame_store_map[obj].frame_id, self.frame_store_map[obj].root_frame_id)
+
+                except :
+                    rospy.logdebug("AffordanceTemplate::run() -- could not update thread")
+            finally :
+                self.mutex.release()
+
+            rospy.sleep(.1)
