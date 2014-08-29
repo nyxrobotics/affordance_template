@@ -59,6 +59,7 @@ void RVizAffordanceTemplatePanel::setupWidgets() {
     ui_->recognitionObjectGraphicsView->setScene(recognitionObjectGraphicsScene_);
 
     QObject::connect(ui_->server_output_status, SIGNAL(itemDoubleClicked(QListWidgetItem*)), this, SLOT(killAffordanceTemplate(QListWidgetItem*)));
+    QObject::connect(ui_->delete_template_button, SIGNAL(clicked()), this, SLOT(deleteButton()));
 
     QObject::connect(ui_->connect_button, SIGNAL(clicked()), this, SLOT(connect_callback()));
     QObject::connect(ui_->load_config_button, SIGNAL(clicked()), this, SLOT(safeLoadConfig()));
@@ -309,6 +310,12 @@ void RVizAffordanceTemplatePanel::changeEndEffector(int id) {
     setupEndEffectorConfigPanel(ee.toUtf8().constData());
 }
 
+void RVizAffordanceTemplatePanel::deleteButton() {
+    if(ui_->server_output_status->currentItem()) {
+        killAffordanceTemplate(ui_->server_output_status->currentItem());
+    }
+}
+
 void RVizAffordanceTemplatePanel::removeAffordanceTemplates() {
     affordanceTemplateGraphicsScene_->disconnect(SIGNAL(selectionChanged()));
     for (auto& pitem: affordanceTemplateGraphicsScene_->items()) {
@@ -334,7 +341,7 @@ void RVizAffordanceTemplatePanel::sendAffordanceTemplateKill(const string& class
     temp->set_type(class_name);
     temp->set_id(id);
     Response resp;
-    send_request(req, resp);
+    send_request(req, resp,10000000);
 }
 
 void RVizAffordanceTemplatePanel::killAffordanceTemplate(QListWidgetItem* item) {

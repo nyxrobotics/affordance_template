@@ -122,6 +122,7 @@ class AffordanceTemplate(threading.Thread) :
         self.object_menu_options.append(("Save as..", False))
 
         # start the frame update thread
+        self.running = True
         self.start()
 
         rospy.loginfo("AffordanceTemplate::init() -- Done Creating new Empty AffordanceTemplate")
@@ -172,7 +173,7 @@ class AffordanceTemplate(threading.Thread) :
         for key in self.marker_map.keys():
             self.server.erase(key)
         self.server.applyChanges()
-        self.tear_down()
+        # self.tear_down()
 
     def tear_down(self, keep_alive=False):
         # forcefully shut down service before killing node
@@ -1243,11 +1244,17 @@ class AffordanceTemplate(threading.Thread) :
 
 
     def terminate(self) :
-        print "TODO: (EX)TERMINATE!!!!!!!!!"
+        print "(EX)TERMINATE!!!!!!!!!"
+        self.robot_config.tear_down()
+        print "done tearing down robot config"
+        rospy.sleep(2)
+        self.delete_callback(None)
+        self.running = False
+        rospy.sleep(.5)
 
 
     def run(self) :
-        while True :
+        while self.running :
             self.mutex.acquire()
             try :
                 try :
@@ -1262,3 +1269,4 @@ class AffordanceTemplate(threading.Thread) :
                 self.mutex.release()
 
             rospy.sleep(.1)
+        print "Killing frame update thread for AT: ", self.name

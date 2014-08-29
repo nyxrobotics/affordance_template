@@ -156,10 +156,15 @@ class ProtobufInterface(object):
         print "new RUNNING request"
         try:
 
-            for id in self.server.running_templates.iterkeys():
-                at = response.affordance_template.add()
-                at.type = self.server.running_templates[id]
-                at.id = id
+            for t in self.server.class_map.keys():
+                for id in self.server.class_map[t].keys():
+                    at = response.affordance_template.add()
+                    at.type = t
+                    at.id = id
+            # for id in self.server.running_templates.iterkeys():
+            #     at = response.affordance_template.add()
+            #     at.type = self.server.running_templates[id]
+            #     at.id = id
 
             for id in self.server.running_recog_objects.iterkeys():
                 ro = response.recognition_object.add()
@@ -181,8 +186,10 @@ class ProtobufInterface(object):
                 self.server.removeTemplate(template.type, template.id)
             for obj in request.recognition_object:
                 self.server.removeRecognitionObject(obj.type, obj.id)
+            response.success = True
         except:
             print 'Error trying to kill template'
+        print response
         return response
 
     def handle_load_robot(self, request):

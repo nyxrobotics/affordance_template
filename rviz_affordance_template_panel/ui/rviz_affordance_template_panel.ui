@@ -276,7 +276,7 @@
       </size>
      </property>
      <property name="currentIndex">
-      <number>1</number>
+      <number>0</number>
      </property>
      <widget class="QWidget" name="server_tab">
       <attribute name="title">
@@ -760,6 +760,13 @@
           <widget class="QListWidget" name="server_output_status">
            <property name="enabled">
             <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="0">
+          <widget class="QPushButton" name="delete_template_button">
+           <property name="text">
+            <string>Delete</string>
            </property>
           </widget>
          </item>

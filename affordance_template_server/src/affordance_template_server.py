@@ -126,6 +126,8 @@ class AffordanceTemplateServer(Thread):
         """
         if class_type in self.class_map and instance_id in self.class_map[class_type]:
             self.class_map[class_type][instance_id].terminate()
+            if self.running_templates[instance_id] == class_type:
+                del self.running_templates[instance_id]
             del self.class_map[class_type][instance_id]
 
     def removeRecognitionObject(self, object_type, instance_id):

@@ -152,5 +152,8 @@ class RobotConfig(object) :
     def get_manipulator(self, ee) :
         return self.moveit_interface.srdf_model.get_end_effector_parent_group(ee)
 
-
+    def tear_down(self) :
+        for k in self.end_effector_link_data.keys() :
+            self.end_effector_link_data[k].stop_offset_update_thread()
+        self.moveit_interface.tear_down()
 

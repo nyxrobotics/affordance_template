@@ -80,6 +80,10 @@ namespace rviz_affordance_template_panel
          */
         void changeEndEffector(int id);
 
+        /** \brief Delete Template callback.
+         */
+        void deleteButton();
+
         /** \brief Send a ZMQ request to kill a running template.
          */
         void killAffordanceTemplate(QListWidgetItem* item);
