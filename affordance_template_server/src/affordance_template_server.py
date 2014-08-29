@@ -188,8 +188,8 @@ class AffordanceTemplateServer(Thread):
 
         self.running_recog_objects[instance_id] = object_type
 
-        print self.recognition_object_subscribers.keys()
-        print self.recognition_object_subscribers[object_type].keys()
+        # print self.recognition_object_subscribers.keys()
+        # print self.recognition_object_subscribers[object_type].keys()
         self.recognition_object_subscribers[object_type][instance_id] = rospy.Subscriber(topic, MarkerArray, self.recognitionObjectCallback)
 
         import subprocess
@@ -257,7 +257,7 @@ class AffordanceTemplateServer(Thread):
 
         os.chdir(path)
         for atf in glob.glob("*.atdf") :
-            print atf
+            # print atf
             structure = affordance_template_markers.atdf_parser.AffordanceTemplateStructure.from_file(atf)
 
             class_map[structure.name] = {}
@@ -311,10 +311,7 @@ class AffordanceTemplateServer(Thread):
 
     def loadRobotFromMsg(self, robot) :
         r = RobotConfig()
-
-        print "creating new robot from pb message"
         try:
-
             r.robot_name = robot.name
             r.config_package = robot.moveit_config_package
             r.frame_id = robot.frame_id
