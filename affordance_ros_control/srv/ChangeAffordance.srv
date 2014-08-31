@@ -2,3 +2,7 @@ string affordance
 bool add
 ---
 bool success
+int16[] ids
+string[] end_effectors
+int16[] num_points
+
