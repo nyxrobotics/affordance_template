@@ -553,6 +553,28 @@ class AffordanceTemplate(threading.Thread) :
 
             wp_ids += 1
 
+
+    def update_template_defaults(self, objects=True, waypoints=True) :
+
+        if objects :
+            for obj in self.object_origin.keys() :
+                current_pose = self.frame_store_map[obj].pose
+                xyz = [current_pose.position.x, current_pose.position.y, current_pose.position.z]
+                rpy = (kdl.Rotation.Quaternion(current_pose.orientation.x,current_pose.orientation.y,current_pose.orientation.z,current_pose.orientation.w)).GetRPY()
+                for i in range(3) :
+                    self.object_origin[obj].xyz[i] = xyz[i]
+                    self.object_origin[obj].rpy[i] = rpy[i]
+
+        if waypoints :
+            for wp in self.waypoints :
+                current_pose = getPoseFromFrame(self.objTwp[wp])
+                xyz = [current_pose.position.x, current_pose.position.y, current_pose.position.z]
+                rpy = (kdl.Rotation.Quaternion(current_pose.orientation.x,current_pose.orientation.y,current_pose.orientation.z,current_pose.orientation.w)).GetRPY()
+                for i in range(3) :
+                    self.waypoint_origin[wp].xyz[i] = xyz[i]
+                    self.waypoint_origin[wp].rpy[i] = rpy[i]
+
+
     def save_to_disk(self, filename=None, package=None) :
 
         name = self.structure.name.split(":")[0]
@@ -578,6 +600,9 @@ class AffordanceTemplate(threading.Thread) :
             shutil.copyfile(output_file,dstname)
         except :
             rospy.loginfo("AffordanceTemplate::save_to_disk() -- no file to backup")
+
+        # set current object and waypoint positions to "default"
+        self.update_template_defaults()
 
         # create xml file
         import xml.etree.cElementTree as ET
@@ -656,7 +681,7 @@ class AffordanceTemplate(threading.Thread) :
 
 
         rospy.loginfo("AffordanceTemplate::save_to_disk() -- writing file to disk...")
-        print output_file
+        # print output_file
 
         def pretty_print_xml(xml):
             import subprocess
@@ -673,9 +698,6 @@ class AffordanceTemplate(threading.Thread) :
         f = io.open(output_file, "wb")
         f.write(pretty_print_xml(xmlstr))
         f.close()
-        # tree = ET.ElementTree(root)
-        # tree.write(output_file)
-
 
 
     def create_waypoint(self, ee_id, wp_id, ps, parent, controls=None, origin=None, pose_id=None) :
