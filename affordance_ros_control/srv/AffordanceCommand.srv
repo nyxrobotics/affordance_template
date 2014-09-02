@@ -6,4 +6,6 @@ int16 steps
 bool execute
 ---
 bool success
+int16[] ids
+int16[] waypoints
 

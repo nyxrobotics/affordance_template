@@ -27,10 +27,13 @@ class ATRosControl:
 
     def get_info(self):
         info = self.send({'type': 'query'})
-        self.templates = info['affordance_template']
-
+        self.templates = {}
         a = AffordanceList()
-        a.affordances = [j['type'] for j in self.templates]
+        
+        for template in info['affordance_template']:
+            t = template['type']
+            self.templates[ t ] = template
+            a.affordances.append(t)
         self.afford_pub.publish(a)
 
         self.robots = {}
@@ -55,20 +58,37 @@ class ATRosControl:
     def change_affordance(self, req):
         if req.add:
             self.send({'type': 'add', 'affordance_template': [{'type': req.affordance}]})
-            return ChangeAffordanceResponse(True)
+            
+            ee = self.chosen_robot['end_effectors']
+            ee_ids = [a['id'] for a in ee]
+            ee_names = [a['name'] for a in ee]
+            
+            ee_info = self.templates[req.affordance]['waypoint_info']
+            n_pts = [None] * len(ee_ids)
+            
+            for wp in ee_info:
+                i = ee_ids.index( wp['id'] )
+                n_pts[i] = wp['num_waypoints']
+                        
+            return ChangeAffordanceResponse(True, ee_ids, ee_names, n_pts)
         else:
-            return ChangeAffordanceResponse(False)
+            return ChangeAffordanceResponse(False, [], [])
 
     def affordance_command(self, req):
         templates = []
         for a,i in zip(req.affordances, req.ids):
             templates.append({'type': a, 'id': i})
 
-        self.send({'type': 'command', 'affordance_template': templates,
-                   'command': {'type': req.type, 'end_effector': req.end_effectors,
-                   'steps': req.steps, 'execute': req.execute}})
-
-        return AffordanceCommandResponse(True)
+        resp = self.send({'type': 'command', 'affordance_template': templates,
+                         'command': {'type': req.type, 'end_effector': req.end_effectors,
+                         'steps': req.steps, 'execute': req.execute}})
+        ids = []
+        wps = []
+        for m in resp['waypoint_info']:
+            ids.append( m['id'] )
+            wps.append( m['num_waypoints'] )
+        
+        return AffordanceCommandResponse(True, ids, wps)
 
 atrc = ATRosControl()
 rospy.spin()
