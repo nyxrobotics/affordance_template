@@ -34,6 +34,7 @@ class AffordanceTemplate(threading.Thread) :
         self.id = int(id)
         self.key = name + ":" + str(self.id)
         self.name = name
+        self.filename = ""
         self.root_object = ""
         self.parent_map = {}
         self.marker_map = {}
@@ -573,6 +574,7 @@ class AffordanceTemplate(threading.Thread) :
         try :
             import shutil
             dstname = os.path.join(template_path, filename_bak)
+            print "copy name: ", dstname
             shutil.copyfile(output_file,dstname)
         except :
             rospy.loginfo("AffordanceTemplate::save_to_disk() -- no file to backup")
@@ -627,26 +629,53 @@ class AffordanceTemplate(threading.Thread) :
             origin_element.set("rpy", str(str(self.object_origin[obj].rpy[0]) + " " + str(self.object_origin[obj].rpy[1]) + " " + str(self.object_origin[obj].rpy[2])))
 
             controls_element = ET.SubElement(obj_element, "controls")
-            controls_element.set("xyz", str(str(self.object_origin[obj].xyz[0]) + " " + str(self.object_origin[obj].xyz[1]) + " " + str(self.object_origin[obj].xyz[2])))
-            controls_element.set("rpy", str(str(self.object_controls[obj].rpy[0]) + " " + str(self.object_controls[obj].rpy[1]) + " " + str(self.object_controls[obj].rpy[2])))
+            controls_element.set("xyz", str(str(int(self.object_controls[obj].xyz[0])) + " " + str(int(self.object_controls[obj].xyz[1])) + " " + str(int(self.object_controls[obj].xyz[2]))))
+            controls_element.set("rpy", str(str(int(self.object_controls[obj].rpy[0])) + " " + str(int(self.object_controls[obj].rpy[1])) + " " + str(int(self.object_controls[obj].rpy[2]))))
             controls_element.set("scale", str(self.object_controls[obj].scale))
+
+
+        waypoints = ET.SubElement(root, "end_effector_waypoints")
+        for wp in self.waypoints :
+            ee = wp.split(".")[0]
+            id = wp.split(".")[1].split(":")[0]
+            parent_key = self.parent_map[wp].split(":")[0]
+
+            wp_element = ET.SubElement(waypoints, "end_effector_waypoint")
+            wp_element.set("end_effector", ee)
+            wp_element.set("id", id)
+            wp_element.set("display_object", parent_key)
+
+            origin_element = ET.SubElement(wp_element, "origin")
+            origin_element.set("xyz", str(str(self.waypoint_origin[wp].xyz[0]) + " " + str(self.waypoint_origin[wp].xyz[1]) + " " + str(self.waypoint_origin[wp].xyz[2])))
+            origin_element.set("rpy", str(str(self.waypoint_origin[wp].rpy[0]) + " " + str(self.waypoint_origin[wp].rpy[1]) + " " + str(self.waypoint_origin[wp].rpy[2])))
+
+            controls_element = ET.SubElement(wp_element, "controls")
+            controls_element.set("xyz", str(str(int(self.waypoint_controls[wp].xyz[0])) + " " + str(int(self.waypoint_controls[wp].xyz[1])) + " " + str(int(self.waypoint_controls[wp].xyz[2]))))
+            controls_element.set("rpy", str(str(int(self.waypoint_controls[wp].rpy[0])) + " " + str(int(self.waypoint_controls[wp].rpy[1])) + " " + str(int(self.waypoint_controls[wp].rpy[2]))))
+            controls_element.set("scale", str(self.waypoint_controls[wp].scale))
 
 
         rospy.loginfo("AffordanceTemplate::save_to_disk() -- writing file to disk...")
         print output_file
 
-        # from xml.etree import ElementTree
-        # from xml.dom import minidom
+        def pretty_print_xml(xml):
+            import subprocess
+            proc = subprocess.Popen(
+                ['xmllint', '--format', '/dev/stdin'],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+            )
+            (output, error_output) = proc.communicate(xml);
+            return output
 
-        # def prettify(elem):
-        #     """Return a pretty-printed XML string for the Element.
-        #     """
-        #     rough_string = ElementTree.tostring(elem, 'utf-8')
-        #     reparsed = minidom.parseString(rough_string)
-        #     return reparsed.toprettyxml(indent="  ")
+        xmlstr = ET.tostring(root)
+        import io
+        f = io.open(output_file, "wb")
+        f.write(pretty_print_xml(xmlstr))
+        f.close()
+        # tree = ET.ElementTree(root)
+        # tree.write(output_file)
 
-        tree = ET.ElementTree(root)
-        tree.write(output_file)
 
 
     def create_waypoint(self, ee_id, wp_id, ps, parent, controls=None, origin=None, pose_id=None) :
@@ -775,6 +804,9 @@ class AffordanceTemplate(threading.Thread) :
         self.create_from_parameters()
         print "AffordanceTemplate::load_from_file() -- done"
         # self.print_structure()
+        stuff = filename.split("/")
+        self.filename = stuff[len(stuff)-1]
+
         return self.structure
 
     def load_from_marker(self, m) :
@@ -874,7 +906,7 @@ class AffordanceTemplate(threading.Thread) :
 
                 if handle == self.menu_handles[(feedback.marker_name,"Save")] :
                     rospy.loginfo(str("AffordanceTemplate::process_feedback() -- Saving Affordance Template"))
-                    self.save_to_disk("test_file.atdf")
+                    self.save_to_disk(self.filename)
 
             else :
                 ee_list =[int(feedback.marker_name.split(".")[0])]
