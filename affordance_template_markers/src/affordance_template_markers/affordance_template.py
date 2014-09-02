@@ -119,13 +119,23 @@ class AffordanceTemplate(threading.Thread) :
         self.object_menu_options.append(("Add Waypoint Before", False))
         self.object_menu_options.append(("Add Waypoint After", False))
         self.object_menu_options.append(("Reset", False))
-        self.object_menu_options.append(("Save as..", False))
+        self.object_menu_options.append(("Save", False))
 
         # start the frame update thread
         self.running = True
         self.start()
 
         rospy.loginfo("AffordanceTemplate::init() -- Done Creating new Empty AffordanceTemplate")
+
+    def getPackagePath(self, pkg):
+        """Return the path to the ROS package."""
+        import rospkg
+        try:
+            rp = rospkg.RosPack()
+            return rp.get_path(pkg)
+        except:
+            # print 'No package found: ', pkg
+            return False
 
     def set_root_object(self, name) :
         self.root_object = name
@@ -542,6 +552,102 @@ class AffordanceTemplate(threading.Thread) :
 
             wp_ids += 1
 
+    def save_to_disk(self, filename=None, package=None) :
+
+        name = self.structure.name.split(":")[0]
+
+        if filename == None :
+            filename = name + str(".atdf")
+
+        filename_bak = filename + str(".bak")
+        if package == None:
+            package = "affordance_template_library"
+
+        # get package and file path
+        import os
+        package_path = self.getPackagePath(package)
+        template_path    = os.path.join(package_path, 'templates')
+        output_file = os.path.join(template_path, filename)
+
+        # backup file
+        try :
+            import shutil
+            dstname = os.path.join(template_path, filename_bak)
+            shutil.copyfile(output_file,dstname)
+        except :
+            rospy.loginfo("AffordanceTemplate::save_to_disk() -- no file to backup")
+
+        # create xml file
+        import xml.etree.cElementTree as ET
+
+        root = ET.Element("affordance_template")
+        # root.set('version', '1.0')
+        root.set("name", name)
+        root.set("image", self.structure.image)
+
+        display_objects = ET.SubElement(root, "display_objects")
+        for obj in self.display_objects :
+            key = obj.split(":")[0]
+            obj_element = ET.SubElement(display_objects, "display_object")
+            obj_element.set("name", key)
+            if obj in self.parent_map:
+                if not self.parent_map[obj] == "robot" :
+                    parent_key = self.parent_map[obj].split(":")[0]
+                    obj_element.set("parent", parent_key)
+
+            print self.object_geometry[obj]
+            if isinstance(self.object_geometry[obj], affordance_template_markers.atdf_parser.Mesh) :
+                geometry_element = ET.SubElement(obj_element, "geometry")
+                mesh_element = ET.SubElement(geometry_element, "mesh")
+                mesh_element.set("filename", self.object_geometry[obj].filename)
+                mesh_element.set("scale", str(str(self.object_geometry[obj].scale[0]) + " " + str(self.object_geometry[obj].scale[1]) + " " + str(self.object_geometry[obj].scale[2])))
+            elif isinstance(self.object_geometry[obj], affordance_template_markers.atdf_parser.Box) :
+                geometry_element = ET.SubElement(obj_element, "geometry")
+                box_element = ET.SubElement(geometry_element, "box")
+                box_element.set("size", str(str(self.object_geometry[obj].size) + " " + str(self.object_geometry[obj].size) + " " + str(self.object_geometry[obj].size)))
+            elif isinstance(self.object_geometry[obj], affordance_template_markers.atdf_parser.Sphere):
+                geometry_element = ET.SubElement(obj_element, "geometry")
+                sphere_element = ET.SubElement(geometry_element, "sphere")
+                sphere_element.set("radius", str(self.object_geometry[obj].x))
+            elif isinstance(self.object_geometry[obj], affordance_template_markers.atdf_parser.Cylinder):
+                geometry_element = ET.SubElement(obj_element, "geometry")
+                cylinder_element = ET.SubElement(geometry_element, "cylinder")
+                cylinder_element.set("radius", str(self.object_geometry[obj].radius))
+                cylinder_element.set("length", str(self.object_geometry[obj].length))
+
+            if not self.object_material[obj] == None :
+                material_element = ET.SubElement(obj_element, "material")
+                material_element.set("name", self.object_material[obj].name)
+                color_element = ET.SubElement(material_element, "color")
+                color_element.set("rgba", str(str(self.object_material[obj].color.rgba[0]) + " " + str(self.object_material[obj].color.rgba[1])
+                        + " " + str(self.object_material[obj].color.rgba[2]) + " " + str(self.object_material[obj].color.rgba[3])))
+
+            origin_element = ET.SubElement(obj_element, "origin")
+            origin_element.set("xyz", str(str(self.object_origin[obj].xyz[0]) + " " + str(self.object_origin[obj].xyz[1]) + " " + str(self.object_origin[obj].xyz[2])))
+            origin_element.set("rpy", str(str(self.object_origin[obj].rpy[0]) + " " + str(self.object_origin[obj].rpy[1]) + " " + str(self.object_origin[obj].rpy[2])))
+
+            controls_element = ET.SubElement(obj_element, "controls")
+            controls_element.set("xyz", str(str(self.object_origin[obj].xyz[0]) + " " + str(self.object_origin[obj].xyz[1]) + " " + str(self.object_origin[obj].xyz[2])))
+            controls_element.set("rpy", str(str(self.object_controls[obj].rpy[0]) + " " + str(self.object_controls[obj].rpy[1]) + " " + str(self.object_controls[obj].rpy[2])))
+            controls_element.set("scale", str(self.object_controls[obj].scale))
+
+
+        rospy.loginfo("AffordanceTemplate::save_to_disk() -- writing file to disk...")
+        print output_file
+
+        # from xml.etree import ElementTree
+        # from xml.dom import minidom
+
+        # def prettify(elem):
+        #     """Return a pretty-printed XML string for the Element.
+        #     """
+        #     rough_string = ElementTree.tostring(elem, 'utf-8')
+        #     reparsed = minidom.parseString(rough_string)
+        #     return reparsed.toprettyxml(indent="  ")
+
+        tree = ET.ElementTree(root)
+        tree.write(output_file)
+
 
     def create_waypoint(self, ee_id, wp_id, ps, parent, controls=None, origin=None, pose_id=None) :
 
@@ -765,6 +871,10 @@ class AffordanceTemplate(threading.Thread) :
                 if handle == self.menu_handles[(feedback.marker_name,"Reset")] :
                     rospy.loginfo(str("AffordanceTemplate::process_feedback() -- Reseting Affordance Template"))
                     self.create_from_structure()
+
+                if handle == self.menu_handles[(feedback.marker_name,"Save")] :
+                    rospy.loginfo(str("AffordanceTemplate::process_feedback() -- Saving Affordance Template"))
+                    self.save_to_disk("test_file.atdf")
 
             else :
                 ee_list =[int(feedback.marker_name.split(".")[0])]
