@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 import rospy
 import zmq, json
 from affordance_ros_control.msg import *
