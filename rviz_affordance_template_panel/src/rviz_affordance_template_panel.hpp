@@ -102,7 +102,7 @@ namespace rviz_affordance_template_panel
 
         // /** \brief Pause Command.
         //  */
-        void pause() { controls_->send_command(Command::PAUSE); };
+        //void pause() { controls_->send_command(Command::PAUSE); };
 
         // /** \brief Stop Command.
         //  */
@@ -110,11 +110,11 @@ namespace rviz_affordance_template_panel
 
         // * \brief Play Backward Command.
 
-        void play_backward() { controls_->send_command(Command::PLAY_BACKWARD); };
+        //void play_backward() { controls_->send_command(Command::PLAY_BACKWARD); };
 
         // /** \brief Play Forward Command.
         //  */
-        void play_forward() { controls_->send_command(Command::PLAY_FORWARD); };
+        //void play_forward() { controls_->send_command(Command::PLAY_FORWARD); };
 
         // /** \brief Step Backward Command.
         //  */

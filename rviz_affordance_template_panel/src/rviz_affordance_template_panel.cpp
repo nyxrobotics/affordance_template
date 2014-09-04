@@ -67,9 +67,9 @@ void RVizAffordanceTemplatePanel::setupWidgets() {
 
     QObject::connect(ui_->go_to_start_button, SIGNAL(clicked()), this, SLOT(go_to_start()));
     QObject::connect(ui_->go_to_end_button, SIGNAL(clicked()), this, SLOT(go_to_end()));
-    QObject::connect(ui_->pause_button, SIGNAL(clicked()), this, SLOT(pause()));
-    QObject::connect(ui_->play_backwards_button, SIGNAL(clicked()), this, SLOT(play_backward()));
-    QObject::connect(ui_->play_button, SIGNAL(clicked()), this, SLOT(play_forward()));
+    //QObject::connect(ui_->pause_button, SIGNAL(clicked()), this, SLOT(pause()));
+    //QObject::connect(ui_->play_backwards_button, SIGNAL(clicked()), this, SLOT(play_backward()));
+    //QObject::connect(ui_->play_button, SIGNAL(clicked()), this, SLOT(play_forward()));
     QObject::connect(ui_->step_backwards_button, SIGNAL(clicked()), this, SLOT(step_backward()));
     QObject::connect(ui_->step_forward_button, SIGNAL(clicked()), this, SLOT(step_forward()));
 
