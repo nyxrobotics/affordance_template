@@ -528,14 +528,25 @@ class AffordanceTemplate(threading.Thread) :
             else :
                 self.marker_menus[wp].setCheckState( self.menu_handles[(wp,"Hide Controls")], MenuHandler.CHECKED )
 
-            for m in self.robot_config.end_effector_markers[ee_name].markers :
+            # ask for end_effector pose markers here (and change ids/colors as necessary)
+            id = self.waypoint_pose_map[wp]
+            if id == None :
+                pn = "current"
+            else :
+                pn = self.robot_config.end_effector_id_map[ee_name][id]
+
+            # print "##########getting markers for pose ", pn
+            markers = self.robot_config.end_effector_link_data[ee_name].get_markers_for_pose(pn)
+            for m in markers.markers :
+            # for m in self.robot_config.end_effector_markers[ee_name].markers :
+                # print "copying marker: ", m.text
                 ee_m = copy.deepcopy(m)
                 ee_m.header.frame_id = ""
                 ee_m.pose = getPoseFromFrame(self.wpTee[wp]*getFrameFromPose(m.pose))
-                ee_m.color.r = .2
-                ee_m.color.g = .5
-                ee_m.color.b = .2
-                ee_m.color.a = .8
+                # ee_m.color.r = .2
+                # ee_m.color.g = .5
+                # ee_m.color.b = .2
+                # ee_m.color.a = .8
                 menu_control.markers.append( ee_m )
 
             scale = 1.0

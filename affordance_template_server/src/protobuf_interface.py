@@ -114,7 +114,7 @@ class ProtobufInterface(object):
         response = Response()
         response.success = False
         print "new ADD request"
-        print request
+        # print request
         try:
             ret = False
             for template in request.affordance_template:
@@ -131,7 +131,7 @@ class ProtobufInterface(object):
         response = Response()
         response.success = False
         print "new START_RECOGNITION request"
-        print request
+        # print request
         try:
             ret = False
             for recognition_object in request.recognition_object:
@@ -180,7 +180,7 @@ class ProtobufInterface(object):
         response = Response()
         response.success = False
         print "new KILL request"
-        print request
+        # print request
         try:
             for template in request.affordance_template:
                 self.server.removeTemplate(template.type, template.id)
@@ -196,7 +196,7 @@ class ProtobufInterface(object):
         response = Response()
         response.success = False
         print "new LOAD_ROBOT request: ", request.robot.name
-        print request
+        # print request
         try:
             self.server.robot_config = self.server.loadRobotFromMsg(request.robot)
             self.server.robot_config.configure()
@@ -209,7 +209,7 @@ class ProtobufInterface(object):
         response = Response()
         response.success = False
         print "new COMMAND request: ", request.robot.name
-        print request
+        # print request
         try:
             print "command: ", request.command.type
             print "steps: ", request.command.steps
