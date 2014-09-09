@@ -74,7 +74,98 @@ void RVizAffordanceTemplatePanel::setupWidgets() {
     QObject::connect(ui_->step_forward_button, SIGNAL(clicked()), this, SLOT(step_forward()));
 
     QObject::connect(ui_->refresh_button, SIGNAL(clicked()), this, SLOT(getAvailableInfo()));
+    QObject::connect(ui_->robot_lock, SIGNAL(stateChanged(int)), this, SLOT(enable_config_panel(int)));
 
+    QObject::connect(ui_->robot_name, SIGNAL(textEdited(const QString&)), this, SLOT(update_robot_config(const QString&)));
+    QObject::connect(ui_->moveit_package, SIGNAL(textEdited(const QString&)), this, SLOT(update_robot_config(const QString&)));
+    QObject::connect(ui_->frame_id, SIGNAL(textEdited(const QString&)), this, SLOT(update_robot_config(const QString&)));
+    QObject::connect(ui_->robot_tx, SIGNAL(textEdited(const QString&)), this, SLOT(update_robot_config(const QString&)));
+    QObject::connect(ui_->robot_ty, SIGNAL(textEdited(const QString&)), this, SLOT(update_robot_config(const QString&)));
+    QObject::connect(ui_->robot_tz, SIGNAL(textEdited(const QString&)), this, SLOT(update_robot_config(const QString&)));
+    QObject::connect(ui_->robot_rr, SIGNAL(textEdited(const QString&)), this, SLOT(update_robot_config(const QString&)));
+    QObject::connect(ui_->robot_rp, SIGNAL(textEdited(const QString&)), this, SLOT(update_robot_config(const QString&)));
+    QObject::connect(ui_->robot_ry, SIGNAL(textEdited(const QString&)), this, SLOT(update_robot_config(const QString&)));
+    QObject::connect(ui_->ee_name, SIGNAL(textEdited(const QString&)), this, SLOT(update_end_effector_map(const QString&)));
+    QObject::connect(ui_->ee_id, SIGNAL(textEdited(const QString&)), this, SLOT(update_end_effector_map(const QString&)));
+    QObject::connect(ui_->ee_tx, SIGNAL(textEdited(const QString&)), this, SLOT(update_end_effector_map(const QString&)));
+    QObject::connect(ui_->ee_ty, SIGNAL(textEdited(const QString&)), this, SLOT(update_end_effector_map(const QString&)));
+    QObject::connect(ui_->ee_tz, SIGNAL(textEdited(const QString&)), this, SLOT(update_end_effector_map(const QString&)));
+    QObject::connect(ui_->ee_rr, SIGNAL(textEdited(const QString&)), this, SLOT(update_end_effector_map(const QString&)));
+    QObject::connect(ui_->ee_rp, SIGNAL(textEdited(const QString&)), this, SLOT(update_end_effector_map(const QString&)));
+    QObject::connect(ui_->ee_ry, SIGNAL(textEdited(const QString&)), this, SLOT(update_end_effector_map(const QString&)));
+}
+
+void RVizAffordanceTemplatePanel::update_robot_config(const QString& text) {
+    // update the robot config
+    // note: we ignore the actual updated text passed in, we simply update
+    // robot map values with the current text in XYZ/RPY
+
+    // get currently selected robot key
+    string key = ui_->robot_select->currentText().toUtf8().constData();
+    // now update robotMap with current values
+    (*robotMap_[key]).name(ui_->robot_select->currentText().toUtf8().constData());
+    (*robotMap_[key]).moveit_config_package(ui_->moveit_package->text().toUtf8().constData());
+    (*robotMap_[key]).frame_id(ui_->frame_id->text().toUtf8().constData());
+
+    float tx, ty, tz, rr, rp, ry;
+    tx = ui_->robot_tx->text().toFloat();
+    ty = ui_->robot_ty->text().toFloat();
+    tz = ui_->robot_tz->text().toFloat();
+    rr = ui_->robot_rr->text().toFloat();
+    rp = ui_->robot_rp->text().toFloat();
+    ry = ui_->robot_ry->text().toFloat();
+    vector<float> q = util::RPYToQuaternion(rr, rp, ry);
+    vector<float> root_offset(7);
+    root_offset[0] = tx;
+    root_offset[1] = ty;
+    root_offset[2] = tz;
+    root_offset[3] = q[0];
+    root_offset[4] = q[1];
+    root_offset[5] = q[2];
+    root_offset[6] = q[3];
+    (*robotMap_[key]).root_offset(root_offset);
+}
+
+void RVizAffordanceTemplatePanel::update_end_effector_map(const QString& text) {
+    // update the end effector robot map
+    // note: we ignore the actual updated text passed in, we simply update
+    // robot map values with the current text in XYZ/RPY of the current EE
+    string robot_key = ui_->robot_select->currentText().toUtf8().constData();
+    string key = ui_->end_effector_select->currentText().toUtf8().constData();
+    for (auto& e: (*robotMap_[robot_key]).endeffectorMap) {
+        if (e.second->name() == key) {
+            e.second->name(ui_->ee_name->text().toUtf8().constData());
+            e.second->id(ui_->ee_id->text().toInt());
+            float tx, ty, tz, rr, rp, ry;
+            tx = ui_->ee_tx->text().toFloat();
+            ty = ui_->ee_ty->text().toFloat();
+            tz = ui_->ee_tz->text().toFloat();
+            rr = ui_->ee_rr->text().toFloat();
+            rp = ui_->ee_rp->text().toFloat();
+            ry = ui_->ee_ry->text().toFloat();
+            vector<float> q = util::RPYToQuaternion(rr, rp, ry);
+            vector<float> pose_offset(7);
+            pose_offset[0] = tx;
+            pose_offset[1] = ty;
+            pose_offset[2] = tz;
+            pose_offset[3] = q[0];
+            pose_offset[4] = q[1];
+            pose_offset[5] = q[2];
+            pose_offset[6] = q[3];
+            e.second->pose_offset(pose_offset);
+            break;
+        }
+    }
+}
+
+void RVizAffordanceTemplatePanel::enable_config_panel(int state) {
+    if (state == Qt::Checked) {
+        ui_->groupBox->setEnabled(false);
+        ui_->load_config_button->setEnabled(true);
+    } else {
+        ui_->groupBox->setEnabled(true);
+        ui_->load_config_button->setEnabled(false);
+    }
 }
 
 void RVizAffordanceTemplatePanel::connect_callback() {
@@ -434,8 +525,8 @@ void RVizAffordanceTemplatePanel::getRunningItems() {
 
 
 void RVizAffordanceTemplatePanel::safeLoadConfig() {
-    if(ui_->robot_lock->isChecked()) {
-        cout << "Can't load while RobotConfig is locked" << endl;
+    if(!ui_->robot_lock->isChecked()) {
+        cout << "Can't load while RobotConfig is unlocked" << endl;
         return;
     }
     loadConfig();
@@ -536,6 +627,8 @@ void RVizAffordanceTemplatePanel::loadConfig() {
 
     robot_name_ = key;
     controls_->setRobotName(robot_name_);
+
+    enable_config_panel(Qt::Checked);
 }
 
 
