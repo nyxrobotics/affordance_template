@@ -92,16 +92,16 @@ class AffordanceTemplate(threading.Thread) :
 
         # set up menu info
         self.waypoint_menu_options = []
-        self.waypoint_menu_options.append(("Display Next Path Segment", False))
-        self.waypoint_menu_options.append(("Display Full Path", False))
-        self.waypoint_menu_options.append(("Compute Backwards Path", True))
-        # self.waypoint_menu_options.append(("Execute On Move", True))
-        self.waypoint_menu_options.append(("Execute Next Segment", False))
-        self.waypoint_menu_options.append(("Execute Full Path", False))
-        self.waypoint_menu_options.append(("Loop Path", True))
+        # self.waypoint_menu_options.append(("Display Next Path Segment", False))
+        # self.waypoint_menu_options.append(("Display Full Path", False))
+        # self.waypoint_menu_options.append(("Compute Backwards Path", True))
+        # self.waypoint_menu_options.append(("Execute Next Segment", False))
+        # self.waypoint_menu_options.append(("Execute Full Path", False))
+        # self.waypoint_menu_options.append(("Loop Path", True))
         self.waypoint_menu_options.append(("Sync To Actual", False))
-        self.waypoint_menu_options.append(("Manipulator Stored Poses", False))
-        self.waypoint_menu_options.append(("End-Effector Stored Poses", False))
+        # self.waypoint_menu_options.append(("Manipulator Stored Poses", False))
+        # self.waypoint_menu_options.append(("End-Effector Stored Poses", False))
+        self.waypoint_menu_options.append(("Change End-Effector Pose", False))
         self.waypoint_menu_options.append(("Hide Controls", True))
         self.waypoint_menu_options.append(("Add Waypoint Before", False))
         self.waypoint_menu_options.append(("Add Waypoint After", False))
@@ -110,13 +110,11 @@ class AffordanceTemplate(threading.Thread) :
         self.waypoint_menu_options.append(("Move Back", False))
 
         self.object_menu_options = []
-        self.object_menu_options.append(("Display Next Path Segment", False))
-        self.object_menu_options.append(("Display Full Path", False))
-        self.object_menu_options.append(("Compute Backwards Path", True))
-        # self.object_menu_options.append(("Execute On Move", True))
-        # self.object_menu_options.append(("Loop Path", True))
-        self.object_menu_options.append(("Execute Next Segment", False))
-        self.object_menu_options.append(("Execute Full Path", False))
+        # self.object_menu_options.append(("Display Next Path Segment", False))
+        # self.object_menu_options.append(("Display Full Path", False))
+        # self.object_menu_options.append(("Compute Backwards Path", True))
+        # self.object_menu_options.append(("Execute Next Segment", False))
+        # self.object_menu_options.append(("Execute Full Path", False))
         self.object_menu_options.append(("Add Waypoint Before", False))
         self.object_menu_options.append(("Add Waypoint After", False))
         self.object_menu_options.append(("Reset", False))
@@ -694,6 +692,8 @@ class AffordanceTemplate(threading.Thread) :
             controls_element.set("rpy", str(str(int(self.waypoint_controls[wp].rpy[0])) + " " + str(int(self.waypoint_controls[wp].rpy[1])) + " " + str(int(self.waypoint_controls[wp].rpy[2]))))
             controls_element.set("scale", str(self.waypoint_controls[wp].scale))
 
+            pose_group_element = ET.SubElement(wp_element, "pose_group")
+            pose_group_element.set("id", str(self.waypoint_pose_map[wp]))
 
         rospy.loginfo("AffordanceTemplate::save_to_disk() -- writing file to disk...")
         # print output_file
@@ -828,6 +828,10 @@ class AffordanceTemplate(threading.Thread) :
                 sub_menu_handle = self.marker_menus[waypoint].insert(m)
                 for p in self.robot_config.moveit_interface.get_stored_state_list(group) :
                     self.menu_handles[(waypoint,m,p)] = self.marker_menus[waypoint].insert(p,parent=sub_menu_handle,callback=self.stored_pose_callback)
+            elif m == "Change End-Effector Pose" :
+                sub_menu_handle = self.marker_menus[waypoint].insert(m)
+                for p in self.robot_config.moveit_interface.get_stored_state_list(group) :
+                    self.menu_handles[(waypoint,m,p)] = self.marker_menus[waypoint].insert(p,parent=sub_menu_handle,callback=self.change_ee_pose_callback)
             else :
                 self.menu_handles[(waypoint,m)] = self.marker_menus[waypoint].insert( m, callback=self.process_feedback )
                 if c : self.marker_menus[waypoint].setCheckState( self.menu_handles[(waypoint,m)], MenuHandler.UNCHECKED )
@@ -1201,6 +1205,22 @@ class AffordanceTemplate(threading.Thread) :
                 self.robot_config.moveit_interface.create_joint_plan_to_target(manipulator_name, self.robot_config.stored_poses[manipulator_name][p])
                 r = self.robot_config.moveit_interface.execute_plan(manipulator_name)
                 if not r : rospy.logerr(str("RobotTeleop::process_feedback(pose) -- failed moveit execution for group: " + manipulator_name + ". re-synching..."))
+
+
+    def change_ee_pose_callback(self, feedback) :
+        ee_id =int(feedback.marker_name.split(".")[0])
+        ee_name = self.robot_config.get_end_effector_name(ee_id)
+        wp = feedback.marker_name
+        pn = None
+        for p in self.robot_config.moveit_interface.get_stored_state_list(ee_name) :
+            if self.menu_handles[(feedback.marker_name,"Change End-Effector Pose",p)] == feedback.menu_entry_id :
+                pn = p
+                break
+        pid = self.robot_config.end_effector_pose_map[ee_name][pn]
+        rospy.loginfo(str("AffordanceTemplate::change_ee_pose_callback() -- setting Waypoint " + str(wp) + " pose to " + str(pn) + " (" + str(pid) + ")"))
+        self.waypoint_pose_map[wp] = pid
+        self.create_from_parameters(True)
+
 
     def create_waypoint_callback(self, feedback) :
         for ee_id in self.robot_config.end_effector_name_map.iterkeys() :
