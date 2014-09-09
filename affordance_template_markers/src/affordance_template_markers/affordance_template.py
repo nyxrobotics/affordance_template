@@ -144,6 +144,9 @@ class AffordanceTemplate(threading.Thread) :
     def get_root_object(self) :
         return self.root_object
 
+    def create_waypoint_id(self, ee_id, wp_id) :
+        return str(str(ee_id) + "." + str(wp_id) + ":" + str(self.name))
+
     def add_interactive_marker(self, marker, callback=None):
         name = marker.name
         rospy.loginfo(str("Adding affordance template marker: " + name))
@@ -542,6 +545,7 @@ class AffordanceTemplate(threading.Thread) :
                 # print "copying marker: ", m.text
                 ee_m = copy.deepcopy(m)
                 ee_m.header.frame_id = ""
+                ee_m.ns = self.name
                 ee_m.pose = getPoseFromFrame(self.wpTee[wp]*getFrameFromPose(m.pose))
                 # ee_m.color.r = .2
                 # ee_m.color.g = .5
@@ -713,7 +717,8 @@ class AffordanceTemplate(threading.Thread) :
 
     def create_waypoint(self, ee_id, wp_id, ps, parent, controls=None, origin=None, pose_id=None) :
 
-        wp_name = str(ee_id) + "." + str(wp_id) + ":" + str(self.id)
+        # wp_name = str(ee_id) + "." + str(wp_id) + ":" + str(self.id) + "-" + str(self.name)
+        wp_name = self.create_waypoint_id(ee_id, wp_id)
         ee_name = self.robot_config.end_effector_name_map[ee_id]
 
         self.parent_map[wp_name] = parent
@@ -752,7 +757,7 @@ class AffordanceTemplate(threading.Thread) :
     def remove_waypoint(self, ee_id, wp_id) :
         max_idx = self.waypoint_max[ee_id]
         for k in range(wp_id, max_idx) : self.move_waypoint(ee_id, k+1, k)
-        last_wp_name = str(ee_id) + "." + str(self.waypoint_max[ee_id]) + ":" + str(self.id)
+        last_wp_name = self.create_waypoint_id(ee_id, self.waypoint_max[ee_id])
         del self.parent_map[last_wp_name]
         del self.objTwp[last_wp_name]
         del self.wpTee[last_wp_name]
@@ -767,13 +772,13 @@ class AffordanceTemplate(threading.Thread) :
         self.remove_interactive_marker(last_wp_name)
 
     def move_waypoint(self, ee_id, old_id, new_id) :
-        old_name = str(ee_id) + "." + str(old_id) + ":" + str(self.id)
-        new_name = str(ee_id) + "." + str(new_id) + ":" + str(self.id)
+        old_name = self.create_waypoint_id(ee_id, old_id)
+        new_name = self.create_waypoint_id(ee_id, new_id)
         self.create_waypoint(ee_id, new_id, getPoseFromFrame(self.objTwp[old_name]), self.parent_map[old_name], self.waypoint_controls[old_name], self.waypoint_origin[old_name], self.waypoint_pose_map[old_name])
 
     def swap_waypoints(self, ee_id, wp_id1, wp_id2) :
-        wp_name1 = str(ee_id) + "." + str(wp_id1) + ":" + str(self.id)
-        wp_name2 = str(ee_id) + "." + str(wp_id2) + ":" + str(self.id)
+        wp_name1 = self.create_waypoint_id(ee_id, wp_id1)
+        wp_name2 = self.create_waypoint_id(ee_id, wp_id2)
 
         objTwp1 = self.objTwp[wp_name1]
         objTwp2 = self.objTwp[wp_name2]
@@ -900,7 +905,7 @@ class AffordanceTemplate(threading.Thread) :
         print "---------------------"
         for wp in self.structure.end_effector_waypoints.end_effector_waypoints :
             print "---------------------"
-            print "\twaypoint: ", wp.end_effector, ".", wp.id , ":", str(self.id)
+            print "\twaypoint: ", self.create_waypoint_id(wp.end_effector, wp.id)
             print "----------------"
             print "\tdisplay_object: ", wp.display_object
             print "----------------"
@@ -964,7 +969,7 @@ class AffordanceTemplate(threading.Thread) :
                 next_path_idx = self.compute_next_path_id(ee_id, 1, self.waypoint_backwards_flag[ee_id])
 
                 if handle == self.menu_handles[(feedback.marker_name,"Display Next Path Segment")] :
-                    next_path_str = str(str(ee_id) + "." + str(next_path_idx)) + ":" + str(self.id)
+                    next_path_str = self.create_waypoint_id(ee_id, next_path_idx)
                     if not next_path_str in self.objTwp :
                         rospy.logerr(str("AffordanceTemplate::process_feedback() -- path index[" + str(next_path_str) + "] not found!!"))
                     else :
@@ -1001,7 +1006,7 @@ class AffordanceTemplate(threading.Thread) :
                         r.reverse()
 
                     for idx in r :
-                        next_path_str = str(str(ee_id) + "." + str(idx)) + ":" + str(self.id)
+                        next_path_str = self.create_waypoint_id(ee_id, idx)
                         if not next_path_str in self.objTwp :
                             rospy.logerr(str("AffordanceTemplate::process_feedback() -- path index[" + str(next_path_str) + "] not found!!"))
                         else :
@@ -1065,12 +1070,12 @@ class AffordanceTemplate(threading.Thread) :
                     print "Adding Waypoint before ", waypoint_id, "for end effector: ", ee_id
 
                     new_pose = geometry_msgs.msg.Pose()
-                    first_name = str(str(ee_id) + "." + str(waypoint_id) + ":" + str(self.id))
+                    first_name = self.create_waypoint_id(ee_id,waypoint_id)
                     pose_first = getPoseFromFrame(self.objTwp[first_name])
                     new_id = 0
                     if waypoint_id > 0 :
                         new_id = waypoint_id-1
-                        second_name = str(str(ee_id) + "." + str(new_id) + ":" + str(self.id))
+                        second_name = new_id
                         pose_second = getPoseFromFrame(self.objTwp[second_name])
                         new_pose.position.x = (pose_second.position.x - pose_first.position.x)/2.0 + pose_first.position.x
                         new_pose.position.y = (pose_second.position.y - pose_first.position.y)/2.0 + pose_first.position.y
@@ -1085,12 +1090,12 @@ class AffordanceTemplate(threading.Thread) :
                     r = range(new_id,max_idx+1)
                     r.reverse()
                     for k in r:
-                        old_name = str(ee_id) + "." + str(k) + ":" + str(self.id)
-                        new_name = str(ee_id) + "." + str(k+1) + ":" + str(self.id)
+                        old_name = self.create_waypoint_id(ee_id, str(k))
+                        new_name = self.create_waypoint_id(ee_id, str(k+1))
                         self.move_waypoint(ee_id, k, k+1)
 
                     # print "creating waypoint at : ", new_id
-                    old_name = str(ee_id) + "." + str(1)  + ":" + str(self.id)
+                    old_name = self.create_waypoint_id(ee_id, str(1))
                     self.create_waypoint(ee_id, waypoint_id, new_pose, self.parent_map[old_name], self.waypoint_controls[old_name], self.waypoint_origin[old_name], self.waypoint_pose_map[old_name]) # is parent right here?
                     self.create_from_parameters(True)
 
@@ -1098,11 +1103,11 @@ class AffordanceTemplate(threading.Thread) :
                     print "Adding Waypoint after ", waypoint_id, "for end effector: ", ee_id
 
                     new_pose = geometry_msgs.msg.Pose()
-                    first_name = str(ee_id) + "." + str(waypoint_id) + ":" + str(self.id)
+                    first_name = self.create_waypoint_id(ee_id,waypoint_id)
                     pose_first = getPoseFromFrame(self.objTwp[first_name])
                     new_id = waypoint_id+1
                     if waypoint_id < max_idx :
-                        second_name = str(str(ee_id) + "." + str(new_id) + ":" + str(self.id))
+                        second_name = self.create_waypoint_id(ee_id, new_id)
                         pose_second = getPoseFromFrame(self.objTwp[second_name])
                         new_pose.position.x = (pose_second.position.x - pose_first.position.x)/2.0 + pose_first.position.x
                         new_pose.position.y = (pose_second.position.y - pose_first.position.y)/2.0 + pose_first.position.y
@@ -1117,11 +1122,11 @@ class AffordanceTemplate(threading.Thread) :
                     r = range(waypoint_id,max_idx+1)
                     r.reverse()
                     for k in r:
-                        old_name = str(str(ee_id) + "." + str(k) + ":" + str(self.id))
-                        new_name = str(str(ee_id) + "." + str(k+1) + ":" + str(self.id))
+                        old_name = self.create_waypoint_id(ee_id, str(k))
+                        new_name = self.create_waypoint_id(ee_id, str(k+1))
                         self.move_waypoint(ee_id, k, k+1)
 
-                    old_name = str(ee_id) + "." + str(max_idx) + ":" + str(self.id)
+                    old_name = self.create_waypoint_id(ee_id, max_idx)
                     self.create_waypoint(ee_id, new_id, new_pose, self.parent_map[old_name], self.waypoint_controls[old_name], self.waypoint_origin[old_name], self.waypoint_pose_map[old_name])
                     self.create_from_parameters(True)
 
@@ -1206,7 +1211,7 @@ class AffordanceTemplate(threading.Thread) :
                 ps = geometry_msgs.msg.Pose()
                 pose_id = None
                 if not ee_id in self.waypoint_max.keys() :
-                    wp_name = str(str(ee_id) + "." + str(wp_id) + ":" + str(self.id))
+                    wp_name = self.create_waypoint_id(ee_id, wp_id)
                     T = getFrameFromPose(feedback.pose)
                     ps = getPoseFromFrame(T)
                     ps.position.x = 0.05
@@ -1215,8 +1220,8 @@ class AffordanceTemplate(threading.Thread) :
                     self.create_waypoint(ee_id, wp_id, ps, feedback.marker_name, pose_id)
                 else :
                     wp_id = self.waypoint_max[ee_id]+1
-                    wp_name = str(ee_id) + "." + str(wp_id) + ":" + str(self.id)
-                    last_wp_name = str(ee_id) + "." + str(self.waypoint_max[ee_id] + ":" + str(self.id))
+                    wp_name = self.create_waypoint_id(ee_id, wp_id)
+                    last_wp_name = self.create_waypoint_id(ee_id, self.waypoint_max[ee_id])
                     ps = getPoseFromFrame(self.objTwp[last_wp_name])
                     ps.position.x +=0.025
                     ps.position.y +=0.025
@@ -1229,7 +1234,7 @@ class AffordanceTemplate(threading.Thread) :
             if self.menu_handles[(feedback.marker_name,"Add Waypoint Before",ee_name)] == feedback.menu_entry_id :
 
                 wp_id = 0
-                wp_name = str(ee_id) + "." + str(0) + ":" + str(self.id)
+                wp_name = self.create_waypoint_id(ee_id, str(0))
                 ps = geometry_msgs.msg.Pose()
                 pose_id = None
 
@@ -1249,8 +1254,8 @@ class AffordanceTemplate(threading.Thread) :
                     r = range(0,self.waypoint_max[ee_id]+1)
                     r.reverse()
                     for k in r:
-                        old_name = str(ee_id) + "." + str(k) + ":" + str(self.id)
-                        new_name = str(ee_id) + "." + str(k+1) + ":" + str(self.id)
+                        old_name = self.create_waypoint_id(ee_id, str(k))
+                        new_name = self.create_waypoint_id(ee_id, str(k+1))
                         self.move_waypoint(ee_id, k, k+1)
 
                     self.create_waypoint(ee_id, wp_id, ps, feedback.marker_name, self.waypoint_controls[wp_name], self.waypoint_origin[wp_name], pose_id)
@@ -1334,7 +1339,7 @@ class AffordanceTemplate(threading.Thread) :
         else:
             path, next_path_idx = self.compute_path_ids(ee_id, steps, backwards)
 
-        next_path_str = str(str(ee_id) + "." + str(next_path_idx) + ":" + str(self.id))
+        next_path_str = self.create_waypoint_id(ee_id, next_path_idx)
         # print "next_path_str: ", next_path_str
         # print "path: ", path
         rospy.loginfo(str("AffordanceTemplate::plan_path_to_waypoint() -- computing path to index[" + str(next_path_str) + "]"))
@@ -1347,7 +1352,7 @@ class AffordanceTemplate(threading.Thread) :
 
         # if we are gonna handle pausing, it probably should allow us to interrupt things.
         for idx in path :
-            next_path_str = str(str(ee_id) + "." + str(idx) + ":" + str(self.id))
+            next_path_str = self.create_waypoint_id(ee_id, idx)
             if not next_path_str in self.objTwp :
                 rospy.logerr(str("AffordanceTemplate::process_feedback() -- path index[" + str(next_path_str) + "] not found!!"))
             else :
