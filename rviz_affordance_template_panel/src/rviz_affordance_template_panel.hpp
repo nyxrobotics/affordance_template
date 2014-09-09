@@ -124,6 +124,10 @@ namespace rviz_affordance_template_panel
         //  */
         void step_forward() { controls_->send_command(Command::STEP_FORWARD); };
 
+        void enable_config_panel(int state);
+        void update_robot_config(const QString& text);
+        void update_end_effector_map(const QString&);
+
 
     private:
         Ui::RVizAffordanceTemplatePanel* ui_;
