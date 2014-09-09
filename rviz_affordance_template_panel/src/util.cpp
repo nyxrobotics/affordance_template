@@ -41,7 +41,7 @@ vector<float> quaternionToRPY(float x, float y, float z, float w) {
     rpy[0] = (float)rr;
     rpy[1] = (float)rp;
     rpy[2] = (float)ry;
-    cout << "converted quaternion(" << x << ", " << y << ", " << z << ", " << w << ") to rpy(" << rpy[0] << ", " << rpy[1] << ", " << rpy[2] << ")" << endl;
+    //cout << "converted quaternion(" << x << ", " << y << ", " << z << ", " << w << ") to rpy(" << rpy[0] << ", " << rpy[1] << ", " << rpy[2] << ")" << endl;
     return rpy;
 }
 
