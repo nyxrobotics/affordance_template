@@ -9,3 +9,29 @@ end_effector_map:
   - name: right_hand
     id: 1
     pose_offset: [0,0,0,1.57,0,-1.57]
+end_effector_pose_map:
+  - name: right_hand_open
+    group: right_hand
+    id: 0
+  - name: right_hand_thumb_open
+    group: right_hand
+    id: 1
+  - name: right_hand_close
+    group: right_hand
+    id: 2
+  - name: right_hand_point
+    group: right_hand
+    id: 3
+  - name: left_hand_open
+    group: left_hand
+    id: 0
+  - name: left_hand_thumb_open
+    group: left_hand
+    id: 1
+  - name: left_hand_close
+    group: left_hand
+    id: 2
+  - name: left_hand_point
+    group: left_hand
+    id: 3
+

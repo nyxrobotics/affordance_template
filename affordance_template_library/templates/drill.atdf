@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<affordance_template image="package://affordance_template_library/images/drill.png" name="Drill">
+  <display_objects>
+    <display_object name="drill">
+      <geometry>
+        <mesh filename="package://affordance_template_library/models/drill.dae" scale="0.04 0.04 0.04"/>
+      </geometry>
+      <origin rpy="-0.00967187338409 0.0413750569632 -1.76593243273" xyz="0.502440810204 -0.120003417134 0.239334627986"/>
+      <controls rpy="1 1 1" scale="0.3" xyz="1 1 1"/>
+    </display_object>
+  </display_objects>
+  <end_effector_waypoints>
+    <end_effector_waypoint display_object="drill" end_effector="0" id="0">
+      <origin rpy="0.294563691146 0.151374847266 1.78678609045" xyz="-0.0414132364094 -0.305963426828 0.0337769128382"/>
+      <controls rpy="1 1 1" scale="0.25" xyz="1 1 1"/>
+      <pose_group id="1"/>
+    </end_effector_waypoint>
+    <end_effector_waypoint display_object="drill" end_effector="0" id="1">
+      <origin rpy="0.20903256932 0.00699211880774 1.74316251845" xyz="-0.0182101968676 -0.0851644128561 -0.00165910506621"/>
+      <controls rpy="1 1 1" scale="0.25" xyz="1 1 1"/>
+      <pose_group id="1"/>
+    </end_effector_waypoint>
+    <end_effector_waypoint display_object="drill" end_effector="0" id="2">
+      <origin rpy="-0.00429981553283 0.00699215119792 1.74316272255" xyz="-0.0215820651501 -0.0803916230798 -0.0036085145548"/>
+      <controls rpy="1 1 1" scale="0.25" xyz="1 1 1"/>
+      <pose_group id="2"/>
+    </end_effector_waypoint>
+  </end_effector_waypoints>
+</affordance_template>

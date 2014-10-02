@@ -1167,28 +1167,17 @@
      </property>
      <widget class="QWidget" name="tab">
       <attribute name="title">
-       <string>Templates</string>
+       <string>Library</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_6">
        <item row="0" column="0">
-        <widget class="QGraphicsView" name="affordanceTemplateGraphicsView"/>
+        <widget class="QGraphicsView" name="affordanceTemplateGraphicsView">
+         <property name="verticalScrollBarPolicy">
+          <enum>Qt::ScrollBarAlwaysOn</enum>
+         </property>
+        </widget>
        </item>
       </layout>
-     </widget>
-     <widget class="QWidget" name="tab_3">
-      <attribute name="title">
-       <string>Recognition Tools</string>
-      </attribute>
-      <widget class="QGraphicsView" name="recognitionObjectGraphicsView">
-       <property name="geometry">
-        <rect>
-         <x>10</x>
-         <y>10</y>
-         <width>358</width>
-         <height>411</height>
-        </rect>
-       </property>
-      </widget>
      </widget>
      <widget class="QWidget" name="tab_2">
       <attribute name="title">
@@ -1368,6 +1357,26 @@
       <zorder>step_forward_button</zorder>
       <zorder>execute_on_plan</zorder>
       <zorder>control_template_box</zorder>
+     </widget>
+     <widget class="QWidget" name="tab_4">
+      <attribute name="title">
+       <string>Object Scaling</string>
+      </attribute>
+     </widget>
+     <widget class="QWidget" name="tab_3">
+      <attribute name="title">
+       <string>Recog Objects</string>
+      </attribute>
+      <widget class="QGraphicsView" name="recognitionObjectGraphicsView">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>10</y>
+         <width>358</width>
+         <height>411</height>
+        </rect>
+       </property>
+      </widget>
      </widget>
     </widget>
    </item>

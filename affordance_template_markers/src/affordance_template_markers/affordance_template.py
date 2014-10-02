@@ -75,6 +75,7 @@ class AffordanceTemplate(threading.Thread) :
         self.waypoint_loop = {}
         self.waypoint_max = {}
         self.waypoint_controls_display_on = False
+        self.object_controls_display_on = True
         # helper frames
         self.robotTroot = kdl.Frame()
         self.rootTobj = {}
@@ -119,6 +120,7 @@ class AffordanceTemplate(threading.Thread) :
         self.object_menu_options.append(("Add Waypoint After", False))
         self.object_menu_options.append(("Reset", False))
         self.object_menu_options.append(("Save", False))
+        self.object_menu_options.append(("Hide Controls", True))
 
         # start the frame update thread
         self.running = True
@@ -472,9 +474,10 @@ class AffordanceTemplate(threading.Thread) :
 
             # int_marker = CreateInteractiveMarker(self.frame_id, obj.name, scale)
             int_marker.controls.append(control)
-            int_marker.controls.extend(CreateCustomDOFControls("",
-                self.object_controls[obj].xyz[0], self.object_controls[obj].xyz[1], self.object_controls[obj].xyz[2],
-                self.object_controls[obj].rpy[0], self.object_controls[obj].rpy[1], self.object_controls[obj].rpy[2]))
+            if(self.object_controls_display_on) :
+                int_marker.controls.extend(CreateCustomDOFControls("",
+                    self.object_controls[obj].xyz[0], self.object_controls[obj].xyz[1], self.object_controls[obj].xyz[2],
+                    self.object_controls[obj].rpy[0], self.object_controls[obj].rpy[1], self.object_controls[obj].rpy[2]))
 
             self.add_interactive_marker(int_marker)
             self.marker_menus[obj].apply( self.server, obj )
@@ -482,6 +485,12 @@ class AffordanceTemplate(threading.Thread) :
 
             self.marker_map[obj] = control.markers[0]
             self.marker_pose_offset[obj] = self.pose_from_origin(self.object_origin[obj])
+
+            if self.object_controls_display_on :
+                self.marker_menus[obj].setCheckState( self.menu_handles[(obj,"Hide Controls")], MenuHandler.UNCHECKED )
+            else :
+                self.marker_menus[obj].setCheckState( self.menu_handles[(obj,"Hide Controls")], MenuHandler.CHECKED )
+
 
             ids += 1
 
@@ -565,6 +574,7 @@ class AffordanceTemplate(threading.Thread) :
             self.server.applyChanges()
 
             wp_ids += 1
+            # print "done adding waypoint marker"
 
 
     def update_template_defaults(self, objects=True, waypoints=True) :
@@ -644,7 +654,8 @@ class AffordanceTemplate(threading.Thread) :
             elif isinstance(self.object_geometry[obj], affordance_template_markers.atdf_parser.Box) :
                 geometry_element = ET.SubElement(obj_element, "geometry")
                 box_element = ET.SubElement(geometry_element, "box")
-                box_element.set("size", str(str(self.object_geometry[obj].size) + " " + str(self.object_geometry[obj].size) + " " + str(self.object_geometry[obj].size)))
+                # box_element.set("size", str(self.object_geometry[obj].size))
+                box_element.set("size", str(str(self.object_geometry[obj].size[0]) + " " + str(self.object_geometry[obj].size[1]) + " " + str(self.object_geometry[obj].size[2])))
             elif isinstance(self.object_geometry[obj], affordance_template_markers.atdf_parser.Sphere):
                 geometry_element = ET.SubElement(obj_element, "geometry")
                 sphere_element = ET.SubElement(geometry_element, "sphere")
@@ -925,7 +936,7 @@ class AffordanceTemplate(threading.Thread) :
     def process_feedback(self, feedback):
         # print "\n--------------------------------"
         # print "Process Feedback on marker: ", feedback.marker_name
-        # print feedback.pose
+        # # print feedback.pose
 
         if feedback.marker_name in self.display_objects :
             self.frame_store_map[feedback.marker_name].pose = feedback.pose
@@ -938,7 +949,7 @@ class AffordanceTemplate(threading.Thread) :
         elif feedback.event_type == InteractiveMarkerFeedback.MENU_SELECT:
 
             handle = feedback.menu_entry_id
-            print "--------------"
+            # print "--------------"
 
             if feedback.marker_name in self.display_objects :
                 ee_list = self.waypoint_index.keys()
@@ -950,6 +961,24 @@ class AffordanceTemplate(threading.Thread) :
                     rospy.loginfo(str("AffordanceTemplate::process_feedback() -- Saving Affordance Template"))
                     self.save_to_disk(self.filename)
 
+                if handle == self.menu_handles[(feedback.marker_name,"Hide Controls")] :
+                    state = self.marker_menus[feedback.marker_name].getCheckState( handle )
+                    if state == MenuHandler.CHECKED:
+                        self.marker_menus[feedback.marker_name].setCheckState( handle, MenuHandler.UNCHECKED )
+                        self.object_controls_display_on = True
+                        print "hinding object controls"
+                    else :
+                        self.marker_menus[feedback.marker_name].setCheckState( handle, MenuHandler.CHECKED )
+                        self.object_controls_display_on = False
+                        print "showing object controls"
+
+                    # this is (also) wrong
+                    self.remove_all_markers()
+                    self.create_from_parameters(True)
+
+                    rospy.loginfo(str("AffordanceTemplate::process_feedback() -- setting Hide Controls flag to " + str(self.object_controls_display_on)))
+
+
             else :
                 ee_list =[int(feedback.marker_name.split(".")[0])]
                 waypoint_id = int(feedback.marker_name.split(".")[1].split(":")[0])
@@ -957,6 +986,8 @@ class AffordanceTemplate(threading.Thread) :
             for ee_id in ee_list :
 
                 # print "Waypoint Menu\n--------------------"
+                # print "handle: ", handle
+                # print self.menu_handles
 
                 ee_name = self.robot_config.get_end_effector_name(ee_id)
                 manipulator_name = self.robot_config.get_manipulator(ee_name)
@@ -971,137 +1002,6 @@ class AffordanceTemplate(threading.Thread) :
                 # print "manipulator_name: ", manipulator_name
 
                 next_path_idx = self.compute_next_path_id(ee_id, 1, self.waypoint_backwards_flag[ee_id])
-
-                if handle == self.menu_handles[(feedback.marker_name,"Display Next Path Segment")] :
-                    next_path_str = self.create_waypoint_id(ee_id, next_path_idx)
-                    if not next_path_str in self.objTwp :
-                        rospy.logerr(str("AffordanceTemplate::process_feedback() -- path index[" + str(next_path_str) + "] not found!!"))
-                    else :
-                        rospy.loginfo(str("AffordanceTemplate::process_feedback() -- computing path to index[" + str(next_path_str) + "]"))
-                        k = str(next_path_str)
-                        pt = geometry_msgs.msg.PoseStamped()
-                        pt.header = self.server.get(k).header
-                        pt.pose = self.server.get(k).pose
-
-                        T_goal = getFrameFromPose(pt.pose)
-                        T_offset = getFrameFromPose(ee_offset)
-                        T = T_goal*T_offset
-                        pt.pose = getPoseFromFrame(T)
-
-                        self.robot_config.moveit_interface.groups[manipulator_name].clear_pose_targets()
-                        self.robot_config.moveit_interface.create_plan_to_target(manipulator_name, pt)
-
-                        if not self.waypoint_pose_map[next_path_str] == None :
-                            id = self.waypoint_pose_map[next_path_str]
-                            pn = self.robot_config.end_effector_id_map[ee_name][id]
-                            self.robot_config.moveit_interface.create_joint_plan_to_target(ee_name, self.robot_config.stored_poses[ee_name][pn])
-
-                        self.waypoint_plan_valid[ee_id] = True
-
-                if handle == self.menu_handles[(feedback.marker_name,"Display Full Path")] :
-                    waypoints = []
-                    frame_id = ""
-                    # print "waypoint_index: ", self.waypoint_index[ee_id]
-                    # print "next_path_idx: ", next_path_idx
-                    # print "max_idx: ", max_idx
-
-                    r = range(0, max_idx+1)
-                    if self.waypoint_backwards_flag[ee_id] :
-                        r.reverse()
-
-                    for idx in r :
-                        next_path_str = self.create_waypoint_id(ee_id, idx)
-                        if not next_path_str in self.objTwp :
-                            rospy.logerr(str("AffordanceTemplate::process_feedback() -- path index[" + str(next_path_str) + "] not found!!"))
-                        else :
-                            rospy.loginfo(str("AffordanceTemplate::process_feedback() -- computing path to index[" + str(next_path_str) + "]"))
-                            k = str(next_path_str)
-                            pt = geometry_msgs.msg.PoseStamped()
-                            pt.header = self.server.get(k).header
-                            pt.pose = self.server.get(k).pose
-                            frame_id =  pt.header.frame_id
-
-                            T_goal = getFrameFromPose(pt.pose)
-                            T_offset = getFrameFromPose(ee_offset)
-                            T = T_goal*T_offset
-                            pt.pose = getPoseFromFrame(T)
-                            waypoints.append(pt.pose)
-                    self.robot_config.moveit_interface.create_path_plan(manipulator_name, frame_id, waypoints)
-                    self.waypoint_plan_valid[ee_id] = True
-
-                if handle == self.menu_handles[(feedback.marker_name,"Execute Next Segment")] :
-                    if self.waypoint_plan_valid[ee_id] :
-
-                        # move the manipulator (arm)
-                        r = self.robot_config.moveit_interface.execute_plan(manipulator_name,from_stored=True, wait=False)
-                        if not r :
-                            rospy.logerr(str("RobotTeleop::process_feedback(mouse) -- failed moveit execution for group: " + manipulator_name + ". re-synching..."))
-
-                        # move the end_effector (hand)
-                        r = self.robot_config.moveit_interface.execute_plan(ee_name,from_stored=True)
-                        if not r :
-                            rospy.logerr(str("RobotTeleop::process_feedback(mouse) -- failed moveit execution for group: " + ee_name + ". re-synching..."))
-
-                        # move to end effector pose if there is one
-                        # r = self.robot_config.moveit_interface.execute_plan(end_effector_name,from_stored=True)
-                        # if not r :
-                        #     rospy.logerr(str("RobotTeleop::process_feedback(mouse) -- failed moveit execution for group: " + end_effector_name + ". re-synching..."))
-
-                        self.waypoint_index[ee_id] = next_path_idx
-                        rospy.loginfo(str("setting current waypoint idx: " + str(self.waypoint_index[ee_id])))
-                        self.waypoint_plan_valid[ee_id] = False
-
-                if handle == self.menu_handles[(feedback.marker_name,"Execute Full Path")] :
-                    if self.waypoint_plan_valid[ee_id] :
-                        r = self.robot_config.moveit_interface.execute_plan(manipulator_name,from_stored=True)
-                        if not r :
-                            rospy.logerr(str("RobotTeleop::process_feedback(mouse) -- failed moveit execution for group: " + manipulator_name + ". re-synching..."))
-                        rospy.loginfo(str("setting current waypoint idx: " + str(self.waypoint_index[ee_id])))
-                        self.waypoint_plan_valid[ee_id] = False
-
-
-                if handle == self.menu_handles[(feedback.marker_name,"Compute Backwards Path")] :
-                    state = self.marker_menus[feedback.marker_name].getCheckState( handle )
-                    if state == MenuHandler.CHECKED:
-                        self.marker_menus[feedback.marker_name].setCheckState( handle, MenuHandler.UNCHECKED )
-                        self.waypoint_backwards_flag[ee_id] = False
-                    else :
-                        self.marker_menus[feedback.marker_name].setCheckState( handle, MenuHandler.CHECKED )
-                        self.waypoint_backwards_flag[ee_id] = True
-                    rospy.loginfo(str("AffordanceTemplate::process_feedback() -- setting Backwards Path flag for ee[" + str(ee_id) + "] to " + str(self.waypoint_backwards_flag[ee_id])))
-
-                if handle == self.menu_handles[(feedback.marker_name,"Add Waypoint Before")] :
-                    print "Adding Waypoint before ", waypoint_id, "for end effector: ", ee_id
-
-                    new_pose = geometry_msgs.msg.Pose()
-                    first_name = self.create_waypoint_id(ee_id,waypoint_id)
-                    pose_first = getPoseFromFrame(self.objTwp[first_name])
-                    new_id = 0
-                    if waypoint_id > 0 :
-                        new_id = waypoint_id-1
-                        second_name = new_id
-                        pose_second = getPoseFromFrame(self.objTwp[second_name])
-                        new_pose.position.x = (pose_second.position.x - pose_first.position.x)/2.0 + pose_first.position.x
-                        new_pose.position.y = (pose_second.position.y - pose_first.position.y)/2.0 + pose_first.position.y
-                        new_pose.position.z = (pose_second.position.z - pose_first.position.z)/2.0 + pose_first.position.z
-                        new_pose.orientation = copy.deepcopy(pose_first.orientation)
-                    else :
-                        new_pose = copy.deepcopy(pose_first)
-                        new_pose.position.x +=0.025
-                        new_pose.position.y +=0.025
-                        new_pose.position.z +=0.025
-
-                    r = range(new_id,max_idx+1)
-                    r.reverse()
-                    for k in r:
-                        old_name = self.create_waypoint_id(ee_id, str(k))
-                        new_name = self.create_waypoint_id(ee_id, str(k+1))
-                        self.move_waypoint(ee_id, k, k+1)
-
-                    # print "creating waypoint at : ", new_id
-                    old_name = self.create_waypoint_id(ee_id, str(1))
-                    self.create_waypoint(ee_id, waypoint_id, new_pose, self.parent_map[old_name], self.waypoint_controls[old_name], self.waypoint_origin[old_name], self.waypoint_pose_map[old_name]) # is parent right here?
-                    self.create_from_parameters(True)
 
                 if handle == self.menu_handles[(feedback.marker_name,"Add Waypoint After")] :
                     print "Adding Waypoint after ", waypoint_id, "for end effector: ", ee_id
@@ -1177,15 +1077,15 @@ class AffordanceTemplate(threading.Thread) :
 
                         rospy.loginfo(str("AffordanceTemplate::process_feedback() -- setting Hide Controls flag to " + str(self.waypoint_controls_display_on)))
 
-                    if handle == self.menu_handles[(feedback.marker_name,"Loop Path")] :
-                        state = self.marker_menus[feedback.marker_name].getCheckState( handle )
-                        if state == MenuHandler.CHECKED:
-                            self.marker_menus[feedback.marker_name].setCheckState( handle, MenuHandler.UNCHECKED )
-                            self.waypoint_loop[ee_id] = False
-                        else :
-                            self.marker_menus[feedback.marker_name].setCheckState( handle, MenuHandler.CHECKED )
-                            self.waypoint_loop[ee_id] = True
-                        rospy.loginfo(str("AffordanceTemplate::process_feedback() -- setting Loop flag for ee[" + str(ee_id) + "] to " + str(self.waypoint_loop[ee_id])))
+            # if handle == self.menu_handles[(feedback.marker_name,"Loop Path")] :
+            #     state = self.marker_menus[feedback.marker_name].getCheckState( handle )
+            #     if state == MenuHandler.CHECKED:
+            #         self.marker_menus[feedback.marker_name].setCheckState( handle, MenuHandler.UNCHECKED )
+            #         self.waypoint_loop[ee_id] = False
+            #     else :
+            #         self.marker_menus[feedback.marker_name].setCheckState( handle, MenuHandler.CHECKED )
+            #         self.waypoint_loop[ee_id] = True
+                # rospy.loginfo(str("AffordanceTemplate::process_feedback() -- setting Loop flag for ee[" + str(ee_id) + "] to " + str(self.waypoint_loop[ee_id])))
 
             self.marker_menus[feedback.marker_name].reApply( self.server )
 
