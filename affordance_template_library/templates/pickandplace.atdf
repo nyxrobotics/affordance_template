@@ -8,7 +8,7 @@
       <material name="Red">
         <color rgba="1.0 0.0 0.0 1.0"/>
       </material>
-      <origin rpy="0.0 -0.0 0.0" xyz="-0.000482426956296 0.152008593082 0.239334627986"/>
+      <origin rpy="1.18028434991e-08 2.15019706229e-09 -0.223782003159" xyz="-0.013871056959 0.185043811798 0.0163876265287"/>
       <controls rpy="1 1 1" scale="0.3" xyz="1 1 1"/>
     </display_object>
     <display_object name="place" parent="pick">
@@ -18,7 +18,7 @@
       <material name="Green">
         <color rgba="0.0 0.0 1.0 1.0"/>
       </material>
-      <origin rpy="0.0 -0.0 0.0" xyz="0.0850135460496 -0.233090370893 0.0124502256513"/>
+      <origin rpy="0.0 -0.0 0.0" xyz="0.10805953294 -0.233090370893 0.0124502256513"/>
       <controls rpy="1 1 1" scale="0.3" xyz="1 1 1"/>
     </display_object>
   </display_objects>
@@ -29,12 +29,12 @@
       <pose_group id="0"/>
     </end_effector_waypoint>
     <end_effector_waypoint display_object="pick" end_effector="0" id="1">
-      <origin rpy="1.57531590799 0.156924522944 -0.156755612023" xyz="-0.0612665116787 -0.127877727151 0.141379728913"/>
+      <origin rpy="1.57531590799 0.156924522944 -0.156755612023" xyz="-0.0500134713948 0.034015212208 0.0518949627876"/>
       <controls rpy="1 1 1" scale="0.25" xyz="1 1 1"/>
       <pose_group id="2"/>
     </end_effector_waypoint>
     <end_effector_waypoint display_object="pick" end_effector="0" id="2">
-      <origin rpy="1.57531590799 0.156924522944 -0.156755612023" xyz="-0.0500134713948 0.034015212208 0.0518949627876"/>
+      <origin rpy="1.57531590799 0.156924522944 -0.156755612023" xyz="-0.0612665116787 -0.127877727151 0.141379728913"/>
       <controls rpy="1 1 1" scale="0.25" xyz="1 1 1"/>
       <pose_group id="2"/>
     </end_effector_waypoint>
