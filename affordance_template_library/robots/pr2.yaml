@@ -1,0 +1,30 @@
+robot_name: pr2
+moveit_config_package: pr2_moveit_config
+frame_id: base_link
+root_offset: [0.6,0, 1.0, 3.14,0,3.14]
+end_effector_map:
+  - name: left_gripper
+    id: 0
+    pose_offset: [0.1,  0.1, 0.0,  3.14, 0,-1.57]
+  - name: right_gripper
+    id: 1
+    pose_offset: [0.1, -0.1, 0.0,  3.14, 0, 1.57]
+end_effector_pose_map:
+  - name: Right Hand Open
+    group: right_gripper
+    id: 0
+  - name: Right Hand Pre Grasp
+    group: right_gripper
+    id: 1
+  - name: Right Hand Close
+    group: right_gripper
+    id: 2
+  - name: Left Hand Open
+    group: left_gripper
+    id: 0
+  - name: Left Hand Pre Grasp
+    group: left_gripper
+    id: 1
+  - name: Left Hand Close
+    group: left_gripper
+    id: 2
