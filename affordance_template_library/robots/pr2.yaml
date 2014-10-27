@@ -28,3 +28,4 @@ end_effector_pose_map:
   - name: Left Hand Close
     group: left_gripper
     id: 2
+gripper_service: /pr2_gripper_bridge/end_effector_command

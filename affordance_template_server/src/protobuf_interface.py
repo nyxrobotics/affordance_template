@@ -95,6 +95,8 @@ class ProtobufInterface(object):
                         pid.name = ee_n
                         pid.group = ee_g
                         pid.id =  self.server.robot_map[name].end_effector_pose_map[ee_g][ee_n]
+                robot.gripper_service = self.server.robot_map[name].gripper_service
+                
 
             for object_type in self.server.recognition_object_map.keys():
                 recognition_object = response.recognition_object.add()

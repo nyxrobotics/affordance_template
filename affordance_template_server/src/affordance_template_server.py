@@ -332,6 +332,8 @@ class AffordanceTemplateServer(Thread):
             r.manipulator_id_map = {}
             r.manipulator_pose_map = {}
 
+            r.gripper_service = robot.gripper_service
+
             for ee in robot.end_effectors.end_effector:
                 r.end_effector_names.append(ee.name)
                 r.end_effector_name_map[ee.id] = ee.name
@@ -378,6 +380,8 @@ class AffordanceTemplateServer(Thread):
             r.manipulator_id_map = {}
             r.manipulator_pose_map = {}
 
+            r.gripper_service = robot['gripper_service']
+            
             for ee in robot['end_effectors']:
                 r.end_effector_names.append(ee['name'])
                 r.end_effector_name_map[ee['id']] = ee['name']

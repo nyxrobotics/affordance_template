@@ -74,6 +74,8 @@ class JSONInterface(object):
                 robot['root_offset']['orientation']['z'] = self.server.robot_map[name].root_offset.orientation.z
                 robot['root_offset']['orientation']['w'] = self.server.robot_map[name].root_offset.orientation.w
 
+                robot['gripper_service'] = self.server.robot_map[name].gripper_service
+                
                 # end_effectors
                 robot['end_effectors'] = []
                 for e in self.server.robot_map[name].end_effector_names:

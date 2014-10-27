@@ -78,6 +78,8 @@ void RVizAffordanceTemplatePanel::setupWidgets() {
 
     QObject::connect(ui_->robot_name, SIGNAL(textEdited(const QString&)), this, SLOT(update_robot_config(const QString&)));
     QObject::connect(ui_->moveit_package, SIGNAL(textEdited(const QString&)), this, SLOT(update_robot_config(const QString&)));
+    QObject::connect(ui_->gripper_service, SIGNAL(textEdited(const QString&)), this, SLOT(update_robot_config(const QString&)));
+    
     QObject::connect(ui_->frame_id, SIGNAL(textEdited(const QString&)), this, SLOT(update_robot_config(const QString&)));
     QObject::connect(ui_->robot_tx, SIGNAL(textEdited(const QString&)), this, SLOT(update_robot_config(const QString&)));
     QObject::connect(ui_->robot_ty, SIGNAL(textEdited(const QString&)), this, SLOT(update_robot_config(const QString&)));
@@ -106,6 +108,7 @@ void RVizAffordanceTemplatePanel::update_robot_config(const QString& text) {
     (*robotMap_[key]).name(ui_->robot_select->currentText().toUtf8().constData());
     (*robotMap_[key]).moveit_config_package(ui_->moveit_package->text().toUtf8().constData());
     (*robotMap_[key]).frame_id(ui_->frame_id->text().toUtf8().constData());
+    (*robotMap_[key]).gripper_service(ui_->gripper_service->text().toUtf8().constData());
 
     float tx, ty, tz, rr, rp, ry;
     tx = ui_->robot_tx->text().toFloat();
@@ -284,6 +287,7 @@ void RVizAffordanceTemplatePanel::getAvailableInfo() {
         pitem->name(r.name());
         pitem->moveit_config_package(r.moveit_config_package());
         pitem->frame_id(r.frame_id());
+        pitem->gripper_service(r.gripper_service());
 
         vector<float> root_offset(7);
         root_offset[0] = (float)(r.root_offset().position().x());
@@ -294,6 +298,8 @@ void RVizAffordanceTemplatePanel::getAvailableInfo() {
         root_offset[5] = (float)(r.root_offset().orientation().z());
         root_offset[6] = (float)(r.root_offset().orientation().w());
         pitem->root_offset(root_offset);
+
+        
 
         for (auto& e: r.end_effectors().end_effector()) {
             EndEffectorConfigSharedPtr eitem(new EndEffectorConfig(e.name()));
@@ -335,11 +341,14 @@ void RVizAffordanceTemplatePanel::setupRobotPanel(const string& key) {
     string name = (*robotMap_[key]).name();
     string pkg = (*robotMap_[key]).moveit_config_package();
     string frame_id = (*robotMap_[key]).frame_id();
+    string gripper_service = (*robotMap_[key]).gripper_service();
+
     vector<float> root_offset = (*robotMap_[key]).root_offset();
 
     ui_->robot_name->setText(QString(name.c_str()));
     ui_->moveit_package->setText(QString(pkg.c_str()));
     ui_->frame_id->setText(QString(frame_id.c_str()));
+    ui_->gripper_service->setText(QString(gripper_service.c_str()));
 
     ui_->robot_tx->setText(QString::number(root_offset[0]));
     ui_->robot_ty->setText(QString::number(root_offset[1]));
@@ -552,12 +561,14 @@ void RVizAffordanceTemplatePanel::loadConfig() {
     string key = ui_->robot_select->currentText().toUtf8().constData();
     string name = (*robotMap_[key]).name();
     string pkg = (*robotMap_[key]).moveit_config_package();
+    string gripper_service = (*robotMap_[key]).gripper_service();
     string frame_id = (*robotMap_[key]).frame_id();
     vector<float> root_offset = (*robotMap_[key]).root_offset();
 
     robot->set_filename(key);
     robot->set_name(name);
     robot->set_moveit_config_package(pkg);
+    robot->set_gripper_service(gripper_service);
     robot->set_frame_id(frame_id);
     Position *rop = robot_offset->mutable_position();
     Orientation *roo = robot_offset->mutable_orientation();

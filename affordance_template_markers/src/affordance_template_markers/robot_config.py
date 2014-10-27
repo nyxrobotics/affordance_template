@@ -34,6 +34,7 @@ class RobotConfig(object) :
         self.frame_id = "world"
         self.root_offset = geometry_msgs.msg.Pose()
         self.stored_poses = {}
+        self.gripper_service = None
 
     def load_from_file(self, filename) :
 
@@ -80,11 +81,21 @@ class RobotConfig(object) :
                     print "ee[", ee['group'], "] adding group [", ee['name'], "] with id [", ee['id'], "]"
             except :
                 rospy.logwarn("RobotConfig::load_from_file() -- no end effector pose map found ")
-            return True
+            
+
+            try :
+                gs = self.yaml_config['gripper_service']
+                self.gripper_service = gs
+            except :
+                self.gripper_service = ""
+                
+            print "Robot Config found gripper service : ", self.gripper_service
 
         except :
             rospy.logerr("RobotConfig::load_from_file() -- error opening config file")
             return False
+
+        return True
 
     def configure(self) :
         # self.moveit_interface_threads = {}
@@ -126,6 +137,10 @@ class RobotConfig(object) :
                 rospy.loginfo(str("RobotConfig::configure() adding stored pose \'" + state_name + "\' to group \'" + g + "\'"))
                 self.stored_poses[g][state_name] = self.moveit_interface.get_stored_group_state(g, state_name)
 
+
+        if self.gripper_service :
+            self.moveit_interface.set_gripper_service(self.gripper_service)
+
         # what do we have?
         self.moveit_interface.print_basic_info()
         return True
@@ -141,6 +156,10 @@ class RobotConfig(object) :
             for ee in self.yaml_config['end_effector_map']:
                 print "\t", "map: ", ee['name'], " --> ", ee['id']
                 print "\t", "pose: ", ee['pose_offset']
+            try :
+                print " gripper service: ", self.yaml_config['gripper_service']
+            except :
+                pass
             print "============================="
 
     def joint_state_callback(self, data) :

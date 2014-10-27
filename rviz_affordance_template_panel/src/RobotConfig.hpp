@@ -71,6 +71,9 @@ namespace rviz_affordance_template_panel
         string moveit_config_package() const { return moveit_config_package_; }
         void moveit_config_package(const string& moveit_config_package ) { moveit_config_package_=moveit_config_package; }
 
+        string gripper_service() const { return gripper_service_; }
+        void gripper_service(const string& gripper_service ) { gripper_service_=gripper_service; }
+
 		vector<float> root_offset() const { return root_offset_; }
         void root_offset(const vector<float> root_offset ) { root_offset_=root_offset; }
 
@@ -83,7 +86,9 @@ namespace rviz_affordance_template_panel
         string name_;
         string frame_id_;
         string moveit_config_package_;
+        string gripper_service_;
         vector<float> root_offset_;
+
 
     };
 }

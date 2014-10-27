@@ -55,8 +55,9 @@ message Robot {
     required string moveit_config_package = 3;  // moveit config package name
     required string frame_id = 4;        // robot base frame
     required Pose root_offset = 5;           // base offset pose
-    required EndEffectorMap end_effectors = 6;        // list of end effector mapping
-    optional EndEffectorPoseIDMap end_effector_pose_ids = 7;   // mapping for end effector pose groups
+    required string gripper_service = 6;    // gripper service name
+    required EndEffectorMap end_effectors = 7;        // list of end effector mapping
+    optional EndEffectorPoseIDMap end_effector_pose_ids = 8;   // mapping for end effector pose groups
 
 }
 
