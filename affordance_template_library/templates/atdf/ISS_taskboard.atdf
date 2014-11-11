@@ -11,7 +11,8 @@
         </display_object>
     </display_objects>
 
-    <end_effector_waypoints>
+  <end_effector_trajectorys>
+    <end_effector_trajectory name="Left Hand A1">
         <end_effector_waypoint end_effector="0" id="0" display_object="Taskboard">
             <origin xyz="0.06 -0.135 0.3" rpy="-1.57 1.57 0"/>
             <controls xyz="1 1 1" rpy="1 1 1" scale="0.25"/>
@@ -22,7 +23,8 @@
             <controls xyz="1 1 1" rpy="1 1 1" scale="0.25"/>
             <pose_group id="3"/>
         </end_effector_waypoint>
-        
-    </end_effector_waypoints>
+    </end_effector_trajectory>
+  </end_effector_trajectorys>
+
 
 </affordance_template>

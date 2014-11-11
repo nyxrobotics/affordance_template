@@ -4,6 +4,7 @@ import imp
 import sys
 import signal
 import zmq
+import yaml
 
 import rospy
 import affordance_template_markers
@@ -258,28 +259,80 @@ class AffordanceTemplateServer(Thread):
         waypoint_map = {}
 
         os.chdir(path)
-        for atf in glob.glob("*.atdf") :
-            # print atf
-            structure = affordance_template_markers.atdf_parser.AffordanceTemplateStructure.from_file(atf)
+        # for atf in glob.glob("*.atdf") :
+        #     print atf
+        #     structure = affordance_template_markers.atdf_parser.AffordanceTemplateStructure.from_file(atf)
 
-            class_map[structure.name] = {}
-            image_map[structure.name] = structure.image
-            file_map[structure.name] = os.path.join(path,atf)
-            waypoint_map[structure.name] = {}
+        #     class_map[structure.name] = {}
+        #     image_map[structure.name] = structure.image
+        #     file_map[structure.name] = os.path.join(path,atf)
+        #     waypoint_map[structure.name] = {}
 
-            for wp in structure.end_effector_waypoints.end_effector_waypoints :
-                if not wp.end_effector in waypoint_map[structure.name] :
-                    waypoint_map[structure.name][wp.end_effector] = 1
-                else :
-                    if (int(wp.id)+1) > waypoint_map[structure.name][wp.end_effector] :
-                        waypoint_map[structure.name][wp.end_effector] = int(wp.id)+1
+        #     for traj in structure.end_effector_waypointss :
+        #         print traj.name
+        #         print "Found Waypoint Trajectory: ", traj.name
 
-        return class_map, image_map, file_map, waypoint_map
+        #         for wp in structure.end_effector_waypointss.end_effector_waypoints :
+        #             if not wp.end_effector in waypoint_map[structure.name] :
+        #                 waypoint_map[structure.name][wp.end_effector] = 1
+        #             else :
+        #                 if (int(wp.id)+1) > waypoint_map[structure.name][wp.end_effector] :
+        #                     waypoint_map[structure.name][wp.end_effector] = int(wp.id)+1
+
+
+        # for atfn in glob.glob("*.yaml") :
+        #     print atfn
+
+        #     atf = open(atfn)
+        #     structure = yaml.load(atf)
+
+        #     class_map[structure['name']] = {}
+        #     image_map[structure['name']] = structure['image']
+        #     file_map[structure['name']] = os.path.join(path,atfn)
+
+        #     for traj in structure['end_effector_trajectory'] :
+        #         key = (structure['name'],traj['name'])
+        #         waypoint_map[key] = {}
+        #         print " ", traj['name']
+
+        #         for wp in traj['end_effector_waypoint'] :
+        #             if not wp['end_effector'] in waypoint_map[key] :
+        #                 waypoint_map[key][wp['end_effector']] = 1
+        #             else :
+        #                 if (int(wp.id)+1) > waypoint_map[structure.name][wp.end_effector] :
+        #                     waypoint_map[structure.name][wp.end_effector] = int(wp.id)+1
+
+        import json
+        for atfn in glob.glob("*.json") :
+            print atfn
+
+            atf = open(atfn)
+            structure = json.loads(atf)
+
+            class_map[structure['name']] = {}
+            image_map[structure['name']] = structure['image']
+            file_map[structure['name']] = os.path.join(path,atfn)
+
+            # for traj in structure['end_effector_trajectory'] :
+            #     key = (structure['name'],traj['name'])
+            #     waypoint_map[key] = {}
+            #     print " ", traj['name']
+
+            #     for wp in traj['end_effector_waypoint'] :
+            #         if not wp['end_effector'] in waypoint_map[key] :
+            #             waypoint_map[key][wp['end_effector']] = 1
+            #         else :
+            #             if (int(wp.id)+1) > waypoint_map[structure.name][wp.end_effector] :
+            #                 waypoint_map[structure.name][wp.end_effector] = int(wp.id)+1
+
+            quit()
+
+        # return class_map, image_map, file_map, waypoint_map
 
     def getRobots(self, path):
         """Parse parses available robots from fs."""
         robot_map = {}
-        import glob, yaml
+        import glob
         os.chdir(path)
         for r in glob.glob("*.yaml") :
             print "found robot yaml: ", r
@@ -299,7 +352,7 @@ class AffordanceTemplateServer(Thread):
         recognition_object_map = {}
         recognition_object_info = {}
         recognition_object_subscribers = {}
-        import glob, yaml
+        import glob
         os.chdir(path)
         for r in glob.glob("*.yaml") :
             print "found recognition_object yaml: ", r
@@ -331,6 +384,7 @@ class AffordanceTemplateServer(Thread):
             r.end_effector_name_map = {}
             r.manipulator_id_map = {}
             r.manipulator_pose_map = {}
+            r.tool_offset_map = {}
 
             r.gripper_service = robot.gripper_service
 
@@ -338,6 +392,7 @@ class AffordanceTemplateServer(Thread):
                 r.end_effector_names.append(ee.name)
                 r.end_effector_name_map[ee.id] = ee.name
                 r.manipulator_id_map[ee.name] = ee.id
+                
                 p = geometry_msgs.msg.Pose()
                 p.position.x = ee.pose_offset.position.x
                 p.position.y = ee.pose_offset.position.y
@@ -347,6 +402,16 @@ class AffordanceTemplateServer(Thread):
                 p.orientation.z = ee.pose_offset.orientation.z
                 p.orientation.w = ee.pose_offset.orientation.w
                 r.manipulator_pose_map[ee.name] = p
+
+                t = geometry_msgs.msg.Pose()
+                t.position.x = ee.tool_offset.position.x
+                t.position.y = ee.tool_offset.position.y
+                t.position.z = ee.tool_offset.position.z
+                t.orientation.x = ee.tool_offset.orientation.x
+                t.orientation.y = ee.tool_offset.orientation.y
+                t.orientation.z = ee.tool_offset.orientation.z
+                t.orientation.w = ee.tool_offset.orientation.w
+                r.tool_offset_map[ee.name] = t
 
             for ee_pid in robot.end_effector_pose_ids.pose_group:
                 if not ee_pid.group in r.end_effector_pose_map :
@@ -379,6 +444,7 @@ class AffordanceTemplateServer(Thread):
             r.end_effector_name_map = {}
             r.manipulator_id_map = {}
             r.manipulator_pose_map = {}
+            r.tool_offset_map = {}
 
             r.gripper_service = robot['gripper_service']
             
@@ -386,6 +452,7 @@ class AffordanceTemplateServer(Thread):
                 r.end_effector_names.append(ee['name'])
                 r.end_effector_name_map[ee['id']] = ee['name']
                 r.manipulator_id_map[ee['name']] = ee['id']
+                
                 p = geometry_msgs.msg.Pose()
                 p.position.x = ee['pose_offset']['position']['x']
                 p.position.y = ee['pose_offset']['position']['y']
@@ -395,6 +462,16 @@ class AffordanceTemplateServer(Thread):
                 p.orientation.z = ee['pose_offset']['orientation']['z']
                 p.orientation.w = ee['pose_offset']['orientation']['w']
                 r.manipulator_pose_map[ee['name']] = p
+
+                t = geometry_msgs.msg.Pose()
+                t.position.x = ee['tool_offset']['position']['x']
+                t.position.y = ee['tool_offset']['position']['y']
+                t.position.z = ee['tool_offset']['position']['z']
+                t.orientation.x = ee['tool_offset']['orientation']['x']
+                t.orientation.y = ee['tool_offset']['orientation']['y']
+                t.orientation.z = ee['tool_offset']['orientation']['z']
+                t.orientation.w = ee['tool_offset']['orientation']['w']
+                r.tool_offset_map[ee['name']] = t
 
             for ee_pid in robot['end_effector_pose_ids']:
                 if not ee_pid['group'] in r.end_effector_pose_map :
@@ -432,11 +509,13 @@ class AffordanceTemplateServer(Thread):
             r.end_effector_name_map = {}
             r.manipulator_id_map = {}
             r.manipulator_pose_map = {}
+            r.tool_offset_map = {}
 
             for ee in robot.end_effectors.end_effector:
                 r.end_effector_names.append(ee.name)
                 r.end_effector_name_map[ee.id] = ee.name
                 r.manipulator_id_map[ee.name] = ee.id
+                
                 p = geometry_msgs.msg.Pose()
                 p.position.x = ee.pose_offset.position.x
                 p.position.y = ee.pose_offset.position.y
@@ -446,6 +525,16 @@ class AffordanceTemplateServer(Thread):
                 p.orientation.z = ee.pose_offset.orientation.z
                 p.orientation.w = ee.pose_offset.orientation.w
                 r.manipulator_pose_map[ee.name] = p
+
+                t = geometry_msgs.msg.Pose()
+                t.position.x = ee.tool_offset.position.x
+                t.position.y = ee.tool_offset.position.y
+                t.position.z = ee.tool_offset.position.z
+                t.orientation.x = ee.tool_offset.orientation.x
+                t.orientation.y = ee.tool_offset.orientation.y
+                t.orientation.z = ee.tool_offset.orientation.z
+                t.orientation.w = ee.tool_offset.orientation.w
+                r.tool_offset_map[ee.name] = t
 
             print "done!"
             return r
