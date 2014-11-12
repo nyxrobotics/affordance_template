@@ -1,4 +1,4 @@
-from AffordanceTemplateServerCmd_pb2 import Template, Request, Response, Pose, Position, Orientation, EndEffector, Robot, EndEffectorMap, RecogObject
+from AffordanceTemplateServerCmd_pb2 import Template, Request, Response, Pose, Position, Orientation, EndEffector, Robot, EndEffectorMap, RecogObject, TrajectoryInfo, WaypointInfo
 
 class ProtobufInterface(object):
     def __init__(self, server):
@@ -56,14 +56,18 @@ class ProtobufInterface(object):
         print "new QUERY request"
 
         try:
-            for class_type in self.server.class_map.iterkeys():
+            for class_type in self.server.at_data.class_map.iterkeys():
                 template = response.affordance_template.add()
                 template.type = class_type
-                template.image_path = self.server.image_map[class_type]
-                for p in self.server.waypoint_map[class_type].keys() :
-                    wp = template.waypoint_info.add()
-                    wp.id = int(p)
-                    wp.num_waypoints = self.server.waypoint_map[class_type][p]
+                template.image_path = self.server.at_data.image_map[class_type]
+                
+                for t in self.server.at_data.traj_map[class_type] :
+                    traj = template.trajectory_info.add()
+                    traj.name = t
+                    for p in self.server.at_data.waypoint_map[(class_type,t)].keys() :
+                        wp = traj.waypoint_info.add()
+                        wp.id = int(p)
+                        wp.num_waypoints = self.server.at_data.waypoint_map[(class_type,t)][p]
 
             for name in self.server.robot_map.iterkeys():
                 robot = response.robot.add()
@@ -78,10 +82,13 @@ class ProtobufInterface(object):
                 robot.root_offset.orientation.y = self.server.robot_map[name].root_offset.orientation.y
                 robot.root_offset.orientation.z = self.server.robot_map[name].root_offset.orientation.z
                 robot.root_offset.orientation.w = self.server.robot_map[name].root_offset.orientation.w
+                
                 for e in self.server.robot_map[name].end_effector_names:
+                    
                     ee = robot.end_effectors.end_effector.add()
                     ee.name = e
                     ee.id =self.server.robot_map[name].manipulator_id_map[e]
+
                     ee.pose_offset.position.x = self.server.robot_map[name].manipulator_pose_map[e].position.x
                     ee.pose_offset.position.y = self.server.robot_map[name].manipulator_pose_map[e].position.y
                     ee.pose_offset.position.z = self.server.robot_map[name].manipulator_pose_map[e].position.z
@@ -89,6 +96,15 @@ class ProtobufInterface(object):
                     ee.pose_offset.orientation.y = self.server.robot_map[name].manipulator_pose_map[e].orientation.y
                     ee.pose_offset.orientation.z = self.server.robot_map[name].manipulator_pose_map[e].orientation.z
                     ee.pose_offset.orientation.w = self.server.robot_map[name].manipulator_pose_map[e].orientation.w
+
+                    ee.tool_offset.position.x = self.server.robot_map[name].tool_offset_map[e].position.x
+                    ee.tool_offset.position.y = self.server.robot_map[name].tool_offset_map[e].position.y
+                    ee.tool_offset.position.z = self.server.robot_map[name].tool_offset_map[e].position.z
+                    ee.tool_offset.orientation.x = self.server.robot_map[name].tool_offset_map[e].orientation.x
+                    ee.tool_offset.orientation.y = self.server.robot_map[name].tool_offset_map[e].orientation.y
+                    ee.tool_offset.orientation.z = self.server.robot_map[name].tool_offset_map[e].orientation.z
+                    ee.tool_offset.orientation.w = self.server.robot_map[name].tool_offset_map[e].orientation.w
+
                 for ee_g in self.server.robot_map[name].end_effector_pose_map.iterkeys() :
                     for ee_n in self.server.robot_map[name].end_effector_pose_map[ee_g].iterkeys() :
                         pid = robot.end_effector_pose_ids.pose_group.add()
@@ -116,7 +132,6 @@ class ProtobufInterface(object):
         response = Response()
         response.success = False
         print "new ADD request"
-        # print request
         try:
             ret = False
             for template in request.affordance_template:
@@ -158,8 +173,8 @@ class ProtobufInterface(object):
         print "new RUNNING request"
         try:
 
-            for t in self.server.class_map.keys():
-                for id in self.server.class_map[t].keys():
+            for t in self.server.at_data.class_map.keys():
+                for id in self.server.at_data.class_map[t].keys():
                     at = response.affordance_template.add()
                     at.type = t
                     at.id = id
@@ -219,7 +234,7 @@ class ProtobufInterface(object):
             print "execute on plan: ", request.command.execute
 
             for template in request.affordance_template :
-                at = self.server.class_map[template.type][template.id]
+                at = self.server.at_data.class_map[template.type][template.id]
 
                 # plan first
                 for ee in request.command.end_effector :

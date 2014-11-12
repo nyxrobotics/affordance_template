@@ -4,8 +4,11 @@
   "display_objects": [
     {
       "name": "wheel",
-      "shape": "mesh",
-      "size": [1.0, 1.0, 1.0],
+      "shape": {
+        "type": "mesh",
+        "data": "package://affordance_template_library/models/torus.dae",
+        "size": [1.0, 1.0, 1.0]
+      },
       "origin" : {
         "xyz": [0.0, 0.0, 0.0],
         "rpy": [0.0, 1.57, 0.0]
@@ -33,9 +36,9 @@
                 "rpy": [0.0, -1.57, 0.0]
               },
               "controls": {
-                  "xyz": [true, true, true],
-                  "rpy": [false, true, true],
-                  "scale": 0.25
+                "xyz": [true, true, true],
+                "rpy": [false, true, true],
+                "scale": 0.25
               }
             },
             {
@@ -46,9 +49,9 @@
                 "rpy": [0.0, -1.57, 0.0]
               },
               "controls": {
-                  "xyz": [true, true, true],
-                  "rpy": [false, true, true],
-                  "scale": 0.25
+                "xyz": [true, true, true],
+                "rpy": [false, true, true],
+                "scale": 0.25
               }
             },
             {
@@ -59,9 +62,9 @@
                 "rpy": [0.0, -1.57, 0.0]
               },
               "controls": {
-                  "xyz": [true, true, true],
-                  "rpy": [false, true, true],
-                  "scale": 0.25
+                "xyz": [true, true, true],
+                "rpy": [false, true, true],
+                "scale": 0.25
               }
             },
             {
@@ -72,9 +75,9 @@
                 "rpy": [0.0, -1.57, -0.51]
               },
               "controls": {
-                  "xyz": [true, true, true],
-                  "rpy": [false, true, true],
-                  "scale": 0.25
+                "xyz": [true, true, true],
+                "rpy": [false, true, true],
+                "scale": 0.25
               }
             },
             {
@@ -85,9 +88,9 @@
                 "rpy": [0.0, -1.57, -0.51]
               },
               "controls": {
-                  "xyz": [true, true, true],
-                  "rpy": [false, true, true],
-                  "scale": 0.25
+                "xyz": [true, true, true],
+                "rpy": [false, true, true],
+                "scale": 0.25
               }
             }
           ]

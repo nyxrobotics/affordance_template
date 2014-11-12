@@ -22,17 +22,23 @@ message WaypointInfo {
     required int32 num_waypoints = 2;
 }
 
+message TrajectoryInfo {
+    required string name = 1;
+    repeated WaypointInfo waypoint_info = 2;
+}
+
 message Template {
     required string type = 1;        // template_type e.g. "Car", "Wheel", "BORING"
     optional int32 id = 2;           // ID of the template object on the server
     optional string image_path = 3;  // contains path to image of template (used in rviz)
-    repeated WaypointInfo waypoint_info = 4;       // info about how many waypoint for each end effector template has
+    repeated TrajectoryInfo trajectory_info = 4;       // info about how the waypoint trajectories the template has
 }
 
 message EndEffector {
     required string name = 1;           // robot end-effector name
     required int32 id = 2;           // template ID the ee maps to
     required Pose pose_offset = 3;           // base offset pose
+    required Pose tool_offset = 4;      // tool offset 
 }
 
 message EndEffectorMap {

@@ -43,17 +43,30 @@ class JSONInterface(object):
         try:
             # affordance_template
             response['affordance_template'] = []
-            for class_type in self.server.class_map.iterkeys():
+            for class_type in self.server.at_data.class_map.iterkeys():
                 template = {}
                 template['type'] = class_type
-                template['image_path'] = self.server.image_map[class_type]
-                template['waypoint_info'] = []
-                for p in self.server.waypoint_map[class_type].keys():
-                    wp = {}
-                    wp['id'] = int(p)
-                    wp['num_waypoints'] = self.server.waypoint_map[class_type][p]
-                    template['waypoint_info'].append(wp)
+                template['image_path'] = self.server.at_data.image_map[class_type]
+                template['trajectory_info'] = {}
+                for t in self.server.at_data.traj_map[class_type] :
+                    template['trajectory_info']['name'] = t
+                    template['trajectory_info']['waypoint_info'] = []
+                    for p in self.server.at_data.waypoint_map[class_type].keys():
+                        wp = {}
+                        wp['id'] = int(p)
+                        wp['num_waypoints'] = self.server.at_data.waypoint_map[(class_type,t)][p]
+                        template['trajectory_info']['waypoint_info'].append(wp)
                 response['affordance_template'].append(template)
+
+               
+                # for t in self.server.at_data.traj_map[class_type] :
+                #     traj = template.trajectory_info.add()
+                #     traj.name = t
+                #     for p in self.server.at_data.waypoint_map[(class_type,t)].keys() :
+                #         wp = traj.waypoint_info.add()
+                #         wp.id = int(p)
+                #         wp.num_waypoints = self.server.at_data.waypoint_map[(class_type,t)][p]
+
 
             # robot
             response['robot'] = []
@@ -82,6 +95,7 @@ class JSONInterface(object):
                     ee = {}
                     ee['name'] = e
                     ee['id'] = self.server.robot_map[name].manipulator_id_map[e]
+                    
                     ee['pose_offset'] = {}
                     ee['pose_offset']['position'] = {}
                     ee['pose_offset']['position']['x'] = self.server.robot_map[name].manipulator_pose_map[e].position.x
@@ -92,6 +106,18 @@ class JSONInterface(object):
                     ee['pose_offset']['orientation']['y'] = self.server.robot_map[name].manipulator_pose_map[e].orientation.y
                     ee['pose_offset']['orientation']['z'] = self.server.robot_map[name].manipulator_pose_map[e].orientation.z
                     ee['pose_offset']['orientation']['w'] = self.server.robot_map[name].manipulator_pose_map[e].orientation.w
+                    
+                    ee['tool_offset'] = {}
+                    ee['tool_offset']['position'] = {}
+                    ee['tool_offset']['position']['x'] = self.server.robot_map[name].tool_offset_map[e].position.x
+                    ee['tool_offset']['position']['y'] = self.server.robot_map[name].tool_offset_map[e].position.y
+                    ee['tool_offset']['position']['z'] = self.server.robot_map[name].tool_offset_map[e].position.z
+                    ee['tool_offset']['orientation'] = {}
+                    ee['tool_offset']['orientation']['x'] = self.server.robot_map[name].tool_offset_map[e].orientation.x
+                    ee['tool_offset']['orientation']['y'] = self.server.robot_map[name].tool_offset_map[e].orientation.y
+                    ee['tool_offset']['orientation']['z'] = self.server.robot_map[name].tool_offset_map[e].orientation.z
+                    ee['tool_offset']['orientation']['w'] = self.server.robot_map[name].tool_offset_map[e].orientation.w
+                    
                     robot['end_effectors'].append(ee)
 
                 # end_effector_pose_ids
@@ -223,7 +249,7 @@ class JSONInterface(object):
             print "execute on plan: ", request['command']['execute']
 
             for template in request['affordance_template']:
-                at = self.server.class_map[template['type']][template['id']]
+                at = self.server.at_data.class_map[template['type']][template['id']]
 
                 # plan first
                 for ee in request['command']['end_effector'] :

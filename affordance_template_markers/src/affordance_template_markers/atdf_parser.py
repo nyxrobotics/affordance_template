@@ -228,10 +228,11 @@ xmlr.reflect(EndEffectorWaypoint, params = [
     ])
 
 class EndEffectorWaypoints(xmlr.Object):
-    def __init__(self):
+    def __init__(self, name = None):
         self.aggregate_init()
         self.end_effector_waypoints = []
         self.end_effector_waypoint_map = {}
+        self.name = name
 
     def add_aggregate(self, typeName, elem):
         xmlr.Object.add_aggregate(self, typeName, elem)
@@ -241,11 +242,33 @@ class EndEffectorWaypoints(xmlr.Object):
             self.end_effector_waypoint_map[end_effector_waypoint.id] = end_effector_waypoint
 
     def add_end_effector_waypoint(self, end_effector_waypoint):
-        self.add_aggregate('end_effector_waypoint', waypoint)
+        self.add_aggregate('end_effector_waypoint', end_effector_waypoint)
 
 
 xmlr.reflect(EndEffectorWaypoints, params = [
-    xmlr.AggregateElement('end_effector_waypoint', EndEffectorWaypoint)
+    xmlr.AggregateElement('end_effector_waypoint', EndEffectorWaypoint),
+    xmlr.Attribute('name', str, True)
+    ])
+
+class EndEffectorWaypointss(xmlr.Object):
+    def __init__(self, name = None):
+        self.aggregate_init()
+        self.end_effector_waypointss = []
+        self.end_effector_waypointss_map = {}
+
+    def add_aggregate(self, typeName, elem):
+        xmlr.Object.add_aggregate(self, typeName, elem)
+
+        if typeName == 'end_effector_waypoints':
+            end_effector_waypoints = elem
+            self.end_effector_waypointss_map[end_effector_waypoints.name] = end_effector_waypoints
+
+    def add_end_effector_waypoints(self, end_effector_waypoints):
+        self.add_aggregate('end_effector_waypoints', end_effector_waypoints)
+
+
+xmlr.reflect(EndEffectorWaypointss, params = [
+    xmlr.AggregateElement('end_effector_waypoints', EndEffectorWaypoints)
     ])
 
 class AffordanceTemplateStructure(xmlr.Object):
@@ -253,7 +276,7 @@ class AffordanceTemplateStructure(xmlr.Object):
         self.aggregate_init()
         self.name = name
         self.display_objects = None
-        self.end_effector_waypoints = None
+        self.end_effector_waypointss = None
 
     @classmethod
     def from_file(cls, key = 'template_description'):
@@ -268,7 +291,8 @@ xmlr.reflect(AffordanceTemplateStructure, tag = 'affordance_template', params = 
     xmlr.Attribute('name', str, True),
     xmlr.Attribute('image', str, False),
     xmlr.Element('display_objects', DisplayObjects),
-    xmlr.Element('end_effector_waypoints', EndEffectorWaypoints)
+    xmlr.Element('end_effector_waypointss', EndEffectorWaypointss)
+    # xmlr.Element('end_effector_waypoints', EndEffectorWaypoints)
     ])
 
 # Make an alias

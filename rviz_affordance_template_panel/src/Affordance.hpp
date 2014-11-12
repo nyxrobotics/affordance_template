@@ -19,7 +19,7 @@ namespace rviz_affordance_template_panel
     class Affordance : public QGraphicsPixmapItem
     {
     public:
-        Affordance(const string& class_type, const string& image_path, QMap<QString, QVariant> &waypoint_map);
+        Affordance(const string& class_type, const string& image_path, QMap<QString, QVariant> &trajectory_map);
         ~Affordance() {}
         string key() const { return key_; }
         QMap<QString, QVariant> map() const { return map_; }

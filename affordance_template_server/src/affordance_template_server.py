@@ -5,7 +5,8 @@ import sys
 import signal
 import zmq
 import yaml
-
+import json
+        
 import rospy
 import affordance_template_markers
 import affordance_template_server_protobuf
@@ -25,7 +26,8 @@ from affordance_template_markers.robot_config import *
 from affordance_template_markers.affordance_template import *
 from affordance_template_markers.template_utilities import *
 from affordance_template_markers.recognition_object import *
-import affordance_template_markers.atdf_parser
+from affordance_template_markers.affordance_template_data import *
+# import affordance_template_markers.atdf_parser
 
 
 class AffordanceTemplateServer(Thread):
@@ -35,6 +37,7 @@ class AffordanceTemplateServer(Thread):
         signal.signal(signal.SIGINT, signal.SIG_DFL)
         self.topic_arg = topic_arg
         self.robot_config = None
+        self.structure = {}
 
         self.interfaces = {}
         self.interfaces['json'] = JSONInterface(self)
@@ -47,13 +50,21 @@ class AffordanceTemplateServer(Thread):
         # get path to actual template source files
         self._template_path    = os.path.join(self._package_path, 'templates')
         self._robot_path    = os.path.join(self._package_path, 'robots')
-        self._recognition_object_path    = os.path.join(self._package_path, 'recognition_objects')
-        self.class_map, self.image_map, self.file_map, self.waypoint_map = self.getAvailableTemplates(self._template_path)
+        self._recognition_object_path  = os.path.join(self._package_path, 'recognition_objects')
+        self.at_data = self.getAvailableTemplates(self._template_path)
+        # self.class_map, self.image_map, self.file_map, self.waypoint_map = self.getAvailableTemplates(self._template_path)
         self.robot_map = self.getRobots(self._robot_path)
         self.recognition_object_map, self.recognition_object_info, self.recognition_object_subscribers = self.getRecognitionObjects(self._recognition_object_path)
 
         self.running_templates = {}
         self.running_recog_objects = {}
+
+        # put something here to laod robot config to debug faster
+        # self.robot_config = RobotConfig()
+        # self.robot_config.load_from_file('/home/swhart/ros_workspace/catkin_workspace/src/affordance_templates/affordance_template_library/robots/r2.yaml')
+        # # self.robot_config.configure()
+        # self.addTemplate('Wheel', 0)
+
 
     @property
     def resource_path(self):
@@ -61,7 +72,7 @@ class AffordanceTemplateServer(Thread):
         return str(self._resource_path)
 
     @property
-    def plugin_description(self):
+    def plugin_description(self):   
         """Return the path to the plugin_description.xml associated with the server."""
         return str(self._plugin_description[0])
 
@@ -125,11 +136,11 @@ class AffordanceTemplateServer(Thread):
         @rtype bool
         @returns True if process was stopped/removed.
         """
-        if class_type in self.class_map and instance_id in self.class_map[class_type]:
-            self.class_map[class_type][instance_id].terminate()
+        if class_type in self.at_data.class_map and instance_id in self.at_data.class_map[class_type]:
+            self.at_data.class_map[class_type][instance_id].terminate()
             if self.running_templates[instance_id] == class_type:
                 del self.running_templates[instance_id]
-            del self.class_map[class_type][instance_id]
+            del self.at_data.class_map[class_type][instance_id]
 
     def removeRecognitionObject(self, object_type, instance_id):
         """Stop a template process and remove it from the server's map.
@@ -159,15 +170,21 @@ class AffordanceTemplateServer(Thread):
         @rtype int
         @returns The Popen object started by the server.
         """
-        if class_type in self.class_map:
+        if class_type in self.at_data.class_map:
+            print "Trying to add ", class_type
+            print "sending in RC: ", self.robot_config
             at = AffordanceTemplate(self.server, instance_id, robot_config=self.robot_config)
-            filename = self.file_map[class_type]
+            print "Created new AT class"
+            filename = self.at_data.file_map[class_type]
             print "Trying to load: ", filename
             at.load_from_file(filename)
             self.running_templates[instance_id] = class_type
-            self.class_map[class_type][instance_id] = at  # TODO this is dumb, need to just have a local list of multiple ATs
-            print("templateServer.addTemplate: adding template " + str(class_type))
+            self.at_data.class_map[class_type][instance_id] = at  # TODO this is dumb, need to just have a local list of multiple ATs
+            rospy.loginfo(str("AffordanceTemplateServer::addTemplate: adding template " + str(class_type)))
             return True
+        else :
+            rospy.logerr(str("AffordanceTemplateServer:: ERROR -- no template type " + str(class_type)))
+            return False
 
     def startRecognitionProcess(self, object_type, launch_file, package, topic, instance_id):
         """Start a template process using subprocess.Popen.
@@ -205,7 +222,7 @@ class AffordanceTemplateServer(Thread):
         return True
 
     def getNextTemplateID(self, class_type):
-        ids = self.class_map[class_type].keys()
+        ids = self.at_data.class_map[class_type].keys()
         i = 0
         while True:
             if i in ids:
@@ -252,82 +269,52 @@ class AffordanceTemplateServer(Thread):
         from xml.etree.ElementTree import ElementTree
         import glob
 
-        class_map = {}
-        image_map = {}
-        file_map = {}
-
-        waypoint_map = {}
+        at_data = AffordanceTemplateCollection()
+        at_data.class_map = {}
+        at_data.traj_map = {}
+        at_data.image_map = {}
+        at_data.file_map = {}
+        at_data.waypoint_map = {}
 
         os.chdir(path)
-        # for atf in glob.glob("*.atdf") :
-        #     print atf
-        #     structure = affordance_template_markers.atdf_parser.AffordanceTemplateStructure.from_file(atf)
-
-        #     class_map[structure.name] = {}
-        #     image_map[structure.name] = structure.image
-        #     file_map[structure.name] = os.path.join(path,atf)
-        #     waypoint_map[structure.name] = {}
-
-        #     for traj in structure.end_effector_waypointss :
-        #         print traj.name
-        #         print "Found Waypoint Trajectory: ", traj.name
-
-        #         for wp in structure.end_effector_waypointss.end_effector_waypoints :
-        #             if not wp.end_effector in waypoint_map[structure.name] :
-        #                 waypoint_map[structure.name][wp.end_effector] = 1
-        #             else :
-        #                 if (int(wp.id)+1) > waypoint_map[structure.name][wp.end_effector] :
-        #                     waypoint_map[structure.name][wp.end_effector] = int(wp.id)+1
-
-
-        # for atfn in glob.glob("*.yaml") :
-        #     print atfn
-
-        #     atf = open(atfn)
-        #     structure = yaml.load(atf)
-
-        #     class_map[structure['name']] = {}
-        #     image_map[structure['name']] = structure['image']
-        #     file_map[structure['name']] = os.path.join(path,atfn)
-
-        #     for traj in structure['end_effector_trajectory'] :
-        #         key = (structure['name'],traj['name'])
-        #         waypoint_map[key] = {}
-        #         print " ", traj['name']
-
-        #         for wp in traj['end_effector_waypoint'] :
-        #             if not wp['end_effector'] in waypoint_map[key] :
-        #                 waypoint_map[key][wp['end_effector']] = 1
-        #             else :
-        #                 if (int(wp.id)+1) > waypoint_map[structure.name][wp.end_effector] :
-        #                     waypoint_map[structure.name][wp.end_effector] = int(wp.id)+1
 
         import json
         for atfn in glob.glob("*.json") :
-            print atfn
-
-            atf = open(atfn)
+            
+            atf = open(atfn).read()
             structure = json.loads(atf)
 
-            class_map[structure['name']] = {}
-            image_map[structure['name']] = structure['image']
-            file_map[structure['name']] = os.path.join(path,atfn)
+            at_name = str(structure['name'])
+            image = str(structure['image'])
+            at_data.class_map[at_name] = {}
+            at_data.traj_map[at_name] = []
+            at_data.image_map[at_name] = image
+            at_data.file_map[at_name] = os.path.join(path,atfn)
 
-            # for traj in structure['end_effector_trajectory'] :
-            #     key = (structure['name'],traj['name'])
-            #     waypoint_map[key] = {}
-            #     print " ", traj['name']
+            print "Found AT: ", at_name
+            for traj in structure['end_effector_trajectory'] :
+                traj_name = str(traj['name'])
+                # print traj_name
+                at_data.traj_map[at_name].append(traj_name)
+                key = (at_name,traj_name)
+                at_data.waypoint_map[key] = {}
+                
+                for ee_group in traj['end_effector_group'] :
+                    ee_id = ee_group['id']
+                    wp_id = len(ee_group['end_effector_waypoint'])
+                    at_data.waypoint_map[key][ee_id] = wp_id
+                    print " adding ", wp_id, " waypoints for ee ", ee_id, " in ", key
 
-            #     for wp in traj['end_effector_waypoint'] :
-            #         if not wp['end_effector'] in waypoint_map[key] :
-            #             waypoint_map[key][wp['end_effector']] = 1
-            #         else :
-            #             if (int(wp.id)+1) > waypoint_map[structure.name][wp.end_effector] :
-            #                 waypoint_map[structure.name][wp.end_effector] = int(wp.id)+1
+            # self.structure[at_name] = structure
 
-            quit()
+        # return traj_map, class_map, image_map, file_map, waypoint_map
+        return at_data
 
-        # return class_map, image_map, file_map, waypoint_map
+    def loadFromFile(self, filename) :
+        print filename
+        atf = open(filename).read()
+        print atf
+        return json.loads(atf)
 
     def getRobots(self, path):
         """Parse parses available robots from fs."""

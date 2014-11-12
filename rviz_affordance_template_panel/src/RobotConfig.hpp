@@ -18,13 +18,17 @@ namespace rviz_affordance_template_panel
         int id() const { return id_; }
         void id(int id) { id_=id; }
 
-		vector<float> pose_offset() const { return pose_offset_; }
+        vector<float> pose_offset() const { return pose_offset_; }
         void pose_offset(const vector<float> pose_offset ) { pose_offset_=pose_offset; }
+
+        vector<float> tool_offset() const { return tool_offset_; }
+        void tool_offset(const vector<float> tool_offset ) { tool_offset_=tool_offset; }
 
     private:
         string name_;
         int id_;
         vector<float> pose_offset_;
+        vector<float> tool_offset_;  
     };
 
 

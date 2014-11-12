@@ -27,6 +27,7 @@ class RobotConfig(object) :
         self.end_effector_name_map = {}
         self.manipulator_pose_map = {}
         self.manipulator_id_map = {}
+        self.tool_offset_map = {}
         self.end_effector_pose_map = {}
         self.end_effector_id_map = {}
         self.end_effector_link_data = {}
@@ -71,6 +72,22 @@ class RobotConfig(object) :
                 p.orientation.z = q[2]
                 p.orientation.w = q[3]
                 self.manipulator_pose_map[ee['name']] = p
+
+                # if there is a tool offset
+                t = geometry_msgs.msg.Pose()
+                try :
+                    q = (kdl.Rotation.RPY(ee['tool_offset'][3],ee['tool_offset'][4],ee['tool_offset'][5])).GetQuaternion()
+                    t.position.x = float(ee['tool_offset'][0])
+                    t.position.y = float(ee['tool_offset'][1])
+                    t.position.z = float(ee['tool_offset'][2])
+                    t.orientation.x = q[0]
+                    t.orientation.y = q[1]
+                    t.orientation.z = q[2]
+                    t.orientation.w = q[3]
+                except :
+                    t.orientation.w = 1.0
+                self.tool_offset_map[ee['name']] = t
+
             try :
                 for ee in self.yaml_config['end_effector_pose_map']:
                     if not ee['group'] in self.end_effector_pose_map:
@@ -155,7 +172,14 @@ class RobotConfig(object) :
             print " moveit_config: ", self.yaml_config['moveit_config_package']
             for ee in self.yaml_config['end_effector_map']:
                 print "\t", "map: ", ee['name'], " --> ", ee['id']
-                print "\t", "pose: ", ee['pose_offset']
+                print "\t", "pose_offset: ", ee['pose_offset']
+                try :
+                    ee['tool_offset']
+                    print "\t", "tool_offset: ", ee['tool_offset']
+                except :
+                    pass
+
+
             try :
                 print " gripper service: ", self.yaml_config['gripper_service']
             except :

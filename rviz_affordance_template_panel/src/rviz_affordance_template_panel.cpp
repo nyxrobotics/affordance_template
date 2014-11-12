@@ -6,7 +6,7 @@
 #define YOFFSET 20
 
 #define CLASS_INDEX 0
-#define WAYPOINT_DATA 1
+#define TRAJECTORY_DATA 1
 
 #define OBJECT_INDEX 0
 #define PACKAGE 1
@@ -140,6 +140,7 @@ void RVizAffordanceTemplatePanel::update_end_effector_map(const QString& text) {
             e.second->name(ui_->ee_name->text().toUtf8().constData());
             e.second->id(ui_->ee_id->text().toInt());
             float tx, ty, tz, rr, rp, ry;
+
             tx = ui_->ee_tx->text().toFloat();
             ty = ui_->ee_ty->text().toFloat();
             tz = ui_->ee_tz->text().toFloat();
@@ -156,6 +157,33 @@ void RVizAffordanceTemplatePanel::update_end_effector_map(const QString& text) {
             pose_offset[5] = q[2];
             pose_offset[6] = q[3];
             e.second->pose_offset(pose_offset);
+
+           /* totx = ui_->ee_totx->text().toFloat();
+            toty = ui_->ee_toty->text().toFloat();
+            totz = ui_->ee_totz->text().toFloat();
+            torr = ui_->ee_torr->text().toFloat();
+            torp = ui_->ee_torp->text().toFloat();
+            tory = ui_->ee_tory->text().toFloat();*/
+
+            float totx, toty, totz, torr, torp, tory;
+            totx = 0;
+            toty = 0;
+            totz = 0;
+            torr = 0;
+            torp = 0;
+            tory = 0;
+
+            vector<float> toq = util::RPYToQuaternion(torr, torp, tory);
+
+            vector<float> tool_offset(7);
+            tool_offset[0] = totx;
+            tool_offset[1] = toty;
+            tool_offset[2] = totz;
+            tool_offset[3] = toq[0];
+            tool_offset[4] = toq[1];
+            tool_offset[5] = toq[2];
+            tool_offset[6] = toq[3];
+            e.second->tool_offset(tool_offset);
             break;
         }
     }
@@ -238,13 +266,23 @@ void RVizAffordanceTemplatePanel::getAvailableInfo() {
 
     // set up Affordance Template select menu
     for (auto& c: rep.affordance_template()) {
-        cout << c.type() << endl;
         string image_path = util::resolvePackagePath(c.image_path());
-        QMap<QString, QVariant> waypoint_map;
-        for (auto& wp: c.waypoint_info()) {
-            waypoint_map[QString::number(wp.id())] = QVariant(wp.num_waypoints());
-        }
-        AffordanceSharedPtr pitem(new Affordance(c.type(), image_path, waypoint_map));
+        QMap<QString, QVariant> trajectory_map;
+        cout << "--------------------------------" << endl;
+        cout << "AT name: " << c.type() << endl;
+        cout << "image path: " << c.image_path() << endl;
+        for (auto& traj: c.trajectory_info()) {
+            cout << "Found new trajectory: " << traj.name() << endl;
+            QMap<QString, QVariant> waypoint_map;
+            for (auto& wp: traj.waypoint_info()) {
+                waypoint_map[QString::number(wp.id())] = QVariant(wp.num_waypoints());
+                cout << "  id: " << wp.id() << " num waypoints: " << wp.num_waypoints() << endl;
+
+            }
+            trajectory_map[QString(traj.name().c_str())] = waypoint_map;
+        }       
+        cout << "--------------------------------" << endl;
+        AffordanceSharedPtr pitem(new Affordance(c.type(), image_path, trajectory_map));
         std::cout << image_path << std::endl;
         pitem->setPos(XOFFSET, yoffset);
         yoffset += PIXMAP_SIZE + YOFFSET;
@@ -299,7 +337,6 @@ void RVizAffordanceTemplatePanel::getAvailableInfo() {
         root_offset[6] = (float)(r.root_offset().orientation().w());
         pitem->root_offset(root_offset);
 
-        
 
         for (auto& e: r.end_effectors().end_effector()) {
             EndEffectorConfigSharedPtr eitem(new EndEffectorConfig(e.name()));
@@ -314,6 +351,18 @@ void RVizAffordanceTemplatePanel::getAvailableInfo() {
             pose_offset[6] = (float)(e.pose_offset().orientation().w());
             eitem->pose_offset(pose_offset);
             pitem->endeffectorMap[(*eitem).name()] = eitem;
+
+            vector<float> tool_offset(7);
+            tool_offset[0] = (float)(e.tool_offset().position().x());
+            tool_offset[1] = (float)(e.tool_offset().position().y());
+            tool_offset[2] = (float)(e.tool_offset().position().z());
+            tool_offset[3] = (float)(e.tool_offset().orientation().x());
+            tool_offset[4] = (float)(e.tool_offset().orientation().y());
+            tool_offset[5] = (float)(e.tool_offset().orientation().z());
+            tool_offset[6] = (float)(e.tool_offset().orientation().w());
+            eitem->tool_offset(tool_offset);
+            pitem->endeffectorMap[(*eitem).name()] = eitem;
+
         }
         for (auto& p: r.end_effector_pose_ids().pose_group()) {
             EndEffectorPoseIDConfigSharedPtr piditem(new EndEffectorPoseConfig(p.name()));
@@ -385,6 +434,7 @@ void RVizAffordanceTemplatePanel::setupEndEffectorConfigPanel(const string& key)
         if (e.second->name() == key) {
             ui_->ee_name->setText(e.second->name().c_str());
             ui_->ee_id->setText(QString::number(e.second->id()));
+            
             vector<float> pose_offset = e.second->pose_offset();
             ui_->ee_tx->setText(QString::number(pose_offset[0]));
             ui_->ee_ty->setText(QString::number(pose_offset[1]));
@@ -394,6 +444,18 @@ void RVizAffordanceTemplatePanel::setupEndEffectorConfigPanel(const string& key)
             ui_->ee_rr->setText(QString::number(rpy[0]));
             ui_->ee_rp->setText(QString::number(rpy[1]));
             ui_->ee_ry->setText(QString::number(rpy[2]));
+
+            // FIX ME, THIS NEEDS TO BE DONE FOR TOOL OFFSET
+            /*vector<float> tool_offset = e.second->tool_offset();
+            ui_->ee_totx->setText(QString::number(tool_offset[0]));
+            ui_->ee_toty->setText(QString::number(tool_offset[1]));
+            ui_->ee_totz->setText(QString::number(tool_offset[2]));
+
+            vector<float> torpy = util::quaternionToRPY(tool_offset[3],tool_offset[4],tool_offset[5],tool_offset[6]);
+            ui_->ee_torr->setText(QString::number(torpy[0]));
+            ui_->ee_torp->setText(QString::number(torpy[1]));
+            ui_->ee_tory->setText(QString::number(torpy[2]));*/
+
             break;
         }
     }
@@ -593,6 +655,7 @@ void RVizAffordanceTemplatePanel::loadConfig() {
     for (auto& e: (*robotMap_[key]).endeffectorMap) {
         EndEffector *ee = ee_map->add_end_effector();
         Pose *ee_offset = ee->mutable_pose_offset();
+        Pose *tf_offset = ee->mutable_tool_offset();
         ee->set_name(e.second->name());
         ee->set_id(e.second->id());
         vector<float> pose_offset = e.second->pose_offset();
@@ -605,6 +668,17 @@ void RVizAffordanceTemplatePanel::loadConfig() {
         poo->set_y(pose_offset[4]);
         poo->set_z(pose_offset[5]);
         poo->set_w(pose_offset[6]);
+
+        vector<float> tool_offset = e.second->tool_offset();
+        Position *top = tf_offset->mutable_position();
+        Orientation *too = tf_offset->mutable_orientation();
+        top->set_x(tool_offset[0]);
+        top->set_y(tool_offset[1]);
+        top->set_z(tool_offset[2]);
+        too->set_x(tool_offset[3]);
+        too->set_y(tool_offset[4]);
+        too->set_z(tool_offset[5]);
+        too->set_w(tool_offset[6]);
 
         // add rows to end effector controls table
         QTableWidgetItem *i= new QTableWidgetItem(QString(e.second->name().c_str()));
@@ -654,7 +728,7 @@ void RVizAffordanceTemplatePanel::addAffordanceDisplayItem() {
         cout << "RVizAffordanceTemplatePanel::addAffordanceDisplayItem() -- " << class_name << endl;
         sendAffordanceTemplateAdd(class_name);
         cout << "RVizAffordanceTemplatePanel::addAffordanceDisplayItem() -- retrieving waypoint info" << endl;
-        for (auto& c: list.at(i)->data(WAYPOINT_DATA).toMap().toStdMap()) {
+        for (auto& c: list.at(i)->data(TRAJECTORY_DATA).toMap().toStdMap()) {
             string robot_key = ui_->robot_select->currentText().toUtf8().constData();
             for (auto& e: (*robotMap_[robot_name_]).endeffectorMap) {
                 for (int r=0; r<ui_->end_effector_table->rowCount(); r++ ) {
