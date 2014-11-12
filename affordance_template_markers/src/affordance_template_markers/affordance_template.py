@@ -423,6 +423,7 @@ class AffordanceTemplate(threading.Thread) :
 
         self.key = self.name
         self.frame_store_map[self.name] = FrameStore(self.key, self.robot_config.frame_id, getPoseFromFrame(self.robotTroot))
+        self.current_trajectory = str(self.structure['end_effector_trajectory'][0]['name'])
 
         # parse objects
         ids = 0
@@ -434,6 +435,7 @@ class AffordanceTemplate(threading.Thread) :
             control = InteractiveMarkerControl()
 
             self.marker_menus[obj] = MenuHandler()
+
             self.setup_object_menu(obj)
 
             root_frame = self.name
@@ -916,7 +918,16 @@ class AffordanceTemplate(threading.Thread) :
             elif m == "Choose Trajectory" :
                 sub_menu_handle = self.marker_menus[obj].insert(m)
                 for traj in self.structure['end_effector_trajectory'] :
-                    self.menu_handles[(obj,m,traj['name'])] = self.marker_menus[obj].insert(traj['name'],parent=sub_menu_handle,callback=self.trajectory_callback)
+                    traj_name = str(traj['name'])
+
+                    self.menu_handles[(obj,m,traj_name)] = self.marker_menus[obj].insert(traj_name,parent=sub_menu_handle,callback=self.trajectory_callback)
+                    if traj_name == self.current_trajectory :
+                        self.marker_menus[obj].setCheckState( self.menu_handles[(obj,m,traj_name)], MenuHandler.CHECKED )
+                        print "menu key for checking: ", (obj,m,traj_name)
+                        print "setting default traj check box: ", traj_name
+                    else :
+                        self.marker_menus[obj].setCheckState( self.menu_handles[(obj,m,traj_name)], MenuHandler.UNCHECKED )
+                        
             else :
                 self.menu_handles[(obj,m)] = self.marker_menus[obj].insert( m, callback=self.process_feedback )
                 if c : self.marker_menus[obj].setCheckState( self.menu_handles[(obj,m)], MenuHandler.UNCHECKED )
@@ -1196,9 +1207,20 @@ class AffordanceTemplate(threading.Thread) :
         self.server.applyChanges()
 
     def trajectory_callback(self, feedback) :
+
+        old_key = (feedback.marker_name,"Choose Trajectory", self.current_trajectory)
+        self.marker_menus[feedback.marker_name].setCheckState( self.menu_handles[old_key], MenuHandler.UNCHECKED )
+
         for traj in self.structure['end_effector_trajectory'] :
-            if self.menu_handles[(feedback.marker_name,"Choose Trajectory", traj['name'])] == feedback.menu_entry_id :
-                print "Chose trajectory: ", traj['name']
+            traj_name = str(traj['name'])
+            key = (feedback.marker_name,"Choose Trajectory", traj_name)
+            if self.menu_handles[key] == feedback.menu_entry_id :
+                print "Chose trajectory: ", traj_name
+
+                print "menu key for checking: ", key
+                # self.marker_menus[feedback.marker_name].setCheckState( self.menu_handles[(feedback.marker_name,m,traj_name)], MenuHandler.CHECKED )
+
+                self.marker_menus[feedback.marker_name].setCheckState( self.menu_handles[key], MenuHandler.CHECKED )
 
                 # clear old trajectory 
                 print "Clearing trajectory markers for: ", self.current_trajectory
@@ -1214,11 +1236,13 @@ class AffordanceTemplate(threading.Thread) :
 
                 self.server.applyChanges()
 
-                self.current_trajectory = traj['name']
+                self.current_trajectory = traj_name
                 # re-draw new one
-                print "Creating new trajectory markers for: ", traj['name']
+                print "Creating new trajectory markers for: ", self.current_trajectory
                 self.create_trajectory_from_parameters(self.current_trajectory)
-                self.server.applyChanges()
+        
+        self.marker_menus[feedback.marker_name].apply( self.server, feedback.marker_name )
+        self.server.applyChanges()
 
     def stored_pose_callback(self, feedback) :
         ee_id =int(feedback.marker_name.split(".")[0])
