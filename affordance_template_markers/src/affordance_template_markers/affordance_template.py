@@ -859,7 +859,10 @@ class AffordanceTemplate(threading.Thread) :
         max_idx = self.waypoint_max[traj_name][ee_id]
         for k in range(wp_id, max_idx) : self.move_waypoint(traj_name, ee_id, k+1, k)
         last_wp_name = self.create_waypoint_id(ee_id, self.waypoint_max[traj_name][ee_id])
-        del self.parent_map[traj_name][last_wp_name]
+        
+        for k in self.parent_map.keys() :
+            if k == (traj_name,last_wp_name) :
+                del self.parent_map[k]
         del self.objTwp[traj_name][last_wp_name]
         del self.wpTee[last_wp_name]
         del self.eeTtf[last_wp_name]
@@ -876,7 +879,7 @@ class AffordanceTemplate(threading.Thread) :
     def move_waypoint(self, traj_name, ee_id, old_id, new_id) :
         old_name = self.create_waypoint_id(ee_id, old_id)
         new_name = self.create_waypoint_id(ee_id, new_id)
-        self.create_waypoint(traj_name, ee_id, new_id, getPoseFromFrame(self.objTwp[traj_name][old_name]), self.parent_map[old_name], 
+        self.create_waypoint(traj_name, ee_id, new_id, getPoseFromFrame(self.objTwp[traj_name][old_name]), self.parent_map[(traj_name,old_name)], 
             self.waypoint_controls[traj_name][old_name], self.waypoint_origin[traj_name][old_name], self.waypoint_pose_map[traj_name][old_name])
 
     def swap_waypoints(self, traj_name, ee_id, wp_id1, wp_id2) :
@@ -886,8 +889,8 @@ class AffordanceTemplate(threading.Thread) :
         objTwp1 = self.objTwp[traj_name][wp_name1]
         objTwp2 = self.objTwp[traj_name][wp_name2]
 
-        parent1 = self.parent_map[traj_name][wp_name1]
-        parent2 = self.parent_map[traj_name][wp_name2]
+        parent1 = self.parent_map[(traj_name,wp_name1)]
+        parent2 = self.parent_map[(traj_name,wp_name2)]
 
         pose_map1 = self.waypoint_pose_map[traj_name][wp_name1]
         pose_map2 = self.waypoint_pose_map[traj_name][wp_name2]
@@ -1067,16 +1070,19 @@ class AffordanceTemplate(threading.Thread) :
             # print "--------------"
 
             if feedback.marker_name in self.display_objects :
-                ee_list = self.waypoint_index.keys()
+                ee_list = self.waypoint_index[self.current_trajectory].keys()
                 if handle == self.menu_handles[(feedback.marker_name,"Reset")] :
+                    print "[object menu] Resetting template...."
                     rospy.loginfo(str("AffordanceTemplate::process_feedback() -- Reseting Affordance Template"))
                     self.create_from_structure()
 
                 if handle == self.menu_handles[(feedback.marker_name,"Save")] :
+                    print "[object menu] Saving..."
                     rospy.loginfo(str("AffordanceTemplate::process_feedback() -- Saving Affordance Template"))
                     self.save_to_disk(self.filename)
 
                 if handle == self.menu_handles[(feedback.marker_name,"Hide Controls")] :
+                    print "[object menu] Hide Controls..."
                     state = self.marker_menus[feedback.marker_name].getCheckState( handle )
                     if state == MenuHandler.CHECKED:
                         self.marker_menus[feedback.marker_name].setCheckState( handle, MenuHandler.UNCHECKED )
@@ -1093,7 +1099,6 @@ class AffordanceTemplate(threading.Thread) :
 
                     rospy.loginfo(str("AffordanceTemplate::process_feedback() -- setting Hide Controls flag to " + str(self.object_controls_display_on)))
 
-
             else :
                 ee_list =[int(feedback.marker_name.split(".")[0])]
                 waypoint_id = int(feedback.marker_name.split(".")[1].split(":")[0])
@@ -1108,7 +1113,7 @@ class AffordanceTemplate(threading.Thread) :
                 manipulator_name = self.robot_config.get_manipulator(ee_name)
                 ee_offset = self.robot_config.manipulator_pose_map[ee_name]
                 tool_offset = self.robot_config.tool_offset_map[ee_name]
-                max_idx = self.waypoint_max[ee_id]
+                max_idx = self.waypoint_max[self.current_trajectory][ee_id]
 
                 # print "ee_name: ", ee_name
                 # print "ee_id: ", ee_id
@@ -1117,7 +1122,7 @@ class AffordanceTemplate(threading.Thread) :
                 # print "stored waypoint idx: ", self.waypoint_index[ee_id]
                 # print "manipulator_name: ", manipulator_name
 
-                next_path_idx = self.compute_next_path_id(ee_id, 1, self.waypoint_backwards_flag[ee_id])
+                next_path_idx = self.compute_next_path_id(ee_id, 1, self.waypoint_backwards_flag[self.current_trajectory][ee_id])
 
                 if handle == self.menu_handles[(feedback.marker_name,"Add Waypoint After")] :
                     print "Adding Waypoint after ", waypoint_id, "for end effector: ", ee_id
@@ -1144,15 +1149,16 @@ class AffordanceTemplate(threading.Thread) :
                     for k in r:
                         old_name = self.create_waypoint_id(ee_id, str(k))
                         new_name = self.create_waypoint_id(ee_id, str(k+1))
-                        self.move_waypoint(ee_id, k, k+1)
+                        self.move_waypoint(self.current_trajectory, ee_id, k, k+1)
 
-                    old_name = self.create_waypoint_id(ee_id, max_idx)
-                    self.create_waypoint(ee_id, new_id, new_pose, self.parent_map[old_name], self.waypoint_controls[old_name], self.waypoint_origin[old_name], self.waypoint_pose_map[old_name])
+                    old_name = self.create_waypoint_id(ee_id, max_idx) 
+                    self.create_waypoint(self.current_trajectory, ee_id, new_id, new_pose, self.parent_map[(self.current_trajectory, old_name)], self.waypoint_controls[self.current_trajectory][old_name], 
+                        self.waypoint_origin[self.current_trajectory][old_name], self.waypoint_pose_map[self.current_trajectory][old_name])
                     self.create_from_parameters(True)
 
                 if handle == self.menu_handles[(feedback.marker_name,"Delete Waypoint")] :
                     print "Deleting Waypoint ", waypoint_id, "for end effector: ", ee_id
-                    self.remove_waypoint(self.current_trajecdtory, ee_id, waypoint_id)
+                    self.remove_waypoint(self.current_trajectory, ee_id, waypoint_id)
                     self.create_from_parameters(True)
 
                 # if handle == self.menu_handles[(feedback.marker_name,"Execute On Move")] :
@@ -1167,12 +1173,12 @@ class AffordanceTemplate(threading.Thread) :
 
                 if handle == self.menu_handles[(feedback.marker_name,"Move Forward")] :
                     if waypoint_id < max_idx :
-                        self.swap_waypoints(ee_id, waypoint_id, waypoint_id+1)
+                        self.swap_waypoints(self.current_trajectory, ee_id, waypoint_id, waypoint_id+1)
                         self.create_from_parameters(True)
 
                 if handle == self.menu_handles[(feedback.marker_name,"Move Back")] :
                     if waypoint_id > 0:
-                        self.swap_waypoints(ee_id, waypoint_id-1, waypoint_id)
+                        self.swap_waypoints(self.current_trajectory, ee_id, waypoint_id-1, waypoint_id)
                         self.create_from_parameters(True)
 
                 # waypoint specific menu options
@@ -1272,7 +1278,7 @@ class AffordanceTemplate(threading.Thread) :
                 break
         pid = self.robot_config.end_effector_pose_map[ee_name][pn]
         rospy.loginfo(str("AffordanceTemplate::change_ee_pose_callback() -- setting Waypoint " + str(wp) + " pose to " + str(pn) + " (" + str(pid) + ")"))
-        self.waypoint_pose_map[wp] = pid
+        self.waypoint_pose_map[self.current_trajectory][wp] = pid
         self.create_from_parameters(True)
 
 
@@ -1291,7 +1297,7 @@ class AffordanceTemplate(threading.Thread) :
                     ps.position.x = 0.05
                     ps.position.y = 0.05
                     ps.position.z = 0.05
-                    self.create_waypoint(ee_id, wp_id, ps, feedback.marker_name, pose_id)
+                    self.create_waypoint(self.current_trajectory, ee_id, wp_id, ps, feedback.marker_name, pose_id)
                 else :
                     wp_id = self.waypoint_max[self.current_trajectory][ee_id]+1
                     wp_name = self.create_waypoint_id(ee_id, wp_id)
@@ -1301,7 +1307,7 @@ class AffordanceTemplate(threading.Thread) :
                     ps.position.y +=0.025
                     ps.position.z +=0.025
                     pose_id = self.waypoint_pose_map[self.current_trajectory][last_wp_name]
-                    self.create_waypoint(ee_id, wp_id, ps, feedback.marker_name, self.waypoint_controls[self.current_trajectory][last_wp_name], 
+                    self.create_waypoint(self.current_trajectory, ee_id, wp_id, ps, feedback.marker_name, self.waypoint_controls[self.current_trajectory][last_wp_name], 
                         self.waypoint_origin[self.current_trajectory][last_wp_name], pose_id)
 
                 self.create_from_parameters(True)
@@ -1318,7 +1324,7 @@ class AffordanceTemplate(threading.Thread) :
                     ps.position.x = 0.05
                     ps.position.y = 0.05
                     ps.position.z = 0.05
-                    self.create_waypoint(ee_id, wp_id, ps, feedback.marker_name, pose_id)
+                    self.create_waypoint(self.current_trajectory, ee_id, wp_id, ps, feedback.marker_name, pose_id)
                 else :
                     ps = getPoseFromFrame(self.objTwp[self.current_trajectory][wp_name])
                     ps.position.x -=0.025
@@ -1331,9 +1337,10 @@ class AffordanceTemplate(threading.Thread) :
                     for k in r:
                         old_name = self.create_waypoint_id(ee_id, str(k))
                         new_name = self.create_waypoint_id(ee_id, str(k+1))
-                        self.move_waypoint(ee_id, k, k+1)
+                        self.move_waypoint(self.current_trajectory, ee_id, k, k+1)
 
-                    self.create_waypoint(ee_id, wp_id, ps, feedback.marker_name, self.waypoint_controls[self.current_trajectory][wp_name], self.waypoint_origin[self.current_trajectory][wp_name], pose_id)
+                    self.create_waypoint(self.current_trajectory, ee_id, wp_id, ps, feedback.marker_name, self.waypoint_controls[self.current_trajectory][wp_name], 
+                        self.waypoint_origin[self.current_trajectory][wp_name], pose_id)
 
                 self.create_from_parameters(True)
 

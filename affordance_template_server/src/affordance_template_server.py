@@ -292,7 +292,7 @@ class AffordanceTemplateServer(Thread):
                 at_data.image_map[at_name] = image
                 at_data.file_map[at_name] = os.path.join(path,atfn)
 
-                print "Found AT: ", at_name
+                print "Found AT File: ", at_name
                 for traj in structure['end_effector_trajectory'] :
                     traj_name = str(traj['name'])
                     # print traj_name
