@@ -281,30 +281,32 @@ class AffordanceTemplateServer(Thread):
         import json
         for atfn in glob.glob("*.json") :
             
-            atf = open(atfn).read()
-            structure = json.loads(atf)
+            try :
+                atf = open(atfn).read()
+                structure = json.loads(atf)
 
-            at_name = str(structure['name'])
-            image = str(structure['image'])
-            at_data.class_map[at_name] = {}
-            at_data.traj_map[at_name] = []
-            at_data.image_map[at_name] = image
-            at_data.file_map[at_name] = os.path.join(path,atfn)
+                at_name = str(structure['name'])
+                image = str(structure['image'])
+                at_data.class_map[at_name] = {}
+                at_data.traj_map[at_name] = []
+                at_data.image_map[at_name] = image
+                at_data.file_map[at_name] = os.path.join(path,atfn)
 
-            print "Found AT: ", at_name
-            for traj in structure['end_effector_trajectory'] :
-                traj_name = str(traj['name'])
-                # print traj_name
-                at_data.traj_map[at_name].append(traj_name)
-                key = (at_name,traj_name)
-                at_data.waypoint_map[key] = {}
-                
-                for ee_group in traj['end_effector_group'] :
-                    ee_id = ee_group['id']
-                    wp_id = len(ee_group['end_effector_waypoint'])
-                    at_data.waypoint_map[key][ee_id] = wp_id
-                    print " adding ", wp_id, " waypoints for ee ", ee_id, " in ", key
-
+                print "Found AT: ", at_name
+                for traj in structure['end_effector_trajectory'] :
+                    traj_name = str(traj['name'])
+                    # print traj_name
+                    at_data.traj_map[at_name].append(traj_name)
+                    key = (at_name,traj_name)
+                    at_data.waypoint_map[key] = {}
+                    
+                    for ee_group in traj['end_effector_group'] :
+                        ee_id = ee_group['id']
+                        wp_id = len(ee_group['end_effector_waypoint'])
+                        at_data.waypoint_map[key][ee_id] = wp_id
+                        print " adding ", wp_id, " waypoints for ee ", ee_id, " in ", key
+            except :
+                rospy.logwarn(str("AffordanceTemplateServer::getAvailableTemplates() -- error parsing " + atfn))
             # self.structure[at_name] = structure
 
         # return traj_map, class_map, image_map, file_map, waypoint_map

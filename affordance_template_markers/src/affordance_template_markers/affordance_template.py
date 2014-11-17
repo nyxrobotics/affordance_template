@@ -59,7 +59,7 @@ class AffordanceTemplate(threading.Thread) :
         self.object_origin = {}
         self.object_controls = {}
         self.object_geometry = {}
-        # self.object_material = {}
+        self.object_material = {}
 
         self.waypoint_origin = {}
         self.waypoint_controls = {}
@@ -296,7 +296,9 @@ class AffordanceTemplate(threading.Thread) :
             self.object_origin[obj_name] = obj['origin']
             self.object_controls[obj_name] = obj['controls']
             self.object_geometry[obj_name] = obj['shape']
-            # self.object_material[obj_name] = obj['material']
+            
+            if not obj['shape']['type'] == 'mesh' :
+                self.object_material[obj_name] = obj['shape']['material']
             
             print "added object[" , ids, "]: ", obj
             ids += 1
@@ -511,10 +513,10 @@ class AffordanceTemplate(threading.Thread) :
             control.markers.append(marker)
 
             if self.object_geometry[obj]['type'] != "mesh" :
-                control.markers[0].color.r = self.object_material[obj]['color'][0]
-                control.markers[0].color.g = self.object_material[obj]['color'][1]
-                control.markers[0].color.b = self.object_material[obj]['color'][2]
-                control.markers[0].color.a = self.object_material[obj]['color'][3]
+                control.markers[0].color.r = self.object_material[obj]['rgba'][0]
+                control.markers[0].color.g = self.object_material[obj]['rgba'][1]
+                control.markers[0].color.b = self.object_material[obj]['rgba'][2]
+                control.markers[0].color.a = self.object_material[obj]['rgba'][3]
             else :
                 control.markers[0].mesh_use_embedded_materials = False
 
