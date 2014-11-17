@@ -233,16 +233,20 @@ class ProtobufInterface(object):
             print "end_effectors: ", request.command.end_effector
             print "execute on plan: ", request.command.execute
 
+
             for template in request.affordance_template :
                 print "template type: ", template.type
                 print "template id:   ", template.id
                 
                 at = self.server.at_data.class_map[template.type][template.id]
-                print "AT DATA: ", at
                 # plan first
                 for ee in request.command.end_effector :
 
-                    print "Planning EE: ", ee
+                    print "checking to plan for end effector: ", ee
+                    if not at.trajectory_has_ee(at.current_trajectory, ee): 
+                        print " not in trajectory"
+                        continue
+
                     if request.command.type == request.command.GO_TO_START :
                         idx = at.plan_path_to_waypoint(str(ee), backwards=True, steps=-999, direct=True)
                     elif request.command.type == request.command.GO_TO_END :
@@ -254,18 +258,20 @@ class ProtobufInterface(object):
                     elif request.command.type == request.command.STEP_BACKWARD :
                         idx = at.plan_path_to_waypoint(str(ee), backwards=True, steps=request.command.steps)
                     elif request.command.type == request.command.STEP_FORWARD :
-                        print "STEP FORWARD, ", str(ee), ", ", request.command.steps
                         idx = at.plan_path_to_waypoint(str(ee), steps=request.command.steps)
-                        print "idx: ", idx
                     elif request.command.type == request.command.STOP :
                         at.stop(str(ee))
 
-                    print "done planning..."
+                print "done planning..."
+
 
                 # execute after
                 for ee in request.command.end_effector :
 
-                    print "Executing EE: ", ee
+                    print "checking to execute end effector: ", str(ee)
+                    if not at.trajectory_has_ee(at.current_trajectory, ee): 
+                        print " not in trajectory"
+                        continue
 
                     if request.command.execute :
                         print "Executing!!!"

@@ -254,6 +254,11 @@ class JSONInterface(object):
                 # plan first
                 for ee in request['command']['end_effector'] :
 
+                    print "checking to plan for end effector: ", ee
+                    if not at.trajectory_has_ee(at.current_trajectory, ee): 
+                        print " not in trajectory"
+                        continue
+                    
                     command_type = request['command']['type']
 
                     if command_type == 'GO_TO_START':
@@ -274,6 +279,11 @@ class JSONInterface(object):
                 # execute after
                 response['waypoint_info'] = []
                 for ee in request['command']['end_effector'] :
+
+                    print "checking to execute end effector: ", ee
+                    if not at.trajectory_has_ee(at.current_trajectory, ee): 
+                        print " not in trajectory"
+                        continue
 
                     if request['command']['execute']:
                         print "Executing!!!"

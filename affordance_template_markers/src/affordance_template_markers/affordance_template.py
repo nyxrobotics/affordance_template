@@ -47,8 +47,6 @@ class AffordanceTemplate(threading.Thread) :
         self.frame_store_map = {}
         self.current_trajectory = ""
 
-        print "test 1"
-
         self.tf_listener = tf.TransformListener()
         self.tf_broadcaster = tf.TransformBroadcaster()
         self.tf_frame = "template:0"
@@ -1356,6 +1354,28 @@ class AffordanceTemplate(threading.Thread) :
     def stop(self, end_effector) :
         manipulator_name = self.robot_config.get_manipulator(end_effector)
         self.robot_config.moveit_interface.groups[manipulator_name].stop()
+
+    def trajectory_has_ee(self, traj_name, ee_name) :
+
+        # ee_name = unicode(ee_name)
+        # print "AffordanceTemplate::trajectory_has_ee(): ", traj_name, ", ", unicode(ee_name)
+        # print self.robot_config.manipulator_id_map.keys()
+
+        if not ee_name in self.robot_config.manipulator_id_map.keys() :
+            # rospy.logerr("AffordanceTemplate::trajectory_has_ee() -- no ee of that name found in robot config")
+            return False
+
+        ee_id = self.robot_config.manipulator_id_map[ee_name]
+        
+        if not traj_name in self.waypoint_max.keys() :
+            # rospy.logerr("AffordanceTemplate::trajectory_has_ee() -- no trajectory of that name found in tempalate")
+            return False  
+        
+        if not ee_id in self.waypoint_max[traj_name].keys() :  
+            # rospy.logerr("AffordanceTemplate::trajectory_has_ee() -- no ee of that name found in trajectory")
+            return False
+
+        return True
 
     def compute_next_path_id(self, id, steps, backwards=False) :
 
