@@ -403,11 +403,6 @@ void RVizAffordanceTemplatePanel::setupRobotPanel(const string& key) {
     ui_->robot_ty->setText(QString::number(root_offset[1]));
     ui_->robot_tz->setText(QString::number(root_offset[2]));
 
-    cout << root_offset[3] << endl;
-    cout << root_offset[4] << endl;
-    cout << root_offset[5] << endl;
-    cout << root_offset[6] << endl;
-
     vector<float> rpy = util::quaternionToRPY(root_offset[3],root_offset[4],root_offset[5],root_offset[6]);
 
     ui_->robot_rr->setText(QString::number(rpy[0]));

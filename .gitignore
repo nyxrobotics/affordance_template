@@ -4,3 +4,8 @@ affordance_template_server_protobuf/proto_gen/*
 *.bak
 qtcreator-build/*
 *.user
+*/CMakeFiles/*
+*/catkin_generated/*
+*/Makefile
+*/*.cmake
+*/cmake/*

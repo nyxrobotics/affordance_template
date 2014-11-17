@@ -876,7 +876,8 @@ class AffordanceTemplate(threading.Thread) :
     def move_waypoint(self, traj_name, ee_id, old_id, new_id) :
         old_name = self.create_waypoint_id(ee_id, old_id)
         new_name = self.create_waypoint_id(ee_id, new_id)
-        self.create_waypoint(traj_name, ee_id, new_id, getPoseFromFrame(self.objTwp[old_name]), self.parent_map[old_name], self.waypoint_controls[old_name], self.waypoint_origin[old_name], self.waypoint_pose_map[old_name])
+        self.create_waypoint(traj_name, ee_id, new_id, getPoseFromFrame(self.objTwp[traj_name][old_name]), self.parent_map[old_name], 
+            self.waypoint_controls[traj_name][old_name], self.waypoint_origin[traj_name][old_name], self.waypoint_pose_map[traj_name][old_name])
 
     def swap_waypoints(self, traj_name, ee_id, wp_id1, wp_id2) :
         wp_name1 = self.create_waypoint_id(ee_id, wp_id1)
@@ -1058,7 +1059,7 @@ class AffordanceTemplate(threading.Thread) :
         if feedback.event_type == InteractiveMarkerFeedback.MOUSE_UP :
 
             if feedback.marker_name in self.waypoints :
-                self.objTwp[feedback.marker_name] = getFrameFromPose(feedback.pose)
+                self.objTwp[self.current_trajectory][feedback.marker_name] = getFrameFromPose(feedback.pose)
 
         elif feedback.event_type == InteractiveMarkerFeedback.MENU_SELECT:
 
@@ -1123,11 +1124,11 @@ class AffordanceTemplate(threading.Thread) :
 
                     new_pose = geometry_msgs.msg.Pose()
                     first_name = self.create_waypoint_id(ee_id,waypoint_id)
-                    pose_first = getPoseFromFrame(self.objTwp[first_name])
+                    pose_first = getPoseFromFrame(self.objTwp[self.current_trajectory][first_name])
                     new_id = waypoint_id+1
                     if waypoint_id < max_idx :
                         second_name = self.create_waypoint_id(ee_id, new_id)
-                        pose_second = getPoseFromFrame(self.objTwp[second_name])
+                        pose_second = getPoseFromFrame(self.objTwp[self.current_trajectory][second_name])
                         new_pose.position.x = (pose_second.position.x - pose_first.position.x)/2.0 + pose_first.position.x
                         new_pose.position.y = (pose_second.position.y - pose_first.position.y)/2.0 + pose_first.position.y
                         new_pose.position.z = (pose_second.position.z - pose_first.position.z)/2.0 + pose_first.position.z
@@ -1292,15 +1293,16 @@ class AffordanceTemplate(threading.Thread) :
                     ps.position.z = 0.05
                     self.create_waypoint(ee_id, wp_id, ps, feedback.marker_name, pose_id)
                 else :
-                    wp_id = self.waypoint_max[ee_id]+1
+                    wp_id = self.waypoint_max[self.current_trajectory][ee_id]+1
                     wp_name = self.create_waypoint_id(ee_id, wp_id)
-                    last_wp_name = self.create_waypoint_id(ee_id, self.waypoint_max[ee_id])
-                    ps = getPoseFromFrame(self.objTwp[last_wp_name])
+                    last_wp_name = self.create_waypoint_id(ee_id, self.waypoint_max[self.current_trajectory][ee_id])
+                    ps = getPoseFromFrame(self.objTwp[self.current_trajectory][last_wp_name])
                     ps.position.x +=0.025
                     ps.position.y +=0.025
                     ps.position.z +=0.025
-                    pose_id = self.waypoint_pose_map[last_wp_name]
-                    self.create_waypoint(ee_id, wp_id, ps, feedback.marker_name, self.waypoint_controls[last_wp_name], self.waypoint_origin[last_wp_name], pose_id)
+                    pose_id = self.waypoint_pose_map[self.current_trajectory][last_wp_name]
+                    self.create_waypoint(ee_id, wp_id, ps, feedback.marker_name, self.waypoint_controls[self.current_trajectory][last_wp_name], 
+                        self.waypoint_origin[self.current_trajectory][last_wp_name], pose_id)
 
                 self.create_from_parameters(True)
 
@@ -1318,26 +1320,26 @@ class AffordanceTemplate(threading.Thread) :
                     ps.position.z = 0.05
                     self.create_waypoint(ee_id, wp_id, ps, feedback.marker_name, pose_id)
                 else :
-                    ps = getPoseFromFrame(self.objTwp[wp_name])
+                    ps = getPoseFromFrame(self.objTwp[self.current_trajectory][wp_name])
                     ps.position.x -=0.025
                     ps.position.y -=0.025
                     ps.position.z -=0.025
-                    pose_id = self.waypoint_pose_map[wp_name]
+                    pose_id = self.waypoint_pose_map[self.current_trajectory][wp_name]
 
-                    r = range(0,self.waypoint_max[ee_id]+1)
+                    r = range(0,self.waypoint_max[self.current_trajectory][ee_id]+1)
                     r.reverse()
                     for k in r:
                         old_name = self.create_waypoint_id(ee_id, str(k))
                         new_name = self.create_waypoint_id(ee_id, str(k+1))
                         self.move_waypoint(ee_id, k, k+1)
 
-                    self.create_waypoint(ee_id, wp_id, ps, feedback.marker_name, self.waypoint_controls[wp_name], self.waypoint_origin[wp_name], pose_id)
+                    self.create_waypoint(ee_id, wp_id, ps, feedback.marker_name, self.waypoint_controls[self.current_trajectory][wp_name], self.waypoint_origin[self.current_trajectory][wp_name], pose_id)
 
                 self.create_from_parameters(True)
 
     def compute_path_ids(self, id, steps, backwards=False) :
-        idx  = self.waypoint_index[id]
-        max_idx = self.waypoint_max[id]
+        idx  = self.waypoint_index[self.current_trajectory][id]
+        max_idx = self.waypoint_max[self.current_trajectory][id]
         path = []
         if steps == 0: return path, id
         cap = max_idx+1
@@ -1361,24 +1363,24 @@ class AffordanceTemplate(threading.Thread) :
         if not id in self.waypoint_index :
             return next_path_idx
 
-        max_idx = self.waypoint_max[id]
-        if self.waypoint_index[id] < 0 :
+        max_idx = self.waypoint_max[self.current_trajectory][id]
+        if self.waypoint_index[self.current_trajectory][id] < 0 :
             # haven't started yet, so set first waypoint to 0
             next_path_idx = 0
         else :
             if backwards :
-                next_path_idx = self.waypoint_index[id]-steps
-                if self.waypoint_loop[id] :
+                next_path_idx = self.waypoint_index[self.current_trajectory][id]-steps
+                if self.waypoint_loop[self.current_trajectory][id] :
                     if next_path_idx < 0 :
                         next_path_idx = max_idx + next_path_idx
                 else :
                     if next_path_idx < 0 :
                         next_path_idx = 0
             else :
-                next_path_idx = self.waypoint_index[id]+steps
-                if self.waypoint_loop[id] :
+                next_path_idx = self.waypoint_index[self.current_trajectory][id]+steps
+                if self.waypoint_loop[self.current_trajectory][id] :
                     if  next_path_idx > max_idx :
-                        next_path_idx = (self.waypoint_index[id]+steps)-max_idx
+                        next_path_idx = (self.waypoint_index[self.current_trajectory][id]+steps)-max_idx
                 else :
                     if  next_path_idx > max_idx :
                         next_path_idx = max_idx
@@ -1387,35 +1389,38 @@ class AffordanceTemplate(threading.Thread) :
 
     def plan_path_to_waypoint(self, end_effector, steps=1, backwards=False, direct=False) :
 
+        print "AT::plan_path_to_waypoint()"
         ee_id = self.robot_config.manipulator_id_map[end_effector]
         ee_offset = self.robot_config.manipulator_pose_map[end_effector]
         tool_offset = self.robot_config.tool_offset_map[end_effector]
-        max_idx = self.waypoint_max[ee_id]
+        max_idx = self.waypoint_max[self.current_trajectory][ee_id]
         manipulator_name = self.robot_config.get_manipulator(end_effector)
         ee_name = self.robot_config.get_end_effector_name(ee_id)
 
-        # print "manipulator_name: ", manipulator_name
-        # print "steps: ", steps
-        # next_path_idx = self.compute_next_path_id(ee_id, steps, backwards)
-
+        print "manipulator_name: ", manipulator_name
+        print "steps: ", steps
+        
         if steps == 999:
             if direct:
-                path = [self.waypoint_max[ee_id]]
-                next_path_idx = self.waypoint_max[ee_id]
+                path = [self.waypoint_max[self.current_trajectory][ee_id]]
+                next_path_idx = self.waypoint_max[self.current_trajectory][ee_id]
             else :
-                path, next_path_idx = self.compute_path_ids(ee_id, self.waypoint_max[ee_id] - self.waypoint_index[ee_id], backwards)
+                path, next_path_idx = self.compute_path_ids(ee_id, self.waypoint_max[self.current_trajectory][ee_id] - self.waypoint_index[self.current_trajectory][ee_id], backwards)
         elif steps == -999 :
             if direct:
                 path = [0]
                 next_path_idx = 0
             else :
-                path, next_path_idx = self.compute_path_ids(ee_id, max(0,self.waypoint_index[ee_id]), backwards)
+                path, next_path_idx = self.compute_path_ids(ee_id, max(0,self.waypoint_index[self.current_trajectory][ee_id]), backwards)
         else:
             path, next_path_idx = self.compute_path_ids(ee_id, steps, backwards)
 
+        print "next_path_idx: ", next_path_idx
+        print "path: ", path
+
         next_path_str = self.create_waypoint_id(ee_id, next_path_idx)
-        # print "next_path_str: ", next_path_str
-        # print "path: ", path
+        print "next_path_str: ", next_path_str
+        
         rospy.loginfo(str("AffordanceTemplate::plan_path_to_waypoint() -- computing path to index[" + str(next_path_str) + "]"))
 
         waypoints = []
@@ -1427,7 +1432,7 @@ class AffordanceTemplate(threading.Thread) :
         # if we are gonna handle pausing, it probably should allow us to interrupt things.
         for idx in path :
             next_path_str = self.create_waypoint_id(ee_id, idx)
-            if not next_path_str in self.objTwp :
+            if not next_path_str in self.objTwp[self.current_trajectory] :
                 rospy.logerr(str("AffordanceTemplate::process_feedback() -- path index[" + str(next_path_str) + "] not found!!"))
             else :
                 rospy.loginfo(str("AffordanceTemplate::process_feedback() -- computing path to index[" + str(next_path_str) + "]"))
@@ -1444,13 +1449,13 @@ class AffordanceTemplate(threading.Thread) :
                 pt.pose = getPoseFromFrame(T)
                 waypoints.append(pt.pose)
 
-            if not self.waypoint_pose_map[next_path_str] == None :
-                id = self.waypoint_pose_map[next_path_str]
+            if not self.waypoint_pose_map[self.current_trajectory][next_path_str] == None :
+                id = self.waypoint_pose_map[self.current_trajectory][next_path_str]
                 pn = self.robot_config.end_effector_id_map[ee_name][id]
                 self.robot_config.moveit_interface.create_joint_plan_to_target(ee_name, self.robot_config.stored_poses[ee_name][pn])
 
         self.robot_config.moveit_interface.create_path_plan(manipulator_name, frame_id, waypoints)
-        self.waypoint_plan_valid[ee_id] = True
+        self.waypoint_plan_valid[self.current_trajectory][ee_id] = True
 
         return next_path_idx
 
@@ -1458,7 +1463,7 @@ class AffordanceTemplate(threading.Thread) :
         ee_id = self.robot_config.manipulator_id_map[end_effector]
         ee_name = self.robot_config.get_end_effector_name(ee_id)
         manipulator_name = self.robot_config.get_manipulator(end_effector)
-        if self.waypoint_plan_valid[ee_id] :
+        if self.waypoint_plan_valid[self.current_trajectory][ee_id] :
             r = self.robot_config.moveit_interface.execute_plan(manipulator_name,from_stored=True)
             if not r :
                 rospy.logerr(str("RobotTeleop::move_to_waypoint(mouse) -- failed moveit execution for group: " + manipulator_name + ". re-synching..."))
@@ -1467,9 +1472,9 @@ class AffordanceTemplate(threading.Thread) :
             if not r :
                 rospy.logerr(str("RobotTeleop::process_feedback(mouse) -- failed moveit execution for group: " + ee_name + ". re-synching..."))
 
-            self.waypoint_index[ee_id] = next_path_idx
-            rospy.loginfo(str("setting current waypoint idx: " + str(self.waypoint_index[ee_id])))
-            self.waypoint_plan_valid[ee_id] = False
+            self.waypoint_index[self.current_trajectory][ee_id] = next_path_idx
+            rospy.loginfo(str("setting current waypoint idx: " + str(self.waypoint_index[self.current_trajectory][ee_id])))
+            self.waypoint_plan_valid[self.current_trajectory][ee_id] = False
 
     def create_origin_from_pose(self, ps) :
         origin = affordance_template_markers.atdf_parser.Pose()

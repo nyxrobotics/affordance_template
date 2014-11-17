@@ -234,11 +234,15 @@ class ProtobufInterface(object):
             print "execute on plan: ", request.command.execute
 
             for template in request.affordance_template :
+                print "template type: ", template.type
+                print "template id:   ", template.id
+                
                 at = self.server.at_data.class_map[template.type][template.id]
-
+                print "AT DATA: ", at
                 # plan first
                 for ee in request.command.end_effector :
 
+                    print "Planning EE: ", ee
                     if request.command.type == request.command.GO_TO_START :
                         idx = at.plan_path_to_waypoint(str(ee), backwards=True, steps=-999, direct=True)
                     elif request.command.type == request.command.GO_TO_END :
@@ -250,12 +254,18 @@ class ProtobufInterface(object):
                     elif request.command.type == request.command.STEP_BACKWARD :
                         idx = at.plan_path_to_waypoint(str(ee), backwards=True, steps=request.command.steps)
                     elif request.command.type == request.command.STEP_FORWARD :
+                        print "STEP FORWARD, ", str(ee), ", ", request.command.steps
                         idx = at.plan_path_to_waypoint(str(ee), steps=request.command.steps)
+                        print "idx: ", idx
                     elif request.command.type == request.command.STOP :
                         at.stop(str(ee))
 
+                    print "done planning..."
+
                 # execute after
                 for ee in request.command.end_effector :
+
+                    print "Executing EE: ", ee
 
                     if request.command.execute :
                         print "Executing!!!"
@@ -266,10 +276,11 @@ class ProtobufInterface(object):
                     else :
                         wp = response.waypoint_info.add()
                         wp.id = int(at.robot_config.manipulator_id_map[str(ee)])
-                        wp.num_waypoints = at.waypoint_index[wp.id]
+                        wp.num_waypoints = at.waypoint_index[at.current_trajectory][wp.id]
 
+                    print "done executing..."
 
             response.success = True
         except:
-            print 'Error trying to load robot from message'
+            print 'Error trying to parse COMMAND message'
         return response

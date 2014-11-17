@@ -51,7 +51,7 @@ class JSONInterface(object):
                 for t in self.server.at_data.traj_map[class_type] :
                     template['trajectory_info']['name'] = t
                     template['trajectory_info']['waypoint_info'] = []
-                    for p in self.server.at_data.waypoint_map[class_type].keys():
+                    for p in self.server.at_data.waypoint_map[(class_type,t)].keys():
                         wp = {}
                         wp['id'] = int(p)
                         wp['num_waypoints'] = self.server.at_data.waypoint_map[(class_type,t)][p]
