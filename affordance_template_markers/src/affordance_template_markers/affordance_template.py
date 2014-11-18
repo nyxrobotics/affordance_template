@@ -1,5 +1,11 @@
 import yaml
 import json
+
+import os
+import shutil      
+import random
+import time
+        
 import copy
 import PyKDL as kdl
 import tf
@@ -90,6 +96,9 @@ class AffordanceTemplate(threading.Thread) :
         # not all templates will have a dynamic reconfigure server
         self.dserver = None
         self.initial_pose = initial_pose
+
+        self.random = random.Random()
+        self.random.seed(time.clock)
 
         print "FIX THIS"
         print robot_config
@@ -250,12 +259,14 @@ class AffordanceTemplate(threading.Thread) :
 
     def load_initial_parameters(self) :
 
+        rospy.loginfo("AffordanceTemplate::load_initial_parameters()")
         # can we just make a deep copy of the json structure here?
 
         objs = self.frame_store_map.keys()
         for k in objs: del self.frame_store_map[k]
         self.frame_store_map = {}
 
+        print "test 1"
         if self.robot_config == None :
             rospy.error("AffordanceTemplate::load_initial_parameters() -- no robot config")
             return False
@@ -263,6 +274,8 @@ class AffordanceTemplate(threading.Thread) :
         if self.structure == None :
             rospy.error("AffordanceTemplate::load_initial_parameters() -- no structure")
             return False
+
+        print "test 2"
 
         self.display_objects = []
         self.waypoints = {}
@@ -272,15 +285,19 @@ class AffordanceTemplate(threading.Thread) :
 
         self.name = self.structure['name']
         self.key = self.name
-        # self.key = self.append_id(self.name)
+
+        print "test 3"
 
         # parse objects
         ids = 0
         for obj in self.structure['display_objects'] :
 
+            rospy.loginfo(str("AffordanceTemplate::load_initial_parameters() -- adding object: " + obj['name']))
+
             obj_name = obj['name']
             self.display_objects.append(obj_name)
 
+            # first object should have no parent, make it "robot" by default
             if ids == 0:
                 self.set_root_object(obj_name)
                 self.parent_map[obj_name] = "robot"
@@ -290,9 +307,9 @@ class AffordanceTemplate(threading.Thread) :
                 except :
                     pass
 
+            # store object info to local structs
             self.rootTobj[obj_name] = getFrameFromPose(self.pose_from_origin(obj['origin']))
             self.marker_pose_offset[obj_name] = self.pose_from_origin(obj['origin'])
-
             self.object_origin[obj_name] = obj['origin']
             self.object_controls[obj_name] = obj['controls']
             self.object_geometry[obj_name] = obj['shape']
@@ -300,26 +317,20 @@ class AffordanceTemplate(threading.Thread) :
             if not obj['shape']['type'] == 'mesh' :
                 self.object_material[obj_name] = obj['shape']['material']
             
-            print "added object[" , ids, "]: ", obj
             ids += 1
 
-        print "parsing trajectories"
         for traj in self.structure['end_effector_trajectory'] :
 
             self.create_trajectory_structures(traj['name'])
-            print "Adding trajectory: ", traj['name']
+            rospy.loginfo(str("AffordanceTemplate::load_initial_parameters() -- adding trajectory: " + traj['name']))
+            
             for ee_group in traj['end_effector_group'] :
                 wp_id = 0
                 for wp in ee_group['end_effector_waypoint'] :
-                    # parse end effector information
 
-                    wp_name = self.append_id(str(ee_group['id']) + "." + str(wp_id))
-                    print "wp_name: ", wp_name
-                    # print "wp_id: ", wp_id
-                    # print "ee_group: ", ee_group['id']
-                    
+                    # parse end effector information
+                    wp_name = self.append_id(str(ee_group['id']) + "." + str(wp_id))                   
                     ee_name = self.robot_config.end_effector_name_map[ee_group['id']]
-                    # print "ee_name: ", ee_name
 
                     if not wp['display_object'] in self.display_objects :
                         rospy.logerr(str("AffordanceTemplate::create_from_structure() -- end-effector display object " + wp['display_object'] + "not found!"))
@@ -335,6 +346,7 @@ class AffordanceTemplate(threading.Thread) :
                         pose_id = wp['ee_pose']
                     wp_pose = self.pose_from_origin(wp['origin'])
 
+                    # create waypoint we can play with
                     self.create_waypoint(traj['name'], ee_group['id'], wp_id, wp_pose, parent, wp['controls'], wp['origin'], pose_id)
 
                     wp_id += 1
@@ -485,31 +497,6 @@ class AffordanceTemplate(threading.Thread) :
                 marker.scale.x = self.object_geometry[obj]['radius']
                 marker.scale.y = self.object_geometry[obj]['length']
  
-
-            # if isinstance(self.object_geometry[obj], affordance_template_markers.atdf_parser.Mesh) :
-            #     marker.type = Marker.MESH_RESOURCE
-            #     marker.mesh_resource = self.object_geometry[obj].filename
-            #     marker.mesh_use_embedded_materials = True
-            #     marker.scale.x = self.object_geometry[obj].scale[0]
-            #     marker.scale.y = self.object_geometry[obj].scale[1]
-            #     marker.scale.z = self.object_geometry[obj].scale[2]
-            #     # control = CreatePrimitiveControl(obj.name, p, 1.0, Marker.MESH_RESOURCE, ids)
-            # elif isinstance(self.object_geometry[obj], affordance_template_markers.atdf_parser.Box) :
-            #     marker.type = Marker.CUBE
-            #     marker.scale.x = self.object_geometry[obj].size[0]
-            #     marker.scale.y = self.object_geometry[obj].size[1]
-            #     marker.scale.z = self.object_geometry[obj].size[2]
-            # elif isinstance(self.object_geometry[obj], affordance_template_markers.atdf_parser.Sphere) :
-            #     marker.type = Marker.SPHERE
-            #     marker.scale.x = self.object_geometry[obj].x
-            #     marker.scale.y = self.object_geometry[obj].y
-            #     marker.scale.z = self.object_geometry[obj].z
-            # elif isinstance(self.object_geometry[obj], affordance_template_markers.atdf_parser.Cylinder) :
-            #     marker.type = Marker.CYLINDER
-            #     marker.scale.x = self.object_geometry[obj].radius
-            #     marker.scale.y = self.object_geometry[obj].radius
-            #     marker.scale.z = self.object_geometry[obj].length
-
             control.markers.append(marker)
 
             if self.object_geometry[obj]['type'] != "mesh" :
@@ -556,13 +543,9 @@ class AffordanceTemplate(threading.Thread) :
         self.current_trajectory = trajectory
 
         wp_ids = 0
-        print self.current_trajectory
-        print self.waypoints[self.current_trajectory] 
         for wp in self.waypoints[self.current_trajectory] :
 
-            # print "creating marker for wp: ", wp
             ee_name = self.robot_config.end_effector_name_map[int(self.waypoint_end_effectors[trajectory][wp])]
-            print "creating trajectory[" , self.current_trajectory, "] marker for wp: ", wp, ", ee: ", ee_name
             
             root_frame = self.name #str(self.name + ":" + str(self.id))
             if (trajectory, wp) in self.parent_map :
@@ -589,6 +572,7 @@ class AffordanceTemplate(threading.Thread) :
             self.marker_menus[wp] = MenuHandler()
             self.setup_waypoint_menu(wp, ee_name)
 
+            # set default menu options for the waypoint. This is ugly, but i blame how the IM menus work...
             id = int(self.waypoint_end_effectors[trajectory][wp])
             if self.waypoint_backwards_flag[trajectory][id] :
                 self.marker_menus[wp].setCheckState( self.menu_handles[(wp,"Compute Backwards Path")], MenuHandler.CHECKED )
@@ -608,28 +592,14 @@ class AffordanceTemplate(threading.Thread) :
             else :
                 pn = self.robot_config.end_effector_id_map[ee_name][id]
 
-            # print "##########getting markers for pose ", pn
             markers = self.robot_config.end_effector_link_data[ee_name].get_markers_for_pose(pn)
 
             for m in markers.markers :
-            # for m in self.robot_config.end_effector_markers[ee_name].markers :
-                print "  copying ee marker: ", m.text
                 ee_m = copy.deepcopy(m)
                 ee_m.header.frame_id = ""
                 ee_m.ns = self.name
                 ee_m.pose = getPoseFromFrame(self.wpTee[wp]*self.eeTtf[wp]*getFrameFromPose(m.pose))
-                # ee_m.color.r = .2
-                # ee_m.color.g = .5
-                # ee_m.color.b = .2
-                # ee_m.color.a = .8
                 menu_control.markers.append( ee_m )
-
-                # print m.text
-                # print m.pose
-                # print ee_m.pose
-
-            print "done adding ee markers"
-            print "adding controls...."
 
             scale = 1.0
             if wp in self.waypoint_controls[trajectory] :
@@ -640,14 +610,11 @@ class AffordanceTemplate(threading.Thread) :
                     self.waypoint_controls[trajectory][wp]['xyz'][0], self.waypoint_controls[trajectory][wp]['xyz'][1], self.waypoint_controls[trajectory][wp]['xyz'][2],
                     self.waypoint_controls[trajectory][wp]['rpy'][0], self.waypoint_controls[trajectory][wp]['rpy'][1], self.waypoint_controls[trajectory][wp]['rpy'][2]))
 
-            print "adding ee IM...."
             self.add_interactive_marker(int_marker)
-            print "applying menus for wp: ", wp
             self.marker_menus[wp].apply( self.server, wp )
             self.server.applyChanges()
 
             wp_ids += 1
-            print "done adding waypoint marker"
 
 
     def update_template_defaults(self, objects=True, waypoints=True) :
@@ -658,145 +625,104 @@ class AffordanceTemplate(threading.Thread) :
                 xyz = [current_pose.position.x, current_pose.position.y, current_pose.position.z]
                 rpy = (kdl.Rotation.Quaternion(current_pose.orientation.x,current_pose.orientation.y,current_pose.orientation.z,current_pose.orientation.w)).GetRPY()
                 for i in range(3) :
-                    self.object_origin[obj].xyz[i] = xyz[i]
-                    self.object_origin[obj].rpy[i] = rpy[i]
+                    self.object_origin[obj]['xyz'][i] = xyz[i]
+                    self.object_origin[obj]['rpy'][i] = rpy[i]
 
         if waypoints :
-            for wp in self.waypoints[self.current_trajectory][self.current_trajectory] :
-                current_pose = getPoseFromFrame(self.objTwp[self.current_trajectory][wp])
-                xyz = [current_pose.position.x, current_pose.position.y, current_pose.position.z]
-                rpy = (kdl.Rotation.Quaternion(current_pose.orientation.x,current_pose.orientation.y,current_pose.orientation.z,current_pose.orientation.w)).GetRPY()
-                for i in range(3) :
-                    self.waypoint_origin[self.current_trajectory][wp]['xyz'][i] = xyz[i]
-                    self.waypoint_origin[self.current_trajectory][wp]['rpy'][i] = rpy[i]
+            for traj in self.waypoints.keys() :
+                for wp in self.waypoints[traj] :
+                    current_pose = getPoseFromFrame(self.objTwp[traj][wp])
+                    xyz = [current_pose.position.x, current_pose.position.y, current_pose.position.z]
+                    rpy = (kdl.Rotation.Quaternion(current_pose.orientation.x,current_pose.orientation.y,current_pose.orientation.z,current_pose.orientation.w)).GetRPY()
+                    for i in range(3) :
+                        self.waypoint_origin[traj][wp]['xyz'][i] = xyz[i]
+                        self.waypoint_origin[traj][wp]['rpy'][i] = rpy[i]
 
 
     def save_to_disk(self, filename=None, package=None) :
 
-        rospy.logerr("NEED TO RE-WRITE SAVING FOR JSON")
-        # name = self.structure.name.split(":")[0]
+        name = self.structure['name'].split(":")[0]
 
-        # if filename == None :
-        #     filename = name + str(".atdf")
+        if filename == None :
+            filename = name + str(".json")
 
-        # filename_bak = filename + str(".bak")
-        # if package == None:
-        #     package = "affordance_template_library"
+        filename_bak = filename + str(".bak.") + str(self.random.randint(0,100000))
+        if package == None:
+            package = "affordance_template_library"
 
-        # # get package and file path
-        # import os
-        # package_path = self.getPackagePath(package)
-        # template_path    = os.path.join(package_path, 'templates')
-        # output_file = os.path.join(template_path, filename)
+        # get package and file path
+        package_path = self.getPackagePath(package)
+        template_path    = os.path.join(package_path, 'templates')
+        output_file = os.path.join(template_path, filename)
 
-        # # backup file
-        # try :
-        #     import shutil
-        #     dstname = os.path.join(template_path, filename_bak)
-        #     print "copy name: ", dstname
-        #     shutil.copyfile(output_file,dstname)
-        # except :
-        #     rospy.loginfo("AffordanceTemplate::save_to_disk() -- no file to backup")
+        rospy.loginfo(("Writing template JSON to file: " + output_file))
 
-        # # set current object and waypoint positions to "default"
-        # self.update_template_defaults()
+        # backup file
+        try :
+            dstname = os.path.join(template_path, filename_bak)
+            shutil.copyfile(output_file,dstname)
+        except :
+            rospy.loginfo("AffordanceTemplate::save_to_disk() -- no file to backup")
 
-        # # create xml file
-        # import xml.etree.cElementTree as ET
+        # set current object and waypoint positions to "default"
+        self.update_template_defaults()
 
-        # root = ET.Element("affordance_template")
-        # # root.set('version', '1.0')
-        # root.set("name", name)
-        # root.set("image", self.structure.image)
+        new_structure = {}
 
-        # display_objects = ET.SubElement(root, "display_objects")
-        # for obj in self.display_objects :
-        #     key = obj.split(":")[0]
-        #     obj_element = ET.SubElement(display_objects, "display_object")
-        #     obj_element.set("name", key)
-        #     if obj in self.parent_map:
-        #         if not self.parent_map[obj] == "robot" :
-        #             parent_key = self.parent_map[obj].split(":")[0]
-        #             obj_element.set("parent", parent_key)
-        #     print self.object_geometry[obj]
-        #     if isinstance(self.object_create_trajectory_structuresgeometry[obj], affordance_template_markers.atdf_parser.Mesh) :
-        #         geometry_element = ET.SubElement(obj_element, "geometry")
-        #         mesh_element = ET.SubElement(geometry_element, "mesh")
-        #         mesh_element.set("filename", self.object_geometry[obj].filename)
-        #         mesh_element.set("scale", str(str(self.object_geometry[obj].scale[0]) + " " + str(self.object_geometry[obj].scale[1]) + " " + str(self.object_geometry[obj].scale[2])))
-        #     elif isinstance(self.object_geometry[obj], affordance_template_markers.atdf_parser.Box) :
-        #         geometry_element = ET.SubElement(obj_element, "geometry")
-        #         box_element = ET.SubElement(geometry_element, "box")
-        #         # box_element.set("size", str(self.object_geometry[obj].size))
-        #         box_element.set("size", str(str(self.object_geometry[obj].size[0]) + " " + str(self.object_geometry[obj].size[1]) + " " + str(self.object_geometry[obj].size[2])))
-        #     elif isinstance(self.object_geometry[obj], affordance_template_markers.atdf_parser.Sphere):
-        #         geometry_element = ET.SubElement(obj_element, "geometry")
-        #         sphere_element = ET.SubElement(geometry_element, "sphere")
-        #         sphere_element.set("radius", str(self.object_geometry[obj].x))
-        #     elif isinstance(self.object_geometry[obj], affordance_template_markers.atdf_parser.Cylinder):
-        #         geometry_element = ET.SubElement(obj_element, "geometry")
-        #         cylinder_element = ET.SubElement(geometry_element, "cylinder")
-        #         cylinder_element.set("radius", str(self.object_geometry[obj].radius))
-        #         cylinder_element.set("length", str(self.object_geometry[obj].length))
+        new_structure['name'] = name
+        new_structure['image'] = self.structure['image']
 
-        #     if not self.object_material[obj] == None :
-        #         material_element = ET.SubElement(obj_element, "material")
-        #         material_element.set("name", self.object_material[obj].name)
-        #         color_element = ET.SubElement(material_element, "color")
-        #         color_element.set("rgba", str(str(self.object_material[obj].color.rgba[0]) + " " + str(self.object_material[obj].color.rgba[1])
-        #                 + " " + str(self.object_material[obj].color.rgba[2]) + " " + str(self.object_material[obj].color.rgba[3])))
+        new_structure['display_objects'] = []
+        
+        print "parsing objects..."
 
-        #     origin_element = ET.SubElement(obj_element, "origin")
-        #     origin_element.set("xyz", str(str(self.object_origin[obj].xyz[0]) + " " + str(self.object_origin[obj].xyz[1]) + " " + str(self.object_origin[obj].xyz[2])))
-        #     origin_element.set("rpy", str(str(self.object_origin[obj].rpy[0]) + " " + str(self.object_origin[obj].rpy[1]) + " " + str(self.object_origin[obj].rpy[2])))
+        obj_id = 0
+        for obj in self.display_objects :
+            key = obj.split(":")[0]
 
-        #     controls_element = ET.SubElement(obj_element, "controls")
-        #     controls_element.set("xyz", str(str(int(self.object_controls[obj].xyz[0])) + " " + str(int(self.object_controls[obj].xyz[1])) + " " + str(int(self.object_controls[obj].xyz[2]))))
-        #     controls_element.set("rpy", str(str(int(self.object_controls[obj].rpy[0])) + " " + str(int(self.object_controls[obj].rpy[1])) + " " + str(int(self.object_controls[obj].rpy[2]))))
-        #     controls_element.set("scale", str(self.object_controls[obj].scale))
+            new_structure['display_objects'].append({})
+            new_structure['display_objects'][obj_id]['name'] = key
+            new_structure['display_objects'][obj_id]['origin'] = self.object_origin[obj]
+            new_structure['display_objects'][obj_id]['controls'] = self.object_controls[obj]
+            new_structure['display_objects'][obj_id]['shape'] = self.object_geometry[obj]
+            
+            obj_id += 1
 
+        traj_id = 0
+        new_structure['end_effector_trajectory'] = []
+            
+        for traj in self.structure['end_effector_trajectory'] :
+            # print "Traj: ", traj['name']
+            new_structure['end_effector_trajectory'].append({})
+            new_structure['end_effector_trajectory'][traj_id]['name'] = traj['name']
+            new_structure['end_effector_trajectory'][traj_id]['end_effector_group'] = []
 
-        # waypoints = ET.SubElement(root, "end_effector_waypoints")
-        # for wp in self.waypoints :
-        #     ee = wp.split(".")[0]
-        #     id = wp.split(".")[1].split(":")[0]
-        #     parent_key = self.parent_map[wp].split(":")[0]
+            idx = 0
+            for ee in self.structure['end_effector_trajectory'][traj_id]['end_effector_group'] :
+                # print " ee: ", ee['id']
+                ee_id = ee['id']
+                new_structure['end_effector_trajectory'][traj_id]['end_effector_group'].append({})
+                new_structure['end_effector_trajectory'][traj_id]['end_effector_group'][idx]['id'] = ee['id']
+                new_structure['end_effector_trajectory'][traj_id]['end_effector_group'][idx]['end_effector_waypoint'] = []
+            
+                wp_id = 0
+                for wp in self.waypoints[traj['name']] :
+                    if int(wp.split(".")[0]) == int(ee_id) :
+                        # print "  wp: ", wp
+                        parent_key = self.parent_map[(traj['name'],wp)].split(":")[0]
+                        new_structure['end_effector_trajectory'][traj_id]['end_effector_group'][idx]['end_effector_waypoint'].append({})
+                        new_structure['end_effector_trajectory'][traj_id]['end_effector_group'][idx]['end_effector_waypoint'][wp_id]['ee_pose'] = self.waypoint_pose_map[traj['name']][wp]
+                        new_structure['end_effector_trajectory'][traj_id]['end_effector_group'][idx]['end_effector_waypoint'][wp_id]['display_object'] = parent_key
+                        new_structure['end_effector_trajectory'][traj_id]['end_effector_group'][idx]['end_effector_waypoint'][wp_id]['origin'] = self.waypoint_origin[traj['name']][wp]
+                        new_structure['end_effector_trajectory'][traj_id]['end_effector_group'][idx]['end_effector_waypoint'][wp_id]['controls'] = self.waypoint_controls[traj['name']][wp]
+                        wp_id += 1
+                idx += 1
+            traj_id += 1
+    
+        with open(str(output_file), 'w') as outfile :
+            print "writing out new structure JSON"
+            json.dump(new_structure, outfile, sort_keys = False, indent = 2)
 
-        #     wp_element = ET.SubElement(waypoints, "end_effector_waypoint")
-        #     wp_element.set("end_effector", ee)
-        #     wp_element.set("id", id)
-        #     wp_element.set("display_object", parent_key)
-
-        #     origin_element = ET.SubElement(wp_element, "origin")
-        #     origin_element.set("xyz", str(str(self.waypoint_origin[wp].xyz[0]) + " " + str(self.waypoint_origin[wp].xyz[1]) + " " + str(self.waypoint_origin[wp].xyz[2])))
-        #     origin_element.set("rpy", str(str(self.waypoint_origin[wp].rpy[0]) + " " + str(self.waypoint_origin[wp].rpy[1]) + " " + str(self.waypoint_origin[wp].rpy[2])))
-
-        #     controls_element = ET.SubElement(wp_element, "controls")
-        #     controls_element.set("xyz", str(str(int(self.waypoint_controls[wp].xyz[0])) + " " + str(int(self.waypoint_controls[wp].xyz[1])) + " " + str(int(self.waypoint_controls[wp].xyz[2]))))
-        #     controls_element.set("rpy", str(str(int(self.waypoint_controls[wp].rpy[0])) + " " + str(int(self.waypoint_controls[wp].rpy[1])) + " " + str(int(self.waypoint_controls[wp].rpy[2]))))
-        #     controls_element.set("scale", str(self.waypoint_controls[wp].scale))
-
-        #     pose_group_element = ET.SubElement(wp_element, "pose_group")
-        #     pose_group_element.set("id", str(self.waypoint_pose_map[wp]))
-
-        # rospy.loginfo("AffordanceTemplate::save_to_disk() -- writing file to disk...")
-        # # print output_file
-
-        # def pretty_print_xml(xml):
-        #     import subprocess
-        #     proc = subprocess.Popen(
-        #         ['xmllint', '--format', '/dev/stdin'],
-        #         stdin=subprocess.PIPE,
-        #         stdout=subprocess.PIPE,
-        #     )
-        #     (output, error_output) = proc.communicate(xml);
-        #     return output
-
-        # xmlstr = ET.tostring(root)
-        # import io
-        # f = io.open(output_file, "wb")
-        # f.write(pretty_print_xml(xmlstr))
-        # f.close()
 
     def create_trajectory_structures(self, traj_name) :
         if not traj_name in self.waypoints : self.waypoints[traj_name] = []
@@ -987,70 +913,29 @@ class AffordanceTemplate(threading.Thread) :
         return self.structure
 
     def append_id_to_structure(self, structure) :
+        print "structure name: ", structure['name']
         structure['name'] = self.append_id(str(structure['name']))
         for obj in structure['display_objects'] :
             obj['name'] = self.append_id(obj['name'])
+            print " -- ", obj['name']
             try :
                 obj['parent'] = self.append_id(obj['parent'])
             except :
-                pass
+                rospy.logwarn("AffordanceTemplate::append_id_to_structure() -- exception caught")
                 # print "appending id to parent ", self.parent_map[obj.name], " of ", obj.name
         for traj in structure['end_effector_trajectory'] :
+            print " -- ", traj['name']
             for ee_group in traj['end_effector_group'] :
+                print " --- ", ee_group['id']
                 for wp in ee_group['end_effector_waypoint'] :
+                    print " ---- ", wp['origin']['xyz']
                     wp['display_object'] = self.append_id(wp['display_object'])
                     
         return structure
 
     def print_structure(self) :
         print self.structure
-        # print "---------------------"
-        # print "---------------------"
-        # print "found new template:"
-        # print "  name:  ", self.structure.name
-        # print "  image: ", self.structure.image
-        # for obj in self.structure.display_objects.display_objects :
-        #     print "---------------------"
-        #     print "\tobject: ", obj.name
-        #     if not obj.parent == None :
-        #         print "\tparent: ", obj.parent
-
-        #     print "----------------"
-        #     print "\torigin xyz: ", obj.origin.xyz
-        #     print "\torigin rpy: ", obj.origin.rpy
-        #     print "----------------"
-        #     print "\tcontrols xyz: ", obj.controls.xyz
-        #     print "\tcontrols rpy: ", obj.controls.rpy
-        #     print "----------------"
-        #     if isinstance(obj.geometry, affordance_template_markers.atdf_parser.Box) :
-        #         print "\tBox size: ", obj.geometry.size
-        #     if isinstance(obj.geometry, affordance_template_markers.atdf_parser.Sphere) :
-        #         print "\tSphere radius x: ", obj.geometry.x
-        #         print "\tSphere radius y: ", obj.geometry.y
-        #         print "\tSphere radius z: ", obj.geometry.z
-        #     if isinstance(obj.geometry, affordance_template_markers.atdf_parser.Cylinder) :
-        #         print "\tCylinder size: (", obj.geometry.radius, ", ", obj.geometry.length, ")"
-        #     if isinstance(obj.geometry, affordance_template_markers.atdf_parser.Mesh) :
-        #         print "\tMesh: ", obj.geometry.filename
-        #     if not obj.material == None :
-        #         print "\tmaterial: ", obj.material.name
-
-        # print "---------------------"
-        # for wp in self.structure.end_effector_waypointss.end_effector_waypoints :
-        #     print "---------------------"
-        #     print "\twaypoint: ", self.create_waypoint_id(wp.end_effector, wp.id)
-        #     print "----------------"
-        #     print "\tdisplay_object: ", wp.display_object
-        #     print "----------------"
-        #     print "\torigin xyz: ", wp.origin.xyz
-        #     print "\torigin rpy: ", wp.origin.rpy
-        #     print "----------------"
-        #     print "\tcontrols xyz: ", wp.controls.xyz
-        #     print "\tcontrols rpy: ", wp.controls.rpy
-        #     print "----------------"
-        #     if not wp.pose_group == None :
-        #         print "\tee pose group id: ", wp.pose_group.id
-
+        
     def process_feedback(self, feedback):
         # print "\n--------------------------------"
         # print "Process Feedback on marker: ", feedback.marker_name
@@ -1061,7 +946,7 @@ class AffordanceTemplate(threading.Thread) :
 
         if feedback.event_type == InteractiveMarkerFeedback.MOUSE_UP :
 
-            if feedback.marker_name in self.waypoints :
+            if feedback.marker_name in self.waypoints[self.current_trajectory] :
                 self.objTwp[self.current_trajectory][feedback.marker_name] = getFrameFromPose(feedback.pose)
 
         elif feedback.event_type == InteractiveMarkerFeedback.MENU_SELECT:
