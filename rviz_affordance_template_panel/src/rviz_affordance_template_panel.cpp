@@ -87,14 +87,14 @@ void RVizAffordanceTemplatePanel::setupWidgets() {
     QObject::connect(ui_->robot_rr, SIGNAL(textEdited(const QString&)), this, SLOT(update_robot_config(const QString&)));
     QObject::connect(ui_->robot_rp, SIGNAL(textEdited(const QString&)), this, SLOT(update_robot_config(const QString&)));
     QObject::connect(ui_->robot_ry, SIGNAL(textEdited(const QString&)), this, SLOT(update_robot_config(const QString&)));
-    QObject::connect(ui_->ee_name, SIGNAL(textEdited(const QString&)), this, SLOT(update_end_effector_map(const QString&)));
-    QObject::connect(ui_->ee_id, SIGNAL(textEdited(const QString&)), this, SLOT(update_end_effector_map(const QString&)));
-    QObject::connect(ui_->ee_tx, SIGNAL(textEdited(const QString&)), this, SLOT(update_end_effector_map(const QString&)));
-    QObject::connect(ui_->ee_ty, SIGNAL(textEdited(const QString&)), this, SLOT(update_end_effector_map(const QString&)));
-    QObject::connect(ui_->ee_tz, SIGNAL(textEdited(const QString&)), this, SLOT(update_end_effector_map(const QString&)));
-    QObject::connect(ui_->ee_rr, SIGNAL(textEdited(const QString&)), this, SLOT(update_end_effector_map(const QString&)));
-    QObject::connect(ui_->ee_rp, SIGNAL(textEdited(const QString&)), this, SLOT(update_end_effector_map(const QString&)));
-    QObject::connect(ui_->ee_ry, SIGNAL(textEdited(const QString&)), this, SLOT(update_end_effector_map(const QString&)));
+    QObject::connect(ui_->ee_name, SIGNAL(textEdited(const QString&)), this, SLOT(update_end_effector_group_map(const QString&)));
+    QObject::connect(ui_->ee_id, SIGNAL(textEdited(const QString&)), this, SLOT(update_end_effector_group_map(const QString&)));
+    QObject::connect(ui_->ee_tx, SIGNAL(textEdited(const QString&)), this, SLOT(update_end_effector_group_map(const QString&)));
+    QObject::connect(ui_->ee_ty, SIGNAL(textEdited(const QString&)), this, SLOT(update_end_effector_group_map(const QString&)));
+    QObject::connect(ui_->ee_tz, SIGNAL(textEdited(const QString&)), this, SLOT(update_end_effector_group_map(const QString&)));
+    QObject::connect(ui_->ee_rr, SIGNAL(textEdited(const QString&)), this, SLOT(update_end_effector_group_map(const QString&)));
+    QObject::connect(ui_->ee_rp, SIGNAL(textEdited(const QString&)), this, SLOT(update_end_effector_group_map(const QString&)));
+    QObject::connect(ui_->ee_ry, SIGNAL(textEdited(const QString&)), this, SLOT(update_end_effector_group_map(const QString&)));
 }
 
 void RVizAffordanceTemplatePanel::update_robot_config(const QString& text) {
@@ -129,7 +129,7 @@ void RVizAffordanceTemplatePanel::update_robot_config(const QString& text) {
     (*robotMap_[key]).root_offset(root_offset);
 }
 
-void RVizAffordanceTemplatePanel::update_end_effector_map(const QString& text) {
+void RVizAffordanceTemplatePanel::update_end_effector_group_map(const QString& text) {
     // update the end effector robot map
     // note: we ignore the actual updated text passed in, we simply update
     // robot map values with the current text in XYZ/RPY of the current EE
@@ -192,10 +192,10 @@ void RVizAffordanceTemplatePanel::update_end_effector_map(const QString& text) {
 void RVizAffordanceTemplatePanel::enable_config_panel(int state) {
     if (state == Qt::Checked) {
         ui_->groupBox->setEnabled(false);
-        ui_->load_config_button->setEnabled(true);
+        ui_->load_config_button->setEnabled(false);
     } else {
         ui_->groupBox->setEnabled(true);
-        ui_->load_config_button->setEnabled(false);
+        ui_->load_config_button->setEnabled(true);
     }
 }
 
@@ -591,8 +591,8 @@ void RVizAffordanceTemplatePanel::getRunningItems() {
 
 
 void RVizAffordanceTemplatePanel::safeLoadConfig() {
-    if(!ui_->robot_lock->isChecked()) {
-        cout << "Can't load while RobotConfig is unlocked" << endl;
+    if(ui_->robot_lock->isChecked()) {
+        cout << "Can't load while RobotConfig is locked" << endl;
         return;
     }
     loadConfig();
@@ -607,7 +607,7 @@ void RVizAffordanceTemplatePanel::loadConfig() {
         connect();
     }
 
-    cout << "RVizAffordanceTemplatePanel::loadConfig() -- WARNING::taking parameters loaded from original config, not the GUI yet!!! " << endl;
+    ROS_WARN("RVizAffordanceTemplatePanel::loadConfig() -- WARNING::taking parameters loaded from original config, not the GUI yet!!! ");
 
     Request req;
     req.set_type(Request::LOAD_ROBOT);
@@ -691,7 +691,6 @@ void RVizAffordanceTemplatePanel::loadConfig() {
 
     }
 
-    cout << "ADDED END EFFECTOR POSE MAP TO REQUEST MESSAGE" << endl;
     for (auto& e: (*robotMap_[key]).endeffectorPoseMap) {
         EndEffectorPoseID *pid = ee_pose_map->add_pose_group();
         pid->set_name(e.second->name());
@@ -708,7 +707,11 @@ void RVizAffordanceTemplatePanel::loadConfig() {
     robot_name_ = key;
     controls_->setRobotName(robot_name_);
 
-    enable_config_panel(Qt::Checked);
+    if(ui_->robot_lock->isChecked()) {
+        enable_config_panel(Qt::Checked);
+    } else {
+        enable_config_panel(Qt::Unchecked);        
+    }
 }
 
 

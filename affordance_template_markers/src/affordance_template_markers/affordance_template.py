@@ -29,8 +29,6 @@ from affordance_template_markers.frame_store import *
 from affordance_template_markers.template_utilities import *
 from affordance_template_markers.affordance_template_data import *
 
-# import affordance_template_markers.atdf_parser
-
 class AffordanceTemplate(threading.Thread) :
 
     def __init__(self, server, id, name="affordance_template", initial_pose=None, robot_config=None):
@@ -116,7 +114,7 @@ class AffordanceTemplate(threading.Thread) :
         # self.waypoint_menu_options.append(("Execute Next Segment", False))
         # self.waypoint_menu_options.append(("Execute Full Path", False))
         # self.waypoint_menu_options.append(("Loop Path", True))
-        self.waypoint_menu_options.append(("Sync To Actual", False))
+        # self.waypoint_menu_options.append(("Sync To Actual", False))
         # self.waypoint_menu_options.append(("Manipulator Stored Poses", False))
         # self.waypoint_menu_options.append(("End-Effector Stored Poses", False))
         self.waypoint_menu_options.append(("Change End-Effector Pose", False))
@@ -266,7 +264,6 @@ class AffordanceTemplate(threading.Thread) :
         for k in objs: del self.frame_store_map[k]
         self.frame_store_map = {}
 
-        print "test 1"
         if self.robot_config == None :
             rospy.error("AffordanceTemplate::load_initial_parameters() -- no robot config")
             return False
@@ -274,8 +271,6 @@ class AffordanceTemplate(threading.Thread) :
         if self.structure == None :
             rospy.error("AffordanceTemplate::load_initial_parameters() -- no structure")
             return False
-
-        print "test 2"
 
         self.display_objects = []
         self.waypoints = {}
@@ -285,8 +280,6 @@ class AffordanceTemplate(threading.Thread) :
 
         self.name = self.structure['name']
         self.key = self.name
-
-        print "test 3"
 
         # parse objects
         ids = 0
@@ -465,6 +458,8 @@ class AffordanceTemplate(threading.Thread) :
             int_marker.scale = self.object_controls[obj]['scale']
 
             control = InteractiveMarkerControl()
+            control.interaction_mode = InteractiveMarkerControl.BUTTON
+
             marker = Marker()
             marker.ns = obj
             marker.id = ids
@@ -507,20 +502,18 @@ class AffordanceTemplate(threading.Thread) :
             else :
                 control.markers[0].mesh_use_embedded_materials = False
 
+
             scale = 1.0
             if obj in self.object_controls :
                 scale = self.object_controls[obj]['scale']
 
-            # int_marker = CreateInteractiveMarker(self.frame_id, obj.name, scale)
+             # int_marker = CreateInteractiveMarker(self.frame_id, obj.name, scale)
             int_marker.controls.append(control)
             if(self.object_controls_display_on) :
                 int_marker.controls.extend(CreateCustomDOFControls("",
                     self.object_controls[obj]['xyz'][0], self.object_controls[obj]['xyz'][1], self.object_controls[obj]['xyz'][2],
                     self.object_controls[obj]['rpy'][0], self.object_controls[obj]['rpy'][1], self.object_controls[obj]['rpy'][2]))
 
-            self.add_interactive_marker(int_marker)
-            self.marker_menus[obj].apply( self.server, obj )
-            self.server.applyChanges()
 
             self.marker_map[obj] = control.markers[0]
             self.marker_pose_offset[obj] = self.pose_from_origin(self.object_origin[obj])
@@ -530,6 +523,9 @@ class AffordanceTemplate(threading.Thread) :
             else :
                 self.marker_menus[obj].setCheckState( self.menu_handles[(obj,"Hide Controls")], MenuHandler.CHECKED )
 
+            self.add_interactive_marker(int_marker)
+            self.marker_menus[obj].apply( self.server, obj )
+            self.server.applyChanges()
 
             ids += 1
 
@@ -591,7 +587,7 @@ class AffordanceTemplate(threading.Thread) :
                 pn = "current"
             else :
                 pn = self.robot_config.end_effector_id_map[ee_name][id]
-
+                
             markers = self.robot_config.end_effector_link_data[ee_name].get_markers_for_pose(pn)
 
             for m in markers.markers :
@@ -600,6 +596,10 @@ class AffordanceTemplate(threading.Thread) :
                 ee_m.ns = self.name
                 ee_m.pose = getPoseFromFrame(self.wpTee[wp]*self.eeTtf[wp]*getFrameFromPose(m.pose))
                 menu_control.markers.append( ee_m )
+            
+            # self.add_interactive_marker(int_marker)
+            # self.marker_menus[obj].apply( self.server, obj )
+            # self.server.applyChanges()
 
             scale = 1.0
             if wp in self.waypoint_controls[trajectory] :
@@ -883,23 +883,17 @@ class AffordanceTemplate(threading.Thread) :
 
     def load_from_file(self, filename) :
         print "AffordanceTemplate::load_from_file() -- building structure"
-        # self.structure = affordance_template_markers.atdf_parser.AffordanceTemplateStructure.from_file(filename)
-        
         atf = open(filename).read()
         self.structure = json.loads(atf)
-        # self.structure = self.server.loadFromFile(filename)
         print "AffordanceTemplate::load_from_file() -- Got initial structure..."
         self.structure = self.append_id_to_structure(self.structure)
-        # print json.dumps(self.structure)
         print "AffordanceTemplate::load_from_file() -- loading initial parameters"
         self.load_initial_parameters()
         print "AffordanceTemplate::load_from_file() -- creating RViz template from parameters"
         self.create_from_parameters()
         print "AffordanceTemplate::load_from_file() -- done"
-        # self.print_structure()
         stuff = filename.split("/")
         self.filename = stuff[len(stuff)-1]
-
         return self.structure
 
     def load_from_marker(self, m) :
@@ -1008,6 +1002,41 @@ class AffordanceTemplate(threading.Thread) :
                 # print "manipulator_name: ", manipulator_name
 
                 next_path_idx = self.compute_next_path_id(ee_id, 1, self.waypoint_backwards_flag[self.current_trajectory][ee_id])
+ 
+                if handle == self.menu_handles[(feedback.marker_name,"Add Waypoint Before")] :
+                    print "Adding Waypoint before ", waypoint_id, "for end effector: ", ee_id
+
+                    new_pose = geometry_msgs.msg.Pose()
+                    first_name = self.create_waypoint_id(ee_id,waypoint_id)
+                    pose_first = getPoseFromFrame(self.objTwp[self.current_trajectory][first_name])
+                    new_id = 0
+                    if waypoint_id > 0 :
+                        new_id = waypoint_id-1
+                        second_name = self.create_waypoint_id(ee_id,new_id)
+                        pose_second = getPoseFromFrame(self.objTwp[self.current_trajectory][second_name])
+                        new_pose.position.x = (pose_second.position.x - pose_first.position.x)/2.0 + pose_first.position.x
+                        new_pose.position.y = (pose_second.position.y - pose_first.position.y)/2.0 + pose_first.position.y
+                        new_pose.position.z = (pose_second.position.z - pose_first.position.z)/2.0 + pose_first.position.z
+                        new_pose.orientation = copy.deepcopy(pose_first.orientation)
+                    else :
+                        new_pose = copy.deepcopy(pose_first)
+                        new_pose.position.x +=0.025
+                        new_pose.position.y +=0.025
+                        new_pose.position.z +=0.025
+
+                    r = range(new_id,max_idx+1)
+                    r.reverse()
+                    for k in r:
+                        old_name = self.create_waypoint_id(ee_id, str(k))
+                        new_name = self.create_waypoint_id(ee_id, str(k+1))
+                        self.move_waypoint(self.current_trajectory, ee_id, k, k+1)
+
+                    # print "creating waypoint at : ", new_id
+                    old_name = self.create_waypoint_id(ee_id, str(1))
+                    self.create_waypoint(self.current_trajectory, ee_id, waypoint_id, new_pose, self.parent_map[(self.current_trajectory, old_name)], self.waypoint_controls[self.current_trajectory][old_name], 
+                        self.waypoint_origin[self.current_trajectory][old_name], self.waypoint_pose_map[self.current_trajectory][old_name])
+                    self.create_from_parameters(True)
+
 
                 if handle == self.menu_handles[(feedback.marker_name,"Add Waypoint After")] :
                     print "Adding Waypoint after ", waypoint_id, "for end effector: ", ee_id
@@ -1168,6 +1197,9 @@ class AffordanceTemplate(threading.Thread) :
 
 
     def create_waypoint_callback(self, feedback) :
+
+        print "create_waypoint_callback: ", feedback.marker_name
+
         for ee_id in self.robot_config.end_effector_name_map.iterkeys() :
             ee_name = self.robot_config.end_effector_name_map[ee_id]
             if self.menu_handles[(feedback.marker_name,"Add Waypoint After",ee_name)] == feedback.menu_entry_id :
@@ -1175,7 +1207,7 @@ class AffordanceTemplate(threading.Thread) :
                 wp_id = 0
                 ps = geometry_msgs.msg.Pose()
                 pose_id = None
-                if not ee_id in self.waypoint_max.keys() :
+                if not ee_id in self.waypoint_max[self.current_trajectory].keys() :
                     wp_name = self.create_waypoint_id(ee_id, wp_id)
                     T = getFrameFromPose(feedback.pose)
                     ps = getPoseFromFrame(T)
@@ -1199,12 +1231,13 @@ class AffordanceTemplate(threading.Thread) :
 
             if self.menu_handles[(feedback.marker_name,"Add Waypoint Before",ee_name)] == feedback.menu_entry_id :
 
+                print "Add waypoint before: ", feedback.marker_name
                 wp_id = 0
                 wp_name = self.create_waypoint_id(ee_id, str(0))
                 ps = geometry_msgs.msg.Pose()
                 pose_id = None
 
-                if not ee_id in self.waypoint_max.keys() :
+                if not ee_id in self.waypoint_max[self.current_trajectory].keys() :
                     ps = feedback.pose
                     ps.position.x = 0.05
                     ps.position.y = 0.05
@@ -1391,29 +1424,29 @@ class AffordanceTemplate(threading.Thread) :
             self.waypoint_plan_valid[self.current_trajectory][ee_id] = False
 
     def create_origin_from_pose(self, ps) :
-        origin = affordance_template_markers.atdf_parser.Pose()
+        origin = {}
         origin_rpy = (kdl.Rotation.Quaternion(ps.orientation.x,ps.orientation.y,ps.orientation.z,ps.orientation.w)).GetRPY()
-        origin.xyz = [0]*3
-        origin.rpy = [0]*3
-        origin.xyz[0] = ps.position.x
-        origin.xyz[1] = ps.position.y
-        origin.xyz[2] = ps.position.z
-        origin.rpy[0] = origin_rpy[0]
-        origin.rpy[1] = origin_rpy[1]
-        origin.rpy[2] = origin_rpy[2]
+        origin['xyz'] = [0]*3
+        origin['rpy'] = [0]*3
+        origin['xyz'][0] = ps.position.x
+        origin['xyz'][1] = ps.position.y
+        origin['xyz'][2] = ps.position.z
+        origin['rpy'][0] = origin_rpy[0]
+        origin['rpy'][1] = origin_rpy[1]
+        origin['rpy'][2] = origin_rpy[2]
         return origin
 
     def create_6dof_controls(self, scale) :
-        controls = affordance_template_markers.atdf_parser.Controls()
-        controls.xyz = [0]*3
-        controls.rpy = [0]*3
-        controls.xyz[0] = 1
-        controls.xyz[1] = 1
-        controls.xyz[2] = 1
-        controls.rpy[0] = 1
-        controls.rpy[1] = 1
-        controls.rpy[2] = 1
-        controls.scale = scale
+        controls = {}
+        controls['xyz'] = [0]*3
+        controls['rpy'] = [0]*3
+        controls['xyz'][0] = 1
+        controls['xyz'][1] = 1
+        controls['xyz'][2] = 1
+        controls['rpy'][0] = 1
+        controls['rpy'][1] = 1
+        controls['rpy'][2] = 1
+        controls['scale'] = scale
         return controls
 
 

@@ -58,7 +58,7 @@ class RobotConfig(object) :
             self.root_offset.orientation.z = q[2]
             self.root_offset.orientation.w = q[3]
 
-            for ee in self.yaml_config['end_effector_map']:
+            for ee in self.yaml_config['end_effector_group_map']:
                 self.end_effector_names.append(ee['name'])
                 self.end_effector_name_map[ee['id']] = ee['name']
                 self.manipulator_id_map[ee['name']] = ee['id']
@@ -170,7 +170,7 @@ class RobotConfig(object) :
             print " robot name: ", self.yaml_config['robot_name']
             print " root offset: ", self.yaml_config['root_offset']
             print " moveit_config: ", self.yaml_config['moveit_config_package']
-            for ee in self.yaml_config['end_effector_map']:
+            for ee in self.yaml_config['end_effector_group_map']:
                 print "\t", "map: ", ee['name'], " --> ", ee['id']
                 print "\t", "pose_offset: ", ee['pose_offset']
                 try :

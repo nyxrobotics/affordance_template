@@ -126,7 +126,7 @@ namespace rviz_affordance_template_panel
 
         void enable_config_panel(int state);
         void update_robot_config(const QString& text);
-        void update_end_effector_map(const QString&);
+        void update_end_effector_group_map(const QString&);
 
 
     private:

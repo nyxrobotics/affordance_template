@@ -2,7 +2,7 @@ robot_name: dreamer
 moveit_config_package: dreamer_moveit_config
 frame_id: torso
 root_offset: [0.6,0,0.2,0,0,0]
-end_effector_map:
+end_effector_group_map:
   - name: left_hand
     id: 0
     pose_offset: [0,0,0,1.57,3.14,-1.57]
