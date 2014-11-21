@@ -24,6 +24,14 @@
 #include <zmq.hpp>
 #include "AffordanceTemplateServerCmd.pb.h"
 
+// affordance template messages and services
+#include <affordance_template_msgs/RobotConfig.h>
+#include <affordance_template_msgs/AffordanceTemplate.h>
+#include <affordance_template_msgs/WaypointTrajectory.h>
+#include <affordance_template_msgs/WaypointInfo.h>
+#include <affordance_template_msgs/GetRobotConfigInfo.h>
+#include <affordance_template_msgs/GetAffordanceTemplateInfo.h>
+
 namespace Ui {
 class RVizAffordanceTemplatePanel;
 }

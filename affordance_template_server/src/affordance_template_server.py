@@ -13,6 +13,8 @@ import affordance_template_server_protobuf
 
 from json_interface import JSONInterface
 from protobuf_interface import ProtobufInterface
+from service_interface import ServiceInterface
+
 from visualization_msgs.msg import Marker, MarkerArray
 
 from threading import Thread
@@ -42,6 +44,8 @@ class AffordanceTemplateServer(Thread):
         self.interfaces = {}
         self.interfaces['json'] = JSONInterface(self)
         self.interfaces['protobuf'] = ProtobufInterface(self)
+        self.interfaces['service'] = ServiceInterface(self)
+        
 
         self.server = InteractiveMarkerServer("affordance_template_server")
 
