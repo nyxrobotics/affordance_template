@@ -19,7 +19,7 @@ string gripper_service
 geometry_msgs/Pose root_offset
 
 # the list of  of robot end-effector group name (i.e., LeftHand) to the "abstract" AT end-effector ID 
-EndEffector[] end_effectors
+EndEffectorConfig[] end_effectors
 
 # the list of stored end-effector poses (i.e., "Left Hand Open") to be mapped the "abstract" AT pose IDs 
 EndEffectorPoseData[] end_effector_pose_data

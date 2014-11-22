@@ -4,5 +4,5 @@
 string name
 ---
 # template data to be returned
-AffordanceTemplate[] templates
+AffordanceTemplateConfig[] templates
 

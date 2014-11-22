@@ -24,14 +24,14 @@ from interactive_markers.menu_handler import *
 
 from nasa_robot_teleop.moveit_interface import *
 
-from affordance_template_markers.robot_config import *
+from affordance_template_markers.robot_interface import *
 from affordance_template_markers.frame_store import *
 from affordance_template_markers.template_utilities import *
 from affordance_template_markers.affordance_template_data import *
 
 class AffordanceTemplate(threading.Thread) :
 
-    def __init__(self, server, id, name="affordance_template", initial_pose=None, robot_config=None):
+    def __init__(self, server, id, name="affordance_template", initial_pose=None, robot_interface=None):
         super(AffordanceTemplate,self).__init__()
         self.mutex = threading.Lock()
         self.menu_handler = MenuHandler()
@@ -57,7 +57,7 @@ class AffordanceTemplate(threading.Thread) :
 
         self.waypoints = {}
         self.structure = None
-        self.robot_config = None
+        self.robot_interface = None
 
         # parameter storage
         self.object_origin = {}
@@ -99,12 +99,12 @@ class AffordanceTemplate(threading.Thread) :
         self.random.seed(time.clock)
 
         print "FIX THIS"
-        print robot_config
-        if not isinstance(robot_config, RobotConfig) :
+        print robot_interface
+        if not isinstance(robot_interface, RobotInterface) :
             rospy.loginfo("AffordanceTemplate::init() -- problem setting robot config")
         else :
-            print robot_config
-        self.robot_config = robot_config
+            print robot_interface
+        self.robot_interface = robot_interface
 
         # set up menu info
         self.waypoint_menu_options = []
@@ -144,7 +144,7 @@ class AffordanceTemplate(threading.Thread) :
 
         rospy.loginfo("AffordanceTemplate::init() -- Done Creating new Empty AffordanceTemplate")
 
-    def getPackagePath(self, pkg):
+    def get_package_path(self, pkg):
         """Return the path to the ROS package."""
         import rospkg
         try:
@@ -264,7 +264,7 @@ class AffordanceTemplate(threading.Thread) :
         for k in objs: del self.frame_store_map[k]
         self.frame_store_map = {}
 
-        if self.robot_config == None :
+        if self.robot_interface == None :
             rospy.error("AffordanceTemplate::load_initial_parameters() -- no robot config")
             return False
 
@@ -275,8 +275,8 @@ class AffordanceTemplate(threading.Thread) :
         self.display_objects = []
         self.waypoints = {}
 
-        self.frame_id = self.robot_config.frame_id
-        self.robotTroot = getFrameFromPose(self.robot_config.root_offset)
+        self.frame_id = self.robot_interface.robot_config.frame_id
+        self.robotTroot = getFrameFromPose(self.robot_interface.robot_config.root_offset)
 
         self.name = self.structure['name']
         self.key = self.name
@@ -323,7 +323,7 @@ class AffordanceTemplate(threading.Thread) :
 
                     # parse end effector information
                     wp_name = self.append_id(str(ee_group['id']) + "." + str(wp_id))                   
-                    ee_name = self.robot_config.end_effector_name_map[ee_group['id']]
+                    ee_name = self.robot_interface.end_effector_name_map[ee_group['id']]
 
                     if not wp['display_object'] in self.display_objects :
                         rospy.logerr(str("AffordanceTemplate::create_from_structure() -- end-effector display object " + wp['display_object'] + "not found!"))
@@ -347,15 +347,15 @@ class AffordanceTemplate(threading.Thread) :
 #### THIS IS DEPRECTATED, NEEDS TO REVISISTED FOR RECOGNITION OBJECTS
     # def load_initial_parameters_from_marker(self, m) :
 
-    #     if self.robot_config == None :
+    #     if self.robot_interface == None :
     #         rospy.error("AffordanceTemplate::load_initial_parameters_from_marker() -- no robot config")
     #         return False
 
     #     self.display_objects = []
     #     self.waypoints = []
 
-    #     self.frame_id = self.robot_config.frame_id
-    #     self.robotTroot = getFrameFromPose(self.robot_config.root_offset)
+    #     self.frame_id = self.robot_interface.robot_config.frame_id
+    #     self.robotTroot = getFrameFromPose(self.robot_interface.robot_config.root_offset)
 
     #     self.key = self.name + ":" + str(m.id)
     #     self.id = m.id
@@ -427,7 +427,7 @@ class AffordanceTemplate(threading.Thread) :
     def create_from_parameters(self, keep_poses=False) :
 
         self.key = self.name
-        self.frame_store_map[self.name] = FrameStore(self.key, self.robot_config.frame_id, getPoseFromFrame(self.robotTroot))
+        self.frame_store_map[self.name] = FrameStore(self.key, self.robot_interface.robot_config.frame_id, getPoseFromFrame(self.robotTroot))
         self.current_trajectory = str(self.structure['end_effector_trajectory'][0]['name'])
 
         # parse objects
@@ -541,7 +541,7 @@ class AffordanceTemplate(threading.Thread) :
         wp_ids = 0
         for wp in self.waypoints[self.current_trajectory] :
 
-            ee_name = self.robot_config.end_effector_name_map[int(self.waypoint_end_effectors[trajectory][wp])]
+            ee_name = self.robot_interface.end_effector_name_map[int(self.waypoint_end_effectors[trajectory][wp])]
             
             root_frame = self.name #str(self.name + ":" + str(self.id))
             if (trajectory, wp) in self.parent_map :
@@ -586,9 +586,9 @@ class AffordanceTemplate(threading.Thread) :
             if id == None :
                 pn = "current"
             else :
-                pn = self.robot_config.end_effector_id_map[ee_name][id]
+                pn = self.robot_interface.end_effector_id_map[ee_name][id]
                 
-            markers = self.robot_config.end_effector_link_data[ee_name].get_markers_for_pose(pn)
+            markers = self.robot_interface.end_effector_link_data[ee_name].get_markers_for_pose(pn)
 
             for m in markers.markers :
                 ee_m = copy.deepcopy(m)
@@ -651,7 +651,7 @@ class AffordanceTemplate(threading.Thread) :
             package = "affordance_template_library"
 
         # get package and file path
-        package_path = self.getPackagePath(package)
+        package_path = self.get_package_path(package)
         template_path    = os.path.join(package_path, 'templates')
         output_file = os.path.join(template_path, filename)
 
@@ -743,14 +743,14 @@ class AffordanceTemplate(threading.Thread) :
 
         # wp_name = str(ee_id) + "." + str(wp_id) + ":" + str(self.id) + "-" + str(self.name)
         wp_name = self.create_waypoint_id(ee_id, wp_id)
-        ee_name = self.robot_config.end_effector_name_map[ee_id]
+        ee_name = self.robot_interface.end_effector_name_map[ee_id]
 
         self.parent_map[(traj_name,wp_name)] = parent
 
         self.objTwp[traj_name][wp_name] = getFrameFromPose(ps)
 
-        ee_offset = self.robot_config.manipulator_pose_map[ee_name]
-        tool_offset = self.robot_config.tool_offset_map[ee_name]
+        ee_offset = self.robot_interface.manipulator_pose_map[ee_name]
+        tool_offset = self.robot_interface.tool_offset_map[ee_name]
 
         self.wpTee[wp_name] = getFrameFromPose(ee_offset)
         self.eeTtf[wp_name] = getFrameFromPose(tool_offset)
@@ -842,8 +842,8 @@ class AffordanceTemplate(threading.Thread) :
         for m,c in self.object_menu_options :
             if m == "Add Waypoint Before" or m == "Add Waypoint After":
                 sub_menu_handle = self.marker_menus[obj].insert(m)
-                for ee in self.robot_config.end_effector_name_map.iterkeys() :
-                    name = self.robot_config.end_effector_name_map[ee]
+                for ee in self.robot_interface.end_effector_name_map.iterkeys() :
+                    name = self.robot_interface.end_effector_name_map[ee]
                     self.menu_handles[(obj,m,name)] = self.marker_menus[obj].insert(name,parent=sub_menu_handle,callback=self.create_waypoint_callback)
             elif m == "Choose Trajectory" :
                 sub_menu_handle = self.marker_menus[obj].insert(m)
@@ -866,16 +866,16 @@ class AffordanceTemplate(threading.Thread) :
         for m,c in self.waypoint_menu_options :
             if m == "Manipulator Stored Poses" :
                 sub_menu_handle = self.marker_menus[waypoint].insert(m)
-                parent_group = self.robot_config.moveit_interface.srdf_model.get_end_effector_parent_group(group)
-                for p in self.robot_config.moveit_interface.get_stored_state_list(parent_group) :
+                parent_group = self.robot_interface.moveit_interface.srdf_model.get_end_effector_parent_group(group)
+                for p in self.robot_interface.moveit_interface.get_stored_state_list(parent_group) :
                     self.menu_handles[(waypoint,m,p)] = self.marker_menus[waypoint].insert(p,parent=sub_menu_handle,callback=self.stored_pose_callback)
             elif m == "End-Effector Stored Poses" :
                 sub_menu_handle = self.marker_menus[waypoint].insert(m)
-                for p in self.robot_config.moveit_interface.get_stored_state_list(group) :
+                for p in self.robot_interface.moveit_interface.get_stored_state_list(group) :
                     self.menu_handles[(waypoint,m,p)] = self.marker_menus[waypoint].insert(p,parent=sub_menu_handle,callback=self.stored_pose_callback)
             elif m == "Change End-Effector Pose" :
                 sub_menu_handle = self.marker_menus[waypoint].insert(m)
-                for p in self.robot_config.moveit_interface.get_stored_state_list(group) :
+                for p in self.robot_interface.moveit_interface.get_stored_state_list(group) :
                     self.menu_handles[(waypoint,m,p)] = self.marker_menus[waypoint].insert(p,parent=sub_menu_handle,callback=self.change_ee_pose_callback)
             else :
                 self.menu_handles[(waypoint,m)] = self.marker_menus[waypoint].insert( m, callback=self.process_feedback )
@@ -907,22 +907,22 @@ class AffordanceTemplate(threading.Thread) :
         return self.structure
 
     def append_id_to_structure(self, structure) :
-        print "structure name: ", structure['name']
+        # print "structure name: ", structure['name']
         structure['name'] = self.append_id(str(structure['name']))
         for obj in structure['display_objects'] :
             obj['name'] = self.append_id(obj['name'])
-            print " -- ", obj['name']
+            # print " -- ", obj['name']
             try :
                 obj['parent'] = self.append_id(obj['parent'])
             except :
-                rospy.logwarn("AffordanceTemplate::append_id_to_structure() -- exception caught")
+                rospy.logwarn(str("AffordanceTemplate::append_id_to_structure() -- no parent for " + obj['name']))
                 # print "appending id to parent ", self.parent_map[obj.name], " of ", obj.name
         for traj in structure['end_effector_trajectory'] :
-            print " -- ", traj['name']
+            # print " -- ", traj['name']
             for ee_group in traj['end_effector_group'] :
-                print " --- ", ee_group['id']
+                # print " --- ", ee_group['id']
                 for wp in ee_group['end_effector_waypoint'] :
-                    print " ---- ", wp['origin']['xyz']
+                    # print " ---- ", wp['origin']['xyz']
                     wp['display_object'] = self.append_id(wp['display_object'])
                     
         return structure
@@ -988,10 +988,10 @@ class AffordanceTemplate(threading.Thread) :
                 # print "handle: ", handle
                 # print self.menu_handles
 
-                ee_name = self.robot_config.get_end_effector_name(ee_id)
-                manipulator_name = self.robot_config.get_manipulator(ee_name)
-                ee_offset = self.robot_config.manipulator_pose_map[ee_name]
-                tool_offset = self.robot_config.tool_offset_map[ee_name]
+                ee_name = self.robot_interface.get_end_effector_name(ee_id)
+                manipulator_name = self.robot_interface.get_manipulator(ee_name)
+                ee_offset = self.robot_interface.manipulator_pose_map[ee_name]
+                tool_offset = self.robot_interface.tool_offset_map[ee_name]
                 max_idx = self.waypoint_max[self.current_trajectory][ee_id]
 
                 # print "ee_name: ", ee_name
@@ -1167,30 +1167,30 @@ class AffordanceTemplate(threading.Thread) :
 
     def stored_pose_callback(self, feedback) :
         ee_id =int(feedback.marker_name.split(".")[0])
-        ee_name = self.robot_config.get_end_effector_name(ee_id)
-        manipulator_name = self.robot_config.get_manipulator(ee_name)
-        for p in self.robot_config.moveit_interface.get_stored_state_list(ee_name) :
+        ee_name = self.robot_interface.get_end_effector_name(ee_id)
+        manipulator_name = self.robot_interface.get_manipulator(ee_name)
+        for p in self.robot_interface.moveit_interface.get_stored_state_list(ee_name) :
             if self.menu_handles[(feedback.marker_name,"End-Effector Stored Poses",p)] == feedback.menu_entry_id :
-                self.robot_config.moveit_interface.create_joint_plan_to_target(ee_name, self.robot_config.stored_poses[ee_name][p])
-                r = self.robot_config.moveit_interface.execute_plan(ee_name)
+                self.robot_interface.moveit_interface.create_joint_plan_to_target(ee_name, self.robot_interface.stored_poses[ee_name][p])
+                r = self.robot_interface.moveit_interface.execute_plan(ee_name)
                 if not r : rospy.logerr(str("RobotTeleop::process_feedback(pose) -- failed moveit execution for group: " + ee_name + ". re-synching..."))
-        for p in self.robot_config.moveit_interface.get_stored_state_list(manipulator_name) :
+        for p in self.robot_interface.moveit_interface.get_stored_state_list(manipulator_name) :
             if self.menu_handles[(feedback.marker_name,"Manipulator Stored Poses",p)] == feedback.menu_entry_id :
-                self.robot_config.moveit_interface.create_joint_plan_to_target(manipulator_name, self.robot_config.stored_poses[manipulator_name][p])
-                r = self.robot_config.moveit_interface.execute_plan(manipulator_name)
+                self.robot_interface.moveit_interface.create_joint_plan_to_target(manipulator_name, self.robot_interface.stored_poses[manipulator_name][p])
+                r = self.robot_interface.moveit_interface.execute_plan(manipulator_name)
                 if not r : rospy.logerr(str("RobotTeleop::process_feedback(pose) -- failed moveit execution for group: " + manipulator_name + ". re-synching..."))
 
 
     def change_ee_pose_callback(self, feedback) :
         ee_id =int(feedback.marker_name.split(".")[0])
-        ee_name = self.robot_config.get_end_effector_name(ee_id)
+        ee_name = self.robot_interface.get_end_effector_name(ee_id)
         wp = feedback.marker_name
         pn = None
-        for p in self.robot_config.moveit_interface.get_stored_state_list(ee_name) :
+        for p in self.robot_interface.moveit_interface.get_stored_state_list(ee_name) :
             if self.menu_handles[(feedback.marker_name,"Change End-Effector Pose",p)] == feedback.menu_entry_id :
                 pn = p
                 break
-        pid = self.robot_config.end_effector_pose_map[ee_name][pn]
+        pid = self.robot_interface.end_effector_pose_map[ee_name][pn]
         rospy.loginfo(str("AffordanceTemplate::change_ee_pose_callback() -- setting Waypoint " + str(wp) + " pose to " + str(pn) + " (" + str(pid) + ")"))
         self.waypoint_pose_map[self.current_trajectory][wp] = pid
         self.create_from_parameters(True)
@@ -1200,8 +1200,8 @@ class AffordanceTemplate(threading.Thread) :
 
         print "create_waypoint_callback: ", feedback.marker_name
 
-        for ee_id in self.robot_config.end_effector_name_map.iterkeys() :
-            ee_name = self.robot_config.end_effector_name_map[ee_id]
+        for ee_id in self.robot_interface.end_effector_name_map.iterkeys() :
+            ee_name = self.robot_interface.end_effector_name_map[ee_id]
             if self.menu_handles[(feedback.marker_name,"Add Waypoint After",ee_name)] == feedback.menu_entry_id :
                 print "need to add waypoint to the end of ", ee_name
                 wp_id = 0
@@ -1279,20 +1279,20 @@ class AffordanceTemplate(threading.Thread) :
         return path, path[len(path)-1]
 
     def stop(self, end_effector) :
-        manipulator_name = self.robot_config.get_manipulator(end_effector)
-        self.robot_config.moveit_interface.groups[manipulator_name].stop()
+        manipulator_name = self.robot_interface.get_manipulator(end_effector)
+        self.robot_interface.moveit_interface.groups[manipulator_name].stop()
 
     def trajectory_has_ee(self, traj_name, ee_name) :
 
         # ee_name = unicode(ee_name)
         # print "AffordanceTemplate::trajectory_has_ee(): ", traj_name, ", ", unicode(ee_name)
-        # print self.robot_config.manipulator_id_map.keys()
+        # print self.robot_interface.manipulator_id_map.keys()
 
-        if not ee_name in self.robot_config.manipulator_id_map.keys() :
+        if not ee_name in self.robot_interface.manipulator_id_map.keys() :
             # rospy.logerr("AffordanceTemplate::trajectory_has_ee() -- no ee of that name found in robot config")
             return False
 
-        ee_id = self.robot_config.manipulator_id_map[ee_name]
+        ee_id = self.robot_interface.manipulator_id_map[ee_name]
         
         if not traj_name in self.waypoint_max.keys() :
             # rospy.logerr("AffordanceTemplate::trajectory_has_ee() -- no trajectory of that name found in tempalate")
@@ -1337,12 +1337,12 @@ class AffordanceTemplate(threading.Thread) :
     def plan_path_to_waypoint(self, end_effector, steps=1, backwards=False, direct=False) :
 
         print "AT::plan_path_to_waypoint()"
-        ee_id = self.robot_config.manipulator_id_map[end_effector]
-        ee_offset = self.robot_config.manipulator_pose_map[end_effector]
-        tool_offset = self.robot_config.tool_offset_map[end_effector]
+        ee_id = self.robot_interface.manipulator_id_map[end_effector]
+        ee_offset = self.robot_interface.manipulator_pose_map[end_effector]
+        tool_offset = self.robot_interface.tool_offset_map[end_effector]
         max_idx = self.waypoint_max[self.current_trajectory][ee_id]
-        manipulator_name = self.robot_config.get_manipulator(end_effector)
-        ee_name = self.robot_config.get_end_effector_name(ee_id)
+        manipulator_name = self.robot_interface.get_manipulator(end_effector)
+        ee_name = self.robot_interface.get_end_effector_name(ee_id)
 
         print "manipulator_name: ", manipulator_name
         print "steps: ", steps
@@ -1398,24 +1398,24 @@ class AffordanceTemplate(threading.Thread) :
 
             if not self.waypoint_pose_map[self.current_trajectory][next_path_str] == None :
                 id = self.waypoint_pose_map[self.current_trajectory][next_path_str]
-                pn = self.robot_config.end_effector_id_map[ee_name][id]
-                self.robot_config.moveit_interface.create_joint_plan_to_target(ee_name, self.robot_config.stored_poses[ee_name][pn])
+                pn = self.robot_interface.end_effector_id_map[ee_name][id]
+                self.robot_interface.moveit_interface.create_joint_plan_to_target(ee_name, self.robot_interface.stored_poses[ee_name][pn])
 
-        self.robot_config.moveit_interface.create_path_plan(manipulator_name, frame_id, waypoints)
+        self.robot_interface.moveit_interface.create_path_plan(manipulator_name, frame_id, waypoints)
         self.waypoint_plan_valid[self.current_trajectory][ee_id] = True
 
         return next_path_idx
 
     def move_to_waypoint(self, end_effector, next_path_idx) :
-        ee_id = self.robot_config.manipulator_id_map[end_effector]
-        ee_name = self.robot_config.get_end_effector_name(ee_id)
-        manipulator_name = self.robot_config.get_manipulator(end_effector)
+        ee_id = self.robot_interface.manipulator_id_map[end_effector]
+        ee_name = self.robot_interface.get_end_effector_name(ee_id)
+        manipulator_name = self.robot_interface.get_manipulator(end_effector)
         if self.waypoint_plan_valid[self.current_trajectory][ee_id] :
-            r = self.robot_config.moveit_interface.execute_plan(manipulator_name,from_stored=True)
+            r = self.robot_interface.moveit_interface.execute_plan(manipulator_name,from_stored=True)
             if not r :
                 rospy.logerr(str("RobotTeleop::move_to_waypoint(mouse) -- failed moveit execution for group: " + manipulator_name + ". re-synching..."))
 
-            r = self.robot_config.moveit_interface.execute_plan(ee_name,from_stored=True)
+            r = self.robot_interface.moveit_interface.execute_plan(ee_name,from_stored=True)
             if not r :
                 rospy.logerr(str("RobotTeleop::process_feedback(mouse) -- failed moveit execution for group: " + ee_name + ". re-synching..."))
 
@@ -1452,7 +1452,7 @@ class AffordanceTemplate(threading.Thread) :
 
     def terminate(self) :
         print "(EX)TERMINATE!!!!!!!!!"
-        self.robot_config.tear_down()
+        self.robot_interface.tear_down()
         print "done tearing down robot config"
         rospy.sleep(2)
         self.delete_callback(None)

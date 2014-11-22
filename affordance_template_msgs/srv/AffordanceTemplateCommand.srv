@@ -1,0 +1,40 @@
+# service call to control a robot through an affordance template
+
+# command types
+uint8 GO_TO_START = 0
+uint8 GO_TO_END = 1
+uint8 PLAY_BACKWARD = 2
+uint8 PLAY_FORWARD = 3
+uint8 STEP_BACKWARD = 4
+uint8 STEP_FORWARD = 5
+uint8 PAUSE = 6
+uint8 STOP = 7
+
+# the template type
+string type
+
+# the template id
+uint8 id
+
+# which command type (as above)
+uint8 command
+
+# which end effectors to plan/execute
+string[] end_effectors
+
+# how many steps to plan/execute
+uint8 steps
+
+# execute on plan or just plan
+bool execute_on_plan
+
+# check to see if there is a precomputed path and use that
+bool execute_precomputed_plan
+
+---
+
+# return status
+bool status
+
+# waypoint info to know where everything is
+WaypointInfo[] waypoint_info 

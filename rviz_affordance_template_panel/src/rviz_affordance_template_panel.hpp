@@ -25,12 +25,21 @@
 #include "AffordanceTemplateServerCmd.pb.h"
 
 // affordance template messages and services
+#include <affordance_template_msgs/AffordanceTemplateConfig.h>
+#include <affordance_template_msgs/EndEffectorConfig.h>
+#include <affordance_template_msgs/EndEffector.h>
+#include <affordance_template_msgs/EndEffectorPoseData.h>
 #include <affordance_template_msgs/RobotConfig.h>
-#include <affordance_template_msgs/AffordanceTemplate.h>
-#include <affordance_template_msgs/WaypointTrajectory.h>
 #include <affordance_template_msgs/WaypointInfo.h>
+#include <affordance_template_msgs/WaypointTrajectory.h>
+
+#include <affordance_template_msgs/AddAffordanceTemplate.h>
+#include <affordance_template_msgs/AffordanceTemplateCommand.h>
+#include <affordance_template_msgs/DeleteAffordanceTemplate.h>
+#include <affordance_template_msgs/GetAffordanceTemplateConfigInfo.h>
 #include <affordance_template_msgs/GetRobotConfigInfo.h>
-#include <affordance_template_msgs/GetAffordanceTemplateInfo.h>
+#include <affordance_template_msgs/GetRunningAffordanceTemplates.h>
+#include <affordance_template_msgs/LoadRobotConfig.h>
 
 namespace Ui {
 class RVizAffordanceTemplatePanel;
@@ -58,13 +67,21 @@ namespace rviz_affordance_template_panel
 
     public Q_SLOTS:
         void addAffordanceDisplayItem();
-        void addObjectDisplayItem();
-
-        /** \brief Send a ZMQ request to get available template classes and populate the template list.
+/*        void addObjectDisplayItem();
+*/
+        /** \brief Send a request to get available template and robot classes and populate the panel.
          */
         void getAvailableInfo();
 
-        /** \brief Send a ZMQ request to get running templates and recognition objects on the server.
+        /** \brief Send a request to get available template classes.
+         */
+        void getAvailableTemplates();
+
+        /** \brief Send a request to get available robot config info.
+         */
+        void getAvailableRobots();
+
+        /** \brief Send a request to get running templates and recognition objects on the server.
          */
         void getRunningItems();
 
@@ -139,9 +156,9 @@ namespace rviz_affordance_template_panel
 
     private:
         Ui::RVizAffordanceTemplatePanel* ui_;
-
+/*
         void connect();
-        void disconnect();
+        void disconnect();*/
 
         void setupWidgets();
         void setupRobotPanel(const string& key);
@@ -150,22 +167,22 @@ namespace rviz_affordance_template_panel
         void removeAffordanceTemplates();
         void sendAffordanceTemplateAdd(const string& class_name);
         void sendAffordanceTemplateKill(const string& class_name, int id);
-        void sendPing();
+/*        void sendPing();
         void sendShutdown();
-
-        void removeRecognitionObjects();
+*/
+/*        void removeRecognitionObjects();
         void sendRecognitionObjectAdd(const string& object_name);
         void sendRecognitionObjectKill(const string& object_name, int id);
-
+*/
         // TODO: template these template functions that keep track of templates
         bool addAffordance(const AffordanceSharedPtr& obj);
         bool removeAffordance(const AffordanceSharedPtr& obj);
         bool checkAffordance(const AffordanceSharedPtr& obj);
 
-        bool addRecognitionObject(const RecognitionObjectSharedPtr& obj);
+/*        bool addRecognitionObject(const RecognitionObjectSharedPtr& obj);
         bool removeRecognitionObject(const RecognitionObjectSharedPtr& obj);
         bool checkRecognitionObject(const RecognitionObjectSharedPtr& obj);
-
+*/
         bool addRobot(const RobotConfigSharedPtr& obj);
         bool removeRobot(const RobotConfigSharedPtr& obj);
         bool checkRobot(const RobotConfigSharedPtr& obj);
@@ -173,8 +190,8 @@ namespace rviz_affordance_template_panel
         std::string getRobotFromDescription();
         std::vector<std::string> getSelectedEndEffectors();
 
-        void send_request(const Request& request, Response& response, long timeout=1000000);
-
+/*        void send_request(const Request& request, Response& response, long timeout=1000000);
+*/
         // GUI Widgets
         QGraphicsScene* affordanceTemplateGraphicsScene_;
         QGraphicsScene* recognitionObjectGraphicsScene_;
@@ -193,6 +210,15 @@ namespace rviz_affordance_template_panel
 
         ros::NodeHandle nh_;
 
+        // affordance template services
+        ros::ServiceClient add_template_client_;
+        ros::ServiceClient delete_template_client_;
+        ros::ServiceClient command_client_;
+        ros::ServiceClient get_robots_client_;
+        ros::ServiceClient get_running_client_;
+        ros::ServiceClient get_templates_client_;
+        ros::ServiceClient load_robot_client_;
+        
         ControlsSharedPtr controls_;
     };
 }

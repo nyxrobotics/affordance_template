@@ -48,19 +48,24 @@ find_package(catkin REQUIRED COMPONENTS
 ## Generate messages in the 'msg' folder
 add_message_files(
   FILES
-  EndEffector.msg
+  EndEffectorConfig.msg
   EndEffectorPoseData.msg
   RobotConfig.msg
   WaypointInfo.msg
   WaypointTrajectory.msg
-  AffordanceTemplate.msg
+  AffordanceTemplateConfig.msg
 )
 
 ## Generate services in the 'srv' folder
 add_service_files(
   FILES
   GetRobotConfigInfo.srv
-  GetAffordanceTemplateInfo.srv
+  GetAffordanceTemplateConfigInfo.srv
+  GetRunningAffordanceTemplates.srv
+  LoadRobotConfig.srv
+  AddAffordanceTemplate.srv
+  DeleteAffordanceTemplate.srv
+  AffordanceTemplateCommand.srv
 )
 
 ## Generate actions in the 'action' folder

@@ -2,6 +2,7 @@
 import os
 import sys
 import rospy
+
 from affordance_template_server import AffordanceTemplateServer
 
 if __name__ == '__main__':
