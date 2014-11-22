@@ -1,0 +1,42 @@
+robot_name: atlas
+moveit_config_package: atlas_moveit_config
+frame_id: pelvis
+root_offset: [0.4,0,0.2,0,0,0]
+end_effector_group_map:
+  - name: left_hand
+    id: 0
+    pose_offset: [-0.14, -0.035, -.02, -1.57, 1.57, 3.14]
+    tool_offset: [0.0, -0.0, -0.0,  0,0,0]
+    # pose_offset: [0,0,0,0,1.57,3.14]
+    # tool_offset: [0.0, -0.18, -0.10,  0,0,0]
+  - name: right_hand
+    id: 1
+    pose_offset: [-0.14, 0.035, -.02,  1.57, 1.57,3.14]
+    tool_offset: [0.0,  0.0, -0.0,   0,0,0]
+    # pose_offset: [0,0,0,0,1.57,3.14]
+    # tool_offset: [0.0,  0.18, -0.10,   0,0,0]
+end_effector_pose_map:
+  - name: Right Hand Open
+    group: right_hand
+    id: 0
+  - name: Right Hand Thumb Open
+    group: right_hand
+    id: 1
+  - name: Right Hand Close
+    group: right_hand
+    id: 2
+  - name: Right Hand Point
+    group: right_hand
+    id: 3
+  - name: Left Hand Open
+    group: left_hand
+    id: 0
+  - name: Left Hand Thumb Open
+    group: left_hand
+    id: 1
+  - name: Left Hand Close
+    group: left_hand
+    id: 2
+  - name: Left Hand Point
+    group: left_hand
+    id: 3

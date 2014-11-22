@@ -20,9 +20,7 @@
 #include "util.hpp"
 #include "ui_rviz_affordance_template_panel.h"
 
-// zmq
-#include <zmq.hpp>
-#include "AffordanceTemplateServerCmd.pb.h"
+#include <geometry_msgs/Pose.h>
 
 // affordance template messages and services
 #include <affordance_template_msgs/AffordanceTemplateConfig.h>
@@ -34,7 +32,7 @@
 #include <affordance_template_msgs/WaypointTrajectory.h>
 
 #include <affordance_template_msgs/AddAffordanceTemplate.h>
-#include <affordance_template_msgs/AffordanceTemplateCommand.h>
+/*#include <affordance_template_msgs/AffordanceTemplateCommand.h>*/
 #include <affordance_template_msgs/DeleteAffordanceTemplate.h>
 #include <affordance_template_msgs/GetAffordanceTemplateConfigInfo.h>
 #include <affordance_template_msgs/GetRobotConfigInfo.h>
@@ -85,9 +83,9 @@ namespace rviz_affordance_template_panel
          */
         void getRunningItems();
 
-        /** \brief Connect/Disconnect from the Template server.
+        /** \brief refresh button callback
          */
-        void connect_callback();
+        void refreshCallback();
 
         /** \brief Load Robot Config.
          */
@@ -119,35 +117,58 @@ namespace rviz_affordance_template_panel
 
         /** \brief Go To Start Command.
          */
-        void go_to_start() { controls_->send_command(Command::GO_TO_START); };
+        void go_to_start() { 
+            affordance_template_msgs::AffordanceTemplateCommand srv;
+            controls_->sendCommand(srv.request.GO_TO_START); 
+        };
 
         // /** \brief Go To End Command.
         //  */
-        void go_to_end() { controls_->send_command(Command::GO_TO_END); };
+        void go_to_end() { 
+            affordance_template_msgs::AffordanceTemplateCommand srv;
+            controls_->sendCommand(srv.request.GO_TO_END); 
+        };
 
         // /** \brief Pause Command.
         //  */
-        //void pause() { controls_->send_command(Command::PAUSE); };
-
+        /*void pause() { 
+            affordance_template_msgs::AffordanceTemplateCommand srv;
+            controls_->sendCommand(srv.request.PAUSE); 
+        };
+*/
         // /** \brief Stop Command.
         //  */
-        void stop() { controls_->send_command(Command::STOP); };
+        void stop() { 
+            affordance_template_msgs::AffordanceTemplateCommand srv;
+            controls_->sendCommand(srv.request.STOP); 
+        };
 
         // * \brief Play Backward Command.
-
-        //void play_backward() { controls_->send_command(Command::PLAY_BACKWARD); };
-
+/*        void play_backward() { 
+            affordance_template_msgs::AffordanceTemplateCommand srv;
+            controls_->sendCommand(srv.request.PLAY_BACKWARD);
+        };
+*/
         // /** \brief Play Forward Command.
         //  */
-        //void play_forward() { controls_->send_command(Command::PLAY_FORWARD); };
-
+/*        void play_forward() { 
+            affordance_template_msgs::AffordanceTemplateCommand srv;
+            controls_->sendCommand(srv.request.PLAY_FORWARD);
+        };
+*/
         // /** \brief Step Backward Command.
         //  */
-        void step_backward() { controls_->send_command(Command::STEP_BACKWARD); };
+        void step_backward() { 
+            affordance_template_msgs::AffordanceTemplateCommand srv;
+            controls_->sendCommand(srv.request.STEP_BACKWARD);
+        };
 
         // /** \brief Step Forward Command.
         //  */
-        void step_forward() { controls_->send_command(Command::STEP_FORWARD); };
+        void step_forward() { 
+            affordance_template_msgs::AffordanceTemplateCommand srv;
+            controls_->sendCommand(srv.request.STEP_FORWARD);
+        };
 
         void enable_config_panel(int state);
         void update_robot_config(const QString& text);
@@ -204,10 +225,10 @@ namespace rviz_affordance_template_panel
         std::string robot_name_;
 
         // zmq
-        zmq::context_t context_;
+/*        zmq::context_t context_;
         zmq::socket_t* socket_;
         bool connected_;
-
+*/
         ros::NodeHandle nh_;
 
         // affordance template services

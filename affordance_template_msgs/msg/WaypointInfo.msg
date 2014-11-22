@@ -7,7 +7,7 @@ uint8 id
 uint8 num_waypoints
 
 # the current index of the end effector in a trajectory
-uint8 waypoint_index
+int8 waypoint_index
 
 # waypoint info
 #geometry_msgs/PoseStamped[] waypoint_poses

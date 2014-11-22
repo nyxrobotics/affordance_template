@@ -17,8 +17,6 @@ using namespace std;
 
 RVizAffordanceTemplatePanel::RVizAffordanceTemplatePanel(QWidget *parent) :
     rviz::Panel(parent),
-    context_(1),
-    connected_(false),
     ui_(new Ui::RVizAffordanceTemplatePanel),
     descriptionRobot_(""),
     controls_(new Controls(ui_))
@@ -33,6 +31,8 @@ RVizAffordanceTemplatePanel::RVizAffordanceTemplatePanel(QWidget *parent) :
     get_running_client_ = nh_.serviceClient<affordance_template_msgs::GetRunningAffordanceTemplates>("/affordance_template_server/get_running");
     get_templates_client_ = nh_.serviceClient<affordance_template_msgs::GetAffordanceTemplateConfigInfo>("/affordance_template_server/get_templates");
     load_robot_client_ = nh_.serviceClient<affordance_template_msgs::LoadRobotConfig>("/affordance_template_server/load_robot");
+
+    controls_->setService(command_client_);
 
     setupWidgets();
     getAvailableInfo();
@@ -70,7 +70,7 @@ void RVizAffordanceTemplatePanel::setupWidgets() {
     QObject::connect(ui_->server_output_status, SIGNAL(itemDoubleClicked(QListWidgetItem*)), this, SLOT(killAffordanceTemplate(QListWidgetItem*)));
     QObject::connect(ui_->delete_template_button, SIGNAL(clicked()), this, SLOT(deleteButton()));
 
-    QObject::connect(ui_->connect_button, SIGNAL(clicked()), this, SLOT(connect_callback()));
+    QObject::connect(ui_->connect_button, SIGNAL(clicked()), this, SLOT(refreshCallback()));
     QObject::connect(ui_->load_config_button, SIGNAL(clicked()), this, SLOT(safeLoadConfig()));
     QObject::connect(ui_->robot_select, SIGNAL(currentIndexChanged(int)), this, SLOT(changeRobot(int)));
 
@@ -208,18 +208,10 @@ void RVizAffordanceTemplatePanel::enable_config_panel(int state) {
     }
 }
 
-void RVizAffordanceTemplatePanel::connect_callback() {
-
+void RVizAffordanceTemplatePanel::refreshCallback() {
     removeAffordanceTemplates();
     getAvailableInfo();
-
     getRunningItems();
-
-/*    if (connected_) {
-        disconnect();
-    } else {
-        connect();
-    }*/
 }
 
 /*void RVizAffordanceTemplatePanel::disconnect() {}
@@ -750,6 +742,7 @@ void RVizAffordanceTemplatePanel::getRunningItems() {
     if (get_running_client_.call(srv))
     {
         ui_->server_output_status->clear();
+        ui_->control_template_box->clear();
         for (int i=0; i < srv.response.templates.size(); i++) {
             string t = srv.response.templates[i];
             ROS_INFO("Found running template: %s", t.c_str());
@@ -775,43 +768,33 @@ void RVizAffordanceTemplatePanel::safeLoadConfig() {
 
 void RVizAffordanceTemplatePanel::loadConfig() {
 
-    cout << "RVizAffordanceTemplatePanel::loadConfig() -- connected_: " << connected_ << endl;
-
-    /*if (!connected_) {
-        cout << "reconnecting..." << endl;
-        connect();
-    }*/
-
     ROS_WARN("RVizAffordanceTemplatePanel::loadConfig() -- WARNING::taking parameters loaded from original config, not the GUI yet!!! ");
 
-    Request req;
-    req.set_type(Request::LOAD_ROBOT);
-    Robot *robot = req.mutable_robot();
-    Pose *robot_offset = robot->mutable_root_offset();
-    EndEffectorMap *ee_map = robot->mutable_end_effectors();
-    EndEffectorPoseIDMap *ee_pose_map = robot->mutable_end_effector_pose_ids();
+    affordance_template_msgs::LoadRobotConfig srv;
+
     string key = ui_->robot_select->currentText().toUtf8().constData();
+
     string name = (*robotMap_[key]).name();
     string pkg = (*robotMap_[key]).moveit_config_package();
     string gripper_service = (*robotMap_[key]).gripper_service();
     string frame_id = (*robotMap_[key]).frame_id();
     vector<float> root_offset = (*robotMap_[key]).root_offset();
 
-    robot->set_filename(key);
-    robot->set_name(name);
-    robot->set_moveit_config_package(pkg);
-    robot->set_gripper_service(gripper_service);
-    robot->set_frame_id(frame_id);
-    Position *rop = robot_offset->mutable_position();
-    Orientation *roo = robot_offset->mutable_orientation();
-    rop->set_x(root_offset[0]);
-    rop->set_y(root_offset[1]);
-    rop->set_z(root_offset[2]);
-    roo->set_x(root_offset[3]);
-    roo->set_y(root_offset[4]);
-    roo->set_z(root_offset[5]);
-    roo->set_w(root_offset[6]);
+    srv.request.robot_config.filename = key;
+    srv.request.robot_config.name = name;
+    srv.request.robot_config.moveit_config_package = pkg;
+    srv.request.robot_config.gripper_service = gripper_service;
+    srv.request.robot_config.frame_id = frame_id;
 
+    srv.request.robot_config.root_offset = geometry_msgs::Pose();
+    srv.request.robot_config.root_offset.position.x = root_offset[0];
+    srv.request.robot_config.root_offset.position.y = root_offset[1];
+    srv.request.robot_config.root_offset.position.z = root_offset[2];
+    srv.request.robot_config.root_offset.orientation.x = root_offset[3];
+    srv.request.robot_config.root_offset.orientation.y = root_offset[4];
+    srv.request.robot_config.root_offset.orientation.z = root_offset[5];
+    srv.request.robot_config.root_offset.orientation.w = root_offset[6];
+    
     // remove all rows from before
     while(ui_->end_effector_table->rowCount()>0) {
         ui_->end_effector_table->removeCellWidget(0,0);
@@ -823,32 +806,28 @@ void RVizAffordanceTemplatePanel::loadConfig() {
 
     int r = 0;
     for (auto& e: (*robotMap_[key]).endeffectorMap) {
-        EndEffector *ee = ee_map->add_end_effector();
-        Pose *ee_offset = ee->mutable_pose_offset();
-        Pose *tf_offset = ee->mutable_tool_offset();
-        ee->set_name(e.second->name());
-        ee->set_id(e.second->id());
+
+        affordance_template_msgs::EndEffectorConfig ee_config;
+        ee_config.name =  e.second->name();
+        ee_config.id =  e.second->id();
+        
         vector<float> pose_offset = e.second->pose_offset();
-        Position *pop = ee_offset->mutable_position();
-        Orientation *poo = ee_offset->mutable_orientation();
-        pop->set_x(pose_offset[0]);
-        pop->set_y(pose_offset[1]);
-        pop->set_z(pose_offset[2]);
-        poo->set_x(pose_offset[3]);
-        poo->set_y(pose_offset[4]);
-        poo->set_z(pose_offset[5]);
-        poo->set_w(pose_offset[6]);
+        ee_config.pose_offset.position.x = pose_offset[0];
+        ee_config.pose_offset.position.y = pose_offset[1];
+        ee_config.pose_offset.position.z = pose_offset[2];
+        ee_config.pose_offset.orientation.x = pose_offset[3];
+        ee_config.pose_offset.orientation.y = pose_offset[4];
+        ee_config.pose_offset.orientation.z = pose_offset[5];
+        ee_config.pose_offset.orientation.w = pose_offset[6];
 
         vector<float> tool_offset = e.second->tool_offset();
-        Position *top = tf_offset->mutable_position();
-        Orientation *too = tf_offset->mutable_orientation();
-        top->set_x(tool_offset[0]);
-        top->set_y(tool_offset[1]);
-        top->set_z(tool_offset[2]);
-        too->set_x(tool_offset[3]);
-        too->set_y(tool_offset[4]);
-        too->set_z(tool_offset[5]);
-        too->set_w(tool_offset[6]);
+        ee_config.tool_offset.position.x = tool_offset[0];
+        ee_config.tool_offset.position.y = tool_offset[1];
+        ee_config.tool_offset.position.z = tool_offset[2];
+        ee_config.tool_offset.orientation.x = tool_offset[3];
+        ee_config.tool_offset.orientation.y = tool_offset[4];
+        ee_config.tool_offset.orientation.z = tool_offset[5];
+        ee_config.tool_offset.orientation.w = tool_offset[6];
 
         // add rows to end effector controls table
         QTableWidgetItem *i= new QTableWidgetItem(QString(e.second->name().c_str()));
@@ -864,21 +843,30 @@ void RVizAffordanceTemplatePanel::loadConfig() {
 
         r++;
 
+        srv.request.robot_config.end_effectors.push_back(ee_config);
+
     }
 
     for (auto& e: (*robotMap_[key]).endeffectorPoseMap) {
-        EndEffectorPoseID *pid = ee_pose_map->add_pose_group();
-        pid->set_name(e.second->name());
-        pid->set_group(e.second->group());
-        pid->set_id(e.second->id());
+        affordance_template_msgs::EndEffectorPoseData ee_pose;
+        ee_pose.name = e.second->name();
+        ee_pose.group = e.second->group();
+        ee_pose.id = e.second->id();
+        srv.request.robot_config.end_effector_pose_data.push_back(ee_pose);
     }
 
     ui_->end_effector_table->resizeColumnsToContents();
     ui_->end_effector_table->resizeRowsToContents();
 
-    Response resp;
-    //send_request(req, resp, 20000000);
-
+    if (load_robot_client_.call(srv))
+    {
+        ROS_INFO("Load Robot Config call succesful");
+    }
+    else
+    {
+        ROS_ERROR("Failed to call service load_robot_config");
+    }
+        
     robot_name_ = key;
     controls_->setRobotName(robot_name_);
 
@@ -894,20 +882,16 @@ void RVizAffordanceTemplatePanel::addAffordanceDisplayItem() {
     // Add an object template to the InteractiveMarkerServer for each selected item.
     cout << "RVizAffordanceTemplatePanel::addAffordanceDisplayItem()" << endl;
     QList<QGraphicsItem*> list = affordanceTemplateGraphicsScene_->selectedItems();
-    cout << "selected item size: " << list.size() << endl;
     for (int i=0; i < list.size(); ++i) {
         // Get the object template class name from the first element in the QGraphicsItem's custom data
         // field. This field is set in the derived Affordance class when setting up the widgets.
         string class_name = list.at(i)->data(CLASS_INDEX).toString().toStdString();
         cout << "RVizAffordanceTemplatePanel::addAffordanceDisplayItem() -- " << class_name << endl;
         sendAffordanceTemplateAdd(class_name);
-        cout << "RVizAffordanceTemplatePanel::addAffordanceDisplayItem() -- retrieving waypoint info" << endl;
+        //cout << "RVizAffordanceTemplatePanel::addAffordanceDisplayItem() -- retrieving waypoint info" << endl;
         for (auto& c: list.at(i)->data(TRAJECTORY_DATA).toMap().toStdMap()) {
             string robot_key = ui_->robot_select->currentText().toUtf8().constData();
-            cout << "  robot key: " << robot_key.c_str() << ", name : " << robot_name_.c_str() << endl;
             for (auto& e: (*robotMap_[robot_name_]).endeffectorMap) {
-                cout << "    ee: " << e.first << endl;
-
                 for (int r=0; r<ui_->end_effector_table->rowCount(); r++ ) {
                     if (e.second->name() == ui_->end_effector_table->item(r,0)->text().toStdString() ) {
                         ui_->end_effector_table->setItem(r,2,new QTableWidgetItem(QString::number(c.second.toInt())));
@@ -916,6 +900,7 @@ void RVizAffordanceTemplatePanel::addAffordanceDisplayItem() {
             }
         }
     }
+    getRunningItems();
 }
 
 /*void RVizAffordanceTemplatePanel::addObjectDisplayItem() {

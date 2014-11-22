@@ -4,67 +4,80 @@ using namespace rviz_affordance_template_panel;
 using namespace std;
 
 Controls::Controls(Ui::RVizAffordanceTemplatePanel* ui) :
-    connected_(false),
-    timeout_(10000000),
     ui_(ui) {}
 
-void Controls::update_table(const Response& rep) {
-    for (auto& c: rep.waypoint_info()) {
-        for (auto& e: (*robotMap_[robot_name_]).endeffectorMap) {
-
-            if (e.second->id() != c.id()) {
+void Controls::updateTable(vector<int> waypoint_ids, vector<int> waypoint_ns) {
+    for (size_t idx=0 ; idx<waypoint_ids.size(); idx++) {
+        for (auto& e: (*robotMap_[robotName_]).endeffectorMap) {
+            if (e.second->id() != idx) {
                 continue;
             }
-
             for (int r=0; r<ui_->end_effector_table->rowCount(); r++ ) {
-
                 if (e.second->name() != ui_->end_effector_table->item(r,0)->text().toStdString()) {
                     continue;
                 }
-
                 QTableWidgetItem* item = ui_->end_effector_table->item(r, 1);
-                item->setText(QString::number(c.num_waypoints()));
+                item->setText(QString::number(waypoint_ids[idx]));
             }
-
+        }
+    }
+    for (size_t idx=0 ; idx<waypoint_ns.size(); idx++) {
+        for (auto& e: (*robotMap_[robotName_]).endeffectorMap) {
+            if (e.second->id() != idx) {
+                continue;
+            }
+            for (int r=0; r<ui_->end_effector_table->rowCount(); r++ ) {
+                if (e.second->name() != ui_->end_effector_table->item(r,0)->text().toStdString()) {
+                    continue;
+                }
+                QTableWidgetItem* item = ui_->end_effector_table->item(r, 2);
+                item->setText(QString::number(waypoint_ns[idx]));
+            }
         }
     }
 }
 
-void Controls::send_command(Command_CommandType command_type) {
+void Controls::sendCommand(int command_type) {
 
-    Request req;
-    req.set_type(Request::COMMAND);
 
     string key = ui_->control_template_box->currentText().toUtf8().constData();
     vector<string> stuff = util::split(key, ':');
-    Template* temp(req.add_affordance_template());
-    temp->set_type(stuff[0]);
-    temp->set_id(atoi(stuff[1].c_str()));
+    vector<int> waypoint_ids;
+    vector<int> waypoint_ns;
 
-    Command *cmd = req.mutable_command();
-    cmd->set_type(command_type);
-    cmd->set_steps(ui_->num_steps->text().toInt());
-    cmd->set_execute(ui_->execute_on_plan->isChecked());
+    ROS_INFO("Sending Command request for a %s", key.c_str());      
+
+    affordance_template_msgs::AffordanceTemplateCommand srv;
+    srv.request.type = stuff[0];
+    srv.request.id = int(atoi(stuff[1].c_str()));
+    srv.request.command = command_type;
+    srv.request.steps = ui_->num_steps->text().toInt();
+    srv.request.execute_on_plan = ui_->execute_on_plan->isChecked();
+    srv.request.execute_precomputed_plan = true;
+
     vector<string> ee_list = getSelectedEndEffectors();
-    for(int i=0; i<ee_list.size(); i++) {
-        cmd->add_end_effector(ee_list[i]);
+    for(auto &ee : ee_list) {
+        srv.request.end_effectors.push_back(ee);
     }
 
-    Response rep;
-    send_request(req, rep, timeout_);
-    update_table(rep);
-}
+    if (controlsService_.call(srv))
+    {
+        ROS_INFO("Command successful");
+        for(auto &wp : srv.response.waypoint_info) {
+            waypoint_ids.push_back(int(wp.waypoint_index));
+            waypoint_ns.push_back(int(wp.num_waypoints));
+        }
+        updateTable(waypoint_ids, waypoint_ns);
 
-void Controls::send_request(const Request& request, Response& response, long timeout_) {
-    if (!connected_) {
-        return;
     }
-
-    bool success = util::send_request(socket_, request, response, timeout_);
+    else
+    {
+        ROS_ERROR("Failed to call service command");
+    }
 }
+
 
 vector<string> Controls::getSelectedEndEffectors() {
-
     vector<string> selectedEndEffectors;
     for (int r=0; r<ui_->end_effector_table->rowCount(); r++ ) {
         if (ui_->end_effector_table->item(r,3)->checkState() == Qt::Checked ) {

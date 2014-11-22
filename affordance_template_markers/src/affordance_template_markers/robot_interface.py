@@ -86,7 +86,7 @@ class RobotInterface(object) :
 
                 ee_config = EndEffector()
                 
-                ee_config.name == ee['name']
+                ee_config.name = ee['name']
                 ee_config.id = ee['id']
 
                 ee_config.pose_offset = Pose()
