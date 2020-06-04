@@ -32,14 +32,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define MULTI_GROUP_CONTROLS_WIDGET_HPP
 
 /* ROS Includes */
-#include <ros/ros.h>
 #include <ros/package.h>
+#include <ros/ros.h>
 
 // #include "robot_interaction_tools/InteractiveControlsInterface.h"
 // #include <planner_interface/planner_interface.h>
-#include <robot_interaction_tools_msgs/InteractiveControlsInterface.h>
-#include <robot_interaction_tools_msgs/GetGroupConfiguration.h>
 #include <robot_interaction_tools_msgs/ConfigureGroup.h>
+#include <robot_interaction_tools_msgs/GetGroupConfiguration.h>
+#include <robot_interaction_tools_msgs/InteractiveControlsInterface.h>
 
 #include "ui_multi_group_controls_widget.h"
 
@@ -49,77 +49,72 @@ class MultiGroupControls;
 
 namespace rviz_interactive_controls_panel {
 
-    class GroupControlsWidget;
+class GroupControlsWidget;
 
-    class MultiGroupControlsWidget : public QWidget
-    {
-        Q_OBJECT
+class MultiGroupControlsWidget : public QWidget {
+  Q_OBJECT
 
-    public:
-        explicit MultiGroupControlsWidget(QWidget *parent = 0);
-         ~MultiGroupControlsWidget();
+public:
+  explicit MultiGroupControlsWidget(QWidget *parent = 0);
+  ~MultiGroupControlsWidget();
 
-        void setNodeHandle(ros::NodeHandle &nh) {
-            nh_ = nh;
-        }
-        
-        void setServiceClient(const std::map<int8_t, ros::ServiceClient> &map)
-        {
-          service_client_map_ = map;
-        }
+  void setNodeHandle(ros::NodeHandle &nh) { nh_ = nh; }
 
-        void setServiceClient(ros::ServiceClient *client_) { 
-            service_client_ = client_;
-        }
+  void setServiceClient(const std::map<int8_t, ros::ServiceClient> &map) {
+    service_client_map_ = map;
+  }
 
-        void resetGroups() {
-            group_map.clear();
-            ui->group_list->clear();
-        }
+  void setServiceClient(ros::ServiceClient *client_) {
+    service_client_ = client_;
+  }
 
-        bool addGroup(const std::string &group_name,
-                      GroupControlsWidget* group_widget);
+  void resetGroups() {
+    group_map.clear();
+    ui->group_list->clear();
+  }
 
-        void removeGroup(const std::string &group_name);
+  bool addGroup(const std::string &group_name,
+                GroupControlsWidget *group_widget);
 
-        //void setupDisplay();
-        bool setDataFromResponse(robot_interaction_tools_msgs::ConfigureGroupResponse &resp);
+  void removeGroup(const std::string &group_name);
 
-    public Q_SLOTS:
+  // void setupDisplay();
+  bool setDataFromResponse(
+      robot_interaction_tools_msgs::ConfigureGroupResponse &resp);
 
-        bool planRequest();
-        bool executeRequest();
+public Q_SLOTS:
 
-        void planOnMoveClicked(int d);
-        void executeOnPlanClicked(int d);
-        
-    private:
+  bool planRequest();
+  bool executeRequest();
 
-        // the ui
-        Ui::MultiGroupControls *ui;
-        void setupWidgets();
+  void planOnMoveClicked(int d);
+  void executeOnPlanClicked(int d);
 
-        // ros node handle
-        ros::NodeHandle nh_;
-        ros::ServiceClient *service_client_;
-        std::map<int8_t, ros::ServiceClient> service_client_map_;
+private:
+  // the ui
+  Ui::MultiGroupControls *ui;
+  void setupWidgets();
 
-        std::map<std::string, GroupControlsWidget*> group_map;
-        // NOTE: gcvec is vector of bools; for use with ROS message types,
-        //   use unsigned char
-        void getCheckedGroups(bool andVal, std::vector<std::string> &gnvec,
-                              std::vector<unsigned char> &gcvec);
-        bool getChecked(const QString &gn);
-        QListWidgetItem* getListItem(const QString &gn);
+  // ros node handle
+  ros::NodeHandle nh_;
+  ros::ServiceClient *service_client_;
+  std::map<int8_t, ros::ServiceClient> service_client_map_;
 
-        bool initialized;
+  std::map<std::string, GroupControlsWidget *> group_map;
+  // NOTE: gcvec is vector of bools; for use with ROS message types,
+  //   use unsigned char
+  void getCheckedGroups(bool andVal, std::vector<std::string> &gnvec,
+                        std::vector<unsigned char> &gcvec);
+  bool getChecked(const QString &gn);
+  QListWidgetItem *getListItem(const QString &gn);
 
-     public:
-        bool plan_on_move;
-        bool execute_on_plan;
-        bool plan_found;
-    };
+  bool initialized;
 
+public:
+  bool plan_on_move;
+  bool execute_on_plan;
+  bool plan_found;
+};
 }
 
 #endif // MULTI_GROUP_CONTROLS_WIDGET_HPP

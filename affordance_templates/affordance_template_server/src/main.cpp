@@ -30,8 +30,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <affordance_template_server/interface.h>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
 
   ros::init(argc, argv, "affordance_template_server_node");
   ros::AsyncSpinner spinner(10);
@@ -50,8 +49,8 @@ int main(int argc, char **argv)
 
   spinner.start();
   ros::waitForShutdown();
-  
+
   ROS_INFO("Success!!");
-  
+
   return 0;
 }

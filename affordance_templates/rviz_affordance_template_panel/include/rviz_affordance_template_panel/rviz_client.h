@@ -32,219 +32,222 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define AFFORDANCE_TEMPLATE_RVIZ_CLIENT_HPP
 
 /* ROS Includes */
+#include <ros/package.h>
 #include <ros/ros.h>
 #include <rviz/panel.h>
-#include <ros/package.h>
 
 /* stuff for getting urdf */
-#include <urdf/model.h>
 #include <kdl/frames.hpp>
+#include <urdf/model.h>
 
 /* qt */
 #include <QGraphicsScene>
-#include <QTableWidgetItem>
 #include <QSlider>
+#include <QTableWidgetItem>
 
 /* Project Include */
-#include <rviz_affordance_template_panel/affordance.h>
-#include <rviz_affordance_template_panel/robot_config.h>
-#include <rviz_affordance_template_panel/controls.h>
-#include <rviz_affordance_template_panel/waypoint_display.h>
-#include <rviz_affordance_template_panel/util.h>
 #include "ui_rviz_affordance_template_panel.h"
+#include <rviz_affordance_template_panel/affordance.h>
+#include <rviz_affordance_template_panel/controls.h>
+#include <rviz_affordance_template_panel/robot_config.h>
+#include <rviz_affordance_template_panel/util.h>
+#include <rviz_affordance_template_panel/waypoint_display.h>
 
 #include <geometry_msgs/Pose.h>
 
 #include <rviz_affordance_template_panel/msg_headers.h>
-#include <rviz_affordance_template_panel/template_status_info.h>
 #include <rviz_affordance_template_panel/server_status_monitor.h>
+#include <rviz_affordance_template_panel/template_status_info.h>
 
 namespace Ui {
 class RVizAffordanceTemplatePanel;
 }
 
-namespace rviz_affordance_template_panel
-{
-    class AffordanceTemplateRVizClient 
-    {
+namespace rviz_affordance_template_panel {
+class AffordanceTemplateRVizClient {
 
-    public:
+public:
+  // typedefs
+  typedef std::shared_ptr<Affordance> AffordanceSharedPtr;
+  typedef std::shared_ptr<RobotConfig> RobotConfigSharedPtr;
+  typedef std::shared_ptr<EndEffectorConfig> EndEffectorConfigSharedPtr;
+  typedef std::shared_ptr<EndEffectorPoseConfig>
+      EndEffectorPoseIDConfigSharedPtr;
+  typedef std::shared_ptr<Controls> ControlsSharedPtr;
+  typedef std::shared_ptr<WaypointDisplay> WaypointDisplaySharedPtr;
+  typedef std::pair<std::string, int> TemplateInstanceID;
 
-        // typedefs
-        typedef std::shared_ptr<Affordance> AffordanceSharedPtr;
-        typedef std::shared_ptr<RobotConfig> RobotConfigSharedPtr;
-        typedef std::shared_ptr<EndEffectorConfig> EndEffectorConfigSharedPtr;
-        typedef std::shared_ptr<EndEffectorPoseConfig> EndEffectorPoseIDConfigSharedPtr;
-        typedef std::shared_ptr<Controls> ControlsSharedPtr;
-        typedef std::shared_ptr<WaypointDisplay> WaypointDisplaySharedPtr;
-        typedef std::pair<std::string, int> TemplateInstanceID;
+  // Constructors
+  AffordanceTemplateRVizClient(ros::NodeHandle &nh,
+                               Ui::RVizAffordanceTemplatePanel *ui,
+                               QGraphicsScene *at_scene);
+  ~AffordanceTemplateRVizClient();
 
-        // Constructors
-        AffordanceTemplateRVizClient(ros::NodeHandle &nh, Ui::RVizAffordanceTemplatePanel* ui, QGraphicsScene *at_scene);
-        ~AffordanceTemplateRVizClient();
+  // init function
+  void init();
 
-        // init function
-        void init();
+  // thread functions
+  void start();
+  void stop();
 
-        // thread functions
-        void start();
-        void stop();
+  // print stored template status info
+  void printTemplateStatus();
 
-        // print stored template status info
-        void printTemplateStatus();
-        
-        // helper functions for front-end widgets
-        void getAvailableInfo();
-        void getAvailableTemplates();
-        void getAvailableRobots();
-        void getRunningItems();
+  // helper functions for front-end widgets
+  void getAvailableInfo();
+  void getAvailableTemplates();
+  void getAvailableRobots();
+  void getRunningItems();
 
-        void addAffordanceDisplayItem();
-        void addTrajectory();
+  void addAffordanceDisplayItem();
+  void addTrajectory();
 
-        void selectAffordanceTemplate(QListWidgetItem* item);
-        void deleteAffordanceTemplate();
-        void killAffordanceTemplate(QListWidgetItem* item);
+  void selectAffordanceTemplate(QListWidgetItem *item);
+  void deleteAffordanceTemplate();
+  void killAffordanceTemplate(QListWidgetItem *item);
 
-        void saveAffordanceTemplate();
-        void refreshCallback();
-        void loadConfig();
-        void safeLoadConfig();
+  void saveAffordanceTemplate();
+  void refreshCallback();
+  void loadConfig();
+  void safeLoadConfig();
 
-        void changeRobot(int id);
-        void changeSaveInfo(int id);
-        void changeEndEffector(int id);
+  void changeRobot(int id);
+  void changeSaveInfo(int id);
+  void changeEndEffector(int id);
 
-        void goToStart();
-        void goToEnd();
-        void stepBackward();
-        void stepForward();
-        void goToCurrentWaypoint();
-        void executePlan();
+  void goToStart();
+  void goToEnd();
+  void stepBackward();
+  void stepForward();
+  void goToCurrentWaypoint();
+  void executePlan();
 
-        void updateRobotConfig(const QString& text);
-        void updateEndEffectorGroupMap(const QString&);
-        void updateObjectScale(int value);
-        void updateEndEffectorScaleAdjustment(int value);
-        void selectScaleObject(const QString& object_name);
-        void scaleSliderReleased();
-        void controlStatusUpdate();
-        void resetScale();      
-        void enableConfigPanel(int state);
-        void selectTemplateTrajectory(const QString& text);
-        
-    protected:
+  void updateRobotConfig(const QString &text);
+  void updateEndEffectorGroupMap(const QString &);
+  void updateObjectScale(int value);
+  void updateEndEffectorScaleAdjustment(int value);
+  void selectScaleObject(const QString &object_name);
+  void scaleSliderReleased();
+  void controlStatusUpdate();
+  void resetScale();
+  void enableConfigPanel(int state);
+  void selectTemplateTrajectory(const QString &text);
 
-        void run_function();
+protected:
+  void run_function();
 
-        void setupRobotPanel(const string& key);
-        void setupEndEffectorConfigPanel(const string& key);
+  void setupRobotPanel(const string &key);
+  void setupEndEffectorConfigPanel(const string &key);
 
-        bool tryToLoadRobotFromYAML();
+  bool tryToLoadRobotFromYAML();
 
-        void removeAffordanceTemplates();
-        int  sendAffordanceTemplateAdd(const string& class_name);
-        void sendAffordanceTemplateKill(const string& class_name, int id);
-        void sendSaveAffordanceTemplate();
-        void sendAddTrajectory();
+  void removeAffordanceTemplates();
+  int sendAffordanceTemplateAdd(const string &class_name);
+  void sendAffordanceTemplateKill(const string &class_name, int id);
+  void sendSaveAffordanceTemplate();
+  void sendAddTrajectory();
 
-        void sendObjectScale(affordance_template_msgs::ScaleDisplayObjectInfo scale_info);
-        void streamObjectScale(affordance_template_msgs::ScaleDisplayObjectInfo scale_info);
+  void
+  sendObjectScale(affordance_template_msgs::ScaleDisplayObjectInfo scale_info);
+  void streamObjectScale(
+      affordance_template_msgs::ScaleDisplayObjectInfo scale_info);
 
-        bool addAffordance(const AffordanceSharedPtr& obj);
-        bool removeAffordance(const AffordanceSharedPtr& obj);
-        bool checkAffordance(const AffordanceSharedPtr& obj);
+  bool addAffordance(const AffordanceSharedPtr &obj);
+  bool removeAffordance(const AffordanceSharedPtr &obj);
+  bool checkAffordance(const AffordanceSharedPtr &obj);
 
-        bool addRobot(const RobotConfigSharedPtr& obj);
-        bool removeRobot(const RobotConfigSharedPtr& obj);
-        bool checkRobot(const RobotConfigSharedPtr& obj);
+  bool addRobot(const RobotConfigSharedPtr &obj);
+  bool removeRobot(const RobotConfigSharedPtr &obj);
+  bool checkRobot(const RobotConfigSharedPtr &obj);
 
-        void updateServerStatus();
-        void setLabelText(QColor color, std::string text);
+  void updateServerStatus();
+  void setLabelText(QColor color, std::string text);
 
-        void updateStatusFromControls();   
+  void updateStatusFromControls();
 
-        void updateTables(std::string name, std::string trajectory);
-        void updateControlsTable(std::string name, std::string trajectory);
-        void updateWaypointDisplayTable(std::string name, std::string trajectory);
+  void updateTables(std::string name, std::string trajectory);
+  void updateControlsTable(std::string name, std::string trajectory);
+  void updateWaypointDisplayTable(std::string name, std::string trajectory);
 
-        void doCommand(Controls::CommandType command_type);
-        void sendScaleInfo();
-        void setupDisplayObjectSliders(TemplateInstanceID template_instance);
-        bool endEffectorInTrajectory(AffordanceTemplateStatusInfo::EndEffectorInfo ee_info);
+  void doCommand(Controls::CommandType command_type);
+  void sendScaleInfo();
+  void setupDisplayObjectSliders(TemplateInstanceID template_instance);
+  bool endEffectorInTrajectory(
+      AffordanceTemplateStatusInfo::EndEffectorInfo ee_info);
 
-        std::string createShortName(const std::string&);
-        std::string getLongName(const std::string&);
-        std::map<std::string, std::string> robot_name_map_; 
-                
-        std::string getRobotFromDescription();
-        std::vector<std::string> getSelectedEndEffectors();
+  std::string createShortName(const std::string &);
+  std::string getLongName(const std::string &);
+  std::map<std::string, std::string> robot_name_map_;
 
-        // boost thread
-        boost::thread *thread_;
-        boost::mutex mutex;
+  std::string getRobotFromDescription();
+  std::vector<std::string> getSelectedEndEffectors();
 
-        // status flag
-        bool running_;
-        bool busy_flag_;
-        int server_status_;
-        
-        // ros node handle
-        ros::NodeHandle nh_;
+  // boost thread
+  boost::thread *thread_;
+  boost::mutex mutex;
 
-        // UI reference
-        Ui::RVizAffordanceTemplatePanel* ui_;
+  // status flag
+  bool running_;
+  bool busy_flag_;
+  int server_status_;
 
-        // GUI Widgets
-        QGraphicsScene* affordanceTemplateGraphicsScene_;
+  // ros node handle
+  ros::NodeHandle nh_;
 
-        // server status monitor thread
-        AffordanceTemplateServerStatusMonitor *server_monitor_;
+  // UI reference
+  Ui::RVizAffordanceTemplatePanel *ui_;
 
-        // map to track instantiated object templates
-        std::map<std::string, AffordanceSharedPtr> affordanceMap_;
-        std::map<std::string, RobotConfigSharedPtr> robotMap_;
-        std::string descriptionRobot_;
-        std::string robot_name_;
-        bool robot_configured_;
-        bool waypoint_display_configured_;
+  // GUI Widgets
+  QGraphicsScene *affordanceTemplateGraphicsScene_;
 
-        // affordance template services
-        ros::ServiceClient add_template_client_;
-        ros::ServiceClient delete_template_client_;
-        ros::ServiceClient add_trajectory_client_;
-        ros::ServiceClient plan_command_client_;
-        ros::ServiceClient execute_command_client_;
-        ros::ServiceClient get_robots_client_;
-        ros::ServiceClient get_running_client_;
-        ros::ServiceClient get_templates_client_;
-        ros::ServiceClient load_robot_client_;
-        ros::ServiceClient save_template_client_;
-        ros::ServiceClient scale_object_client_;
-        ros::ServiceClient get_template_status_client_;
-        ros::ServiceClient set_template_trajectory_client_;
-        ros::ServiceClient set_waypoint_view_client_;
+  // server status monitor thread
+  AffordanceTemplateServerStatusMonitor *server_monitor_;
 
-        // affordance template publishers
-        ros::Publisher scale_object_streamer_;
+  // map to track instantiated object templates
+  std::map<std::string, AffordanceSharedPtr> affordanceMap_;
+  std::map<std::string, RobotConfigSharedPtr> robotMap_;
+  std::string descriptionRobot_;
+  std::string robot_name_;
+  bool robot_configured_;
+  bool waypoint_display_configured_;
 
-        // control helper class
-        ControlsSharedPtr controls_;
+  // affordance template services
+  ros::ServiceClient add_template_client_;
+  ros::ServiceClient delete_template_client_;
+  ros::ServiceClient add_trajectory_client_;
+  ros::ServiceClient plan_command_client_;
+  ros::ServiceClient execute_command_client_;
+  ros::ServiceClient get_robots_client_;
+  ros::ServiceClient get_running_client_;
+  ros::ServiceClient get_templates_client_;
+  ros::ServiceClient load_robot_client_;
+  ros::ServiceClient save_template_client_;
+  ros::ServiceClient scale_object_client_;
+  ros::ServiceClient get_template_status_client_;
+  ros::ServiceClient set_template_trajectory_client_;
+  ros::ServiceClient set_waypoint_view_client_;
 
-        // waypoint display helper class
-        WaypointDisplaySharedPtr waypointDisplay_;
-        std::map<std::string,bool> waypointExpansionStatus_;
+  // affordance template publishers
+  ros::Publisher scale_object_streamer_;
 
-        // template bookkeeping
-        TemplateInstanceID selected_template;
-        std::map<std::pair<TemplateInstanceID, std::string>, int> display_object_scale_map;
-        std::map<std::pair<TemplateInstanceID, std::string>, int> end_effector_adjustment_map;
-        std::map<std::string, AffordanceTemplateStatusInfo*> template_status_info; 
+  // control helper class
+  ControlsSharedPtr controls_;
 
-        // extra graphics stuff
-        QPalette *label_palette_;
-        QColor red, blue, green;
+  // waypoint display helper class
+  WaypointDisplaySharedPtr waypointDisplay_;
+  std::map<std::string, bool> waypointExpansionStatus_;
 
-    };
+  // template bookkeeping
+  TemplateInstanceID selected_template;
+  std::map<std::pair<TemplateInstanceID, std::string>, int>
+      display_object_scale_map;
+  std::map<std::pair<TemplateInstanceID, std::string>, int>
+      end_effector_adjustment_map;
+  std::map<std::string, AffordanceTemplateStatusInfo *> template_status_info;
+
+  // extra graphics stuff
+  QPalette *label_palette_;
+  QColor red, blue, green;
+};
 }
 #endif // AFFORDANCE_TEMPLATE_RVIZ_CLIENT_HPP

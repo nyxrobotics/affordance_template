@@ -33,67 +33,72 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <ros/ros.h>
 
+#include <geometry_msgs/Pose.h>
+#include <geometry_msgs/Transform.h>
 #include <sensor_msgs/JointState.h>
 #include <visualization_msgs/MarkerArray.h>
-#include <geometry_msgs/Transform.h>
-#include <geometry_msgs/Pose.h>
 
 #include <tf/transform_datatypes.h>
 #include <tf/transform_listener.h>
 
+// clang-format off
+// TODO (andyz): header order matters here. Fix it.
 #include <rit_utils/rdf_model.h>
 #include <rit_utils/generic_utils.h>
+// clang-format on
 
-namespace end_effector_helper
-{
-  class EndEffectorHelper
-  {
+namespace end_effector_helper {
+class EndEffectorHelper {
 
-    public:
-    
-      typedef std::map<std::string, visualization_msgs::MarkerArray > PoseMarkerMap;
-      typedef std::map<std::string, tf::Transform > TransformMap;
+public:
+  typedef std::map<std::string, visualization_msgs::MarkerArray> PoseMarkerMap;
+  typedef std::map<std::string, tf::Transform> TransformMap;
 
-      EndEffectorHelper(std::string group_name, std::string root_frame, rit_utils::RDFModel *rdf_model);
-      ~EndEffectorHelper();
+  EndEffectorHelper(std::string group_name, std::string root_frame,
+                    rit_utils::RDFModel *rdf_model);
+  ~EndEffectorHelper();
 
-      bool setup();
+  bool setup();
 
-      // bool populate_data(links, urdf, srdf);
-      bool getMarkersForPose(std::string pose_name, visualization_msgs::MarkerArray &markers);
-      bool getCurrentPositionMarkerArray(visualization_msgs::MarkerArray &markers, std::string root_link);
-      bool getMarkerArrayFromJointState(sensor_msgs::JointState jpos, std::string root_link, visualization_msgs::MarkerArray& markers);
-      
-      bool hasPoseMarkers(std::string pose_name);
+  // bool populate_data(links, urdf, srdf);
+  bool getMarkersForPose(std::string pose_name,
+                         visualization_msgs::MarkerArray &markers);
+  bool getCurrentPositionMarkerArray(visualization_msgs::MarkerArray &markers,
+                                     std::string root_link);
+  bool getMarkerArrayFromJointState(sensor_msgs::JointState jpos,
+                                    std::string root_link,
+                                    visualization_msgs::MarkerArray &markers);
 
-      tf::Transform getTransformToLink(std::string root_link, std::string link, std::string joint, sensor_msgs::JointState jpos, TransformMap T_joints, TransformMap T_map); 
+  bool hasPoseMarkers(std::string pose_name);
 
+  tf::Transform getTransformToLink(std::string root_link, std::string link,
+                                   std::string joint,
+                                   sensor_msgs::JointState jpos,
+                                   TransformMap T_joints, TransformMap T_map);
 
-    protected:
+protected:
+  ros::NodeHandle nh_;
 
-      ros::NodeHandle nh_;
+  rit_utils::RDFModel *rdf_model_;
+  tf::TransformListener tf_listener_;
+  ros::Subscriber js_sub_;
 
-      rit_utils::RDFModel *rdf_model_;
-      tf::TransformListener tf_listener_;
-      ros::Subscriber js_sub_;
+  sensor_msgs::JointState current_jpos_;
 
-      sensor_msgs::JointState current_jpos_;
+  std::string group_name_;
+  std::string root_frame_;
+  std::vector<std::string> links_;
+  std::vector<std::string> joints_;
 
-      std::string group_name_;
-      std::string root_frame_;
-      std::vector<std::string> links_;
-      std::vector<std::string> joints_;
+  std::vector<std::string> group_state_list_;
+  std::map<std::string, sensor_msgs::JointState> group_states_;
 
-      std::vector<std::string> group_state_list_;
-      std::map<std::string, sensor_msgs::JointState> group_states_;
+  PoseMarkerMap pose_marker_map_;
 
-      PoseMarkerMap pose_marker_map_;
- 
-      void jointStateCallback(const sensor_msgs::JointState &msg);
+  void jointStateCallback(const sensor_msgs::JointState &msg);
+};
 
-  };
-
-  typedef std::shared_ptr<EndEffectorHelper> EndEffectorHelperConstPtr;
+typedef std::shared_ptr<EndEffectorHelper> EndEffectorHelperConstPtr;
 };
 
 #endif

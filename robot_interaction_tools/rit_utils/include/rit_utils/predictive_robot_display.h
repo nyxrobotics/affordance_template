@@ -34,48 +34,51 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <trajectory_msgs/JointTrajectory.h>
 
 #define BOOST_NO_CXX11_SCOPED_ENUMS
-#include <boost/thread.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/thread.hpp>
 
-namespace robot_display
-{
-    class PredictiveDisplay
-    {
-        void animate(); // animate queue thread
-        void currentJointsCallback(const sensor_msgs::JointState&);
+namespace robot_display {
+class PredictiveDisplay {
+  void animate(); // animate queue thread
+  void currentJointsCallback(const sensor_msgs::JointState &);
 
-        bool initialized_;
-        bool animation_ready_;
+  bool initialized_;
+  bool animation_ready_;
 
-        std::string current_group_;
+  std::string current_group_;
 
-        ros::NodeHandle nh_;
-        ros::Subscriber current_joints_sub_;
-        ros::Publisher  predictive_joints_pub_;
-        
-        sensor_msgs::JointState start_state_;
-        sensor_msgs::JointState current_state_;
+  ros::NodeHandle nh_;
+  ros::Subscriber current_joints_sub_;
+  ros::Publisher predictive_joints_pub_;
 
-        std::vector<std::string> joint_names_;
-        std::map<std::string, std::vector<std::string> > group_joints_;
-        std::map<std::string, bool> group_loop_;
+  sensor_msgs::JointState start_state_;
+  sensor_msgs::JointState current_state_;
 
-        std::vector<sensor_msgs::JointState> plan_queue_;
-        std::vector<sensor_msgs::JointState> animate_queue_;
-        
-        std::map<std::string, std::vector<sensor_msgs::JointState> > group_animations_;
+  std::vector<std::string> joint_names_;
+  std::map<std::string, std::vector<std::string>> group_joints_;
+  std::map<std::string, bool> group_loop_;
 
-        std::unique_ptr<boost::thread> animate_thread_;
-        boost::mutex animate_mutex_;
+  std::vector<sensor_msgs::JointState> plan_queue_;
+  std::vector<sensor_msgs::JointState> animate_queue_;
 
-    public: 
-        PredictiveDisplay(const ros::NodeHandle, const std::string _sub="joint_states", const std::string _pub="predictive");
-        ~PredictiveDisplay();
-        
-        void setLoop(const std::string&, const bool);
-        void playPlan();
-        void resetDisplay(bool all=false); // needed when switching trajectories, etc
-        void setStartState();
-        void createAnimation(const std::string&, const trajectory_msgs::JointTrajectory&, bool autoplay=true);
-    };
+  std::map<std::string, std::vector<sensor_msgs::JointState>> group_animations_;
+
+  std::unique_ptr<boost::thread> animate_thread_;
+  boost::mutex animate_mutex_;
+
+public:
+  PredictiveDisplay(const ros::NodeHandle,
+                    const std::string _sub = "joint_states",
+                    const std::string _pub = "predictive");
+  ~PredictiveDisplay();
+
+  void setLoop(const std::string &, const bool);
+  void playPlan();
+  void
+  resetDisplay(bool all = false); // needed when switching trajectories, etc
+  void setStartState();
+  void createAnimation(const std::string &,
+                       const trajectory_msgs::JointTrajectory &,
+                       bool autoplay = true);
+};
 }

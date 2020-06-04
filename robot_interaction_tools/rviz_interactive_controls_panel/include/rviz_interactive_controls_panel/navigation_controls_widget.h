@@ -32,8 +32,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define NAVIGATION_CONTROLS_WIDGET_HPP
 
 /* ROS Includes */
-#include <ros/ros.h>
 #include <ros/package.h>
+#include <ros/ros.h>
 
 // #include "robot_interaction_tools/InteractiveControlsInterface.h"
 // #include <planner_interface/planner_interface.h>
@@ -41,77 +41,69 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "ui_navigation_controls_widget.h"
 
-
 namespace Ui {
 class NavigationControls;
 }
 
-namespace rviz_interactive_controls_panel
-{
+namespace rviz_interactive_controls_panel {
 
-    class NavigationControlsWidget : public QWidget
-    {
-        Q_OBJECT
+class NavigationControlsWidget : public QWidget {
+  Q_OBJECT
 
-    public:
-        explicit NavigationControlsWidget(QWidget *parent = 0);
-         ~NavigationControlsWidget();
+public:
+  explicit NavigationControlsWidget(QWidget *parent = 0);
+  ~NavigationControlsWidget();
 
-        void setNodeHandle(ros::NodeHandle &nh) {
-            nh_ = nh;
-        }
-        
-        void setServiceClient(ros::ServiceClient *client_) { 
-            service_client_ = client_;
-        }
+  void setNodeHandle(ros::NodeHandle &nh) { nh_ = nh; }
 
-        void setupDisplay();
-        bool setDataFromResponse(robot_interaction_tools_msgs::InteractiveControlsInterfaceResponse &resp);
+  void setServiceClient(ros::ServiceClient *client_) {
+    service_client_ = client_;
+  }
 
-    public Q_SLOTS:
+  void setupDisplay();
+  bool setDataFromResponse(
+      robot_interaction_tools_msgs::InteractiveControlsInterfaceResponse &resp);
 
-        bool planRequest();
-        bool executeRequest();
-        bool directMoveRequest();
-        bool syncToRobotOrientationRequest();
-        bool syncToRobotLocationRequest();
-        bool syncToPathOrientationRequest();
-        bool saveFootstepPathRequest();
-        
-        bool addWaypointRequest();
-        bool deleteWaypointRequest();
+public Q_SLOTS:
 
-        void accommodateTerrainClicked(int d);
-        bool navModeChanged(const QString&);
+  bool planRequest();
+  bool executeRequest();
+  bool directMoveRequest();
+  bool syncToRobotOrientationRequest();
+  bool syncToRobotLocationRequest();
+  bool syncToPathOrientationRequest();
+  bool saveFootstepPathRequest();
 
-    private:
+  bool addWaypointRequest();
+  bool deleteWaypointRequest();
 
-        // the ui
-        Ui::NavigationControls *ui;
+  void accommodateTerrainClicked(int d);
+  bool navModeChanged(const QString &);
 
-        // setup widget function
-        void setupWidgets();
+private:
+  // the ui
+  Ui::NavigationControls *ui;
 
-        // ros node handle
-        ros::NodeHandle nh_;
+  // setup widget function
+  void setupWidgets();
 
-        ros::ServiceClient *service_client_;
+  // ros node handle
+  ros::NodeHandle nh_;
 
-        bool initialized;
+  ros::ServiceClient *service_client_;
 
+  bool initialized;
 
-     public:
+public:
+  // group storage info
+  bool accommodate_terrain;
 
-        // group storage info
-        bool accommodate_terrain;
+  std::vector<std::string> waypoint_list;
+  std::vector<std::string> navigation_modes;
+  std::string navigation_mode;
 
-        std::vector<std::string> waypoint_list;
-        std::vector<std::string> navigation_modes;
-        std::string navigation_mode;
-        
-        bool plan_found;
-    };
-
+  bool plan_found;
+};
 }
 
 #endif // NAVIGATION_CONTROLS_WIDGET_HPP

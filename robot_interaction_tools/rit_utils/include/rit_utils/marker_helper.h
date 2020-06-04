@@ -42,207 +42,210 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 using namespace visualization_msgs;
 
 namespace rit_utils {
-  class MarkerHelper {
+class MarkerHelper {
 
-  public: 
-    
-    MarkerHelper() {}
-    ~MarkerHelper() {}
+public:
+  MarkerHelper() {}
+  ~MarkerHelper() {}
 
-    static InteractiveMarkerControl makeXTransControl() {
-      InteractiveMarkerControl control;
-      control.orientation.w = 1;
-      control.orientation.x = 1;
-      control.orientation.y = 0;
-      control.orientation.z = 0;
-      control.name = "move_x";
-      control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
-      return control;
+  static InteractiveMarkerControl makeXTransControl() {
+    InteractiveMarkerControl control;
+    control.orientation.w = 1;
+    control.orientation.x = 1;
+    control.orientation.y = 0;
+    control.orientation.z = 0;
+    control.name = "move_x";
+    control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
+    return control;
+  }
+
+  static InteractiveMarkerControl makeYTransControl() {
+    InteractiveMarkerControl control;
+    control.orientation.w = 1;
+    control.orientation.x = 0;
+    control.orientation.y = 1;
+    control.orientation.z = 0;
+    control.name = "move_y";
+    control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
+    return control;
+  }
+
+  static InteractiveMarkerControl makeZTransControl() {
+    InteractiveMarkerControl control;
+    control.orientation.w = 1;
+    control.orientation.x = 0;
+    control.orientation.y = 0;
+    control.orientation.z = 1;
+    control.name = "move_z";
+    control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
+    return control;
+  }
+
+  static InteractiveMarkerControl makeXRotControl() {
+    InteractiveMarkerControl control;
+    control.orientation.w = 1;
+    control.orientation.x = 1;
+    control.orientation.y = 0;
+    control.orientation.z = 0;
+    control.name = "rotate_x";
+    control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
+    return control;
+  }
+
+  static InteractiveMarkerControl makeYRotControl() {
+    InteractiveMarkerControl control;
+    control.orientation.w = 1;
+    control.orientation.x = 0;
+    control.orientation.y = 1;
+    control.orientation.z = 0;
+    control.name = "rotate_y";
+    control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
+    return control;
+  }
+
+  static InteractiveMarkerControl makeZRotControl() {
+    InteractiveMarkerControl control;
+    control.orientation.w = 1;
+    control.orientation.x = 0;
+    control.orientation.y = 0;
+    control.orientation.z = 1;
+    control.name = "rotate_z";
+    control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
+    return control;
+  }
+
+  static std::vector<InteractiveMarkerControl> make6DOFControls() {
+    std::vector<InteractiveMarkerControl> controls;
+    controls.push_back(makeXTransControl());
+    controls.push_back(makeYTransControl());
+    controls.push_back(makeZTransControl());
+    controls.push_back(makeXRotControl());
+    controls.push_back(makeYRotControl());
+    controls.push_back(makeZRotControl());
+    return controls;
+  }
+
+  static std::vector<InteractiveMarkerControl>
+  makeCustomDOFControls(bool x, bool y, bool z, bool R, bool P, bool Y) {
+    std::vector<InteractiveMarkerControl> controls;
+    if (x)
+      controls.push_back(makeXTransControl());
+    if (y)
+      controls.push_back(makeZTransControl());
+    if (z)
+      controls.push_back(makeYTransControl());
+    if (R)
+      controls.push_back(makeXRotControl());
+    if (P)
+      controls.push_back(makeZRotControl());
+    if (Y)
+      controls.push_back(makeYRotControl());
+    return controls;
+  }
+
+  static Marker makeBox(InteractiveMarker &msg) {
+    Marker marker;
+
+    marker.type = Marker::CUBE;
+    marker.scale.x = msg.scale * 0.45;
+    marker.scale.y = msg.scale * 0.45;
+    marker.scale.z = msg.scale * 0.45;
+    marker.color.r = 0.5;
+    marker.color.g = 0.5;
+    marker.color.b = 0.5;
+    marker.color.a = 1.0;
+
+    return marker;
+  }
+
+  static InteractiveMarkerControl &makeBoxControl(InteractiveMarker &msg) {
+    InteractiveMarkerControl control;
+    control.always_visible = true;
+    control.markers.push_back(makeBox(msg));
+    msg.controls.push_back(control);
+
+    return msg.controls.back();
+  }
+
+  static void make6DofMarker(bool fixed, unsigned int interaction_mode,
+                             const tf::Vector3 &position, bool show_6dof,
+                             std::string frame_id = "base_link",
+                             std::string name = "simple_6dof",
+                             std::string description = "Simple 6DOF Control") {
+    InteractiveMarker int_marker;
+    int_marker.header.frame_id = "base_link";
+    tf::pointTFToMsg(position, int_marker.pose.position);
+    int_marker.scale = 1;
+
+    int_marker.name = "simple_6dof";
+    int_marker.description = "Simple 6-DOF Control";
+
+    // insert a box
+    makeBoxControl(int_marker);
+    int_marker.controls[0].interaction_mode = interaction_mode;
+
+    InteractiveMarkerControl control;
+
+    if (fixed) {
+      int_marker.name += "_fixed";
+      int_marker.description += "\n(fixed orientation)";
+      control.orientation_mode = InteractiveMarkerControl::FIXED;
     }
 
-    static InteractiveMarkerControl makeYTransControl() {
-      InteractiveMarkerControl control;
-      control.orientation.w = 1;
-      control.orientation.x = 0;
-      control.orientation.y = 1;
-      control.orientation.z = 0;
-      control.name = "move_y";
-      control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
-      return control;
+    if (interaction_mode !=
+        visualization_msgs::InteractiveMarkerControl::NONE) {
+      std::string mode_text;
+      if (interaction_mode ==
+          visualization_msgs::InteractiveMarkerControl::MOVE_3D)
+        mode_text = "MOVE_3D";
+      if (interaction_mode ==
+          visualization_msgs::InteractiveMarkerControl::ROTATE_3D)
+        mode_text = "ROTATE_3D";
+      if (interaction_mode ==
+          visualization_msgs::InteractiveMarkerControl::MOVE_ROTATE_3D)
+        mode_text = "MOVE_ROTATE_3D";
+      int_marker.name += "_" + mode_text;
+      int_marker.description = std::string("3D Control") +
+                               (show_6dof ? " + 6-DOF controls" : "") + "\n" +
+                               mode_text;
     }
 
-    static InteractiveMarkerControl makeZTransControl() {
-      InteractiveMarkerControl control;
-      control.orientation.w = 1;
-      control.orientation.x = 0;
-      control.orientation.y = 0;
-      control.orientation.z = 1;
-      control.name = "move_z";
-      control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
-      return control;
-    }
-
-    static InteractiveMarkerControl makeXRotControl() {
-      InteractiveMarkerControl control;
+    if (show_6dof) {
       control.orientation.w = 1;
       control.orientation.x = 1;
       control.orientation.y = 0;
       control.orientation.z = 0;
       control.name = "rotate_x";
       control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
-      return control;
-    }
+      int_marker.controls.push_back(control);
+      control.name = "move_x";
+      control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
+      int_marker.controls.push_back(control);
 
-    static InteractiveMarkerControl makeYRotControl() {
-      InteractiveMarkerControl control;
       control.orientation.w = 1;
       control.orientation.x = 0;
       control.orientation.y = 1;
       control.orientation.z = 0;
-      control.name = "rotate_y";
+      control.name = "rotate_z";
       control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
-      return control;
-    }
+      int_marker.controls.push_back(control);
+      control.name = "move_z";
+      control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
+      int_marker.controls.push_back(control);
 
-    static InteractiveMarkerControl makeZRotControl() {
-      InteractiveMarkerControl control;
       control.orientation.w = 1;
       control.orientation.x = 0;
       control.orientation.y = 0;
       control.orientation.z = 1;
-      control.name = "rotate_z";
+      control.name = "rotate_y";
       control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
-      return control;
+      int_marker.controls.push_back(control);
+      control.name = "move_y";
+      control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
+      int_marker.controls.push_back(control);
     }
-
-    static std::vector<InteractiveMarkerControl> make6DOFControls() {
-      std::vector<InteractiveMarkerControl> controls;
-      controls.push_back(makeXTransControl());
-      controls.push_back(makeYTransControl());
-      controls.push_back(makeZTransControl());
-      controls.push_back(makeXRotControl());
-      controls.push_back(makeYRotControl());
-      controls.push_back(makeZRotControl());
-      return controls;
-    }
-
-    static std::vector<InteractiveMarkerControl> makeCustomDOFControls(bool x, bool y, bool z, bool R, bool P, bool Y) {
-      std::vector<InteractiveMarkerControl> controls;
-      if(x) 
-        controls.push_back(makeXTransControl());
-      if(y) 
-        controls.push_back(makeZTransControl());
-      if(z) 
-        controls.push_back(makeYTransControl());
-      if(R) 
-        controls.push_back(makeXRotControl());
-      if(P) 
-        controls.push_back(makeZRotControl());
-      if(Y) 
-        controls.push_back(makeYRotControl());
-      return controls;
-    }
-
-    static Marker makeBox( InteractiveMarker &msg )
-    {
-      Marker marker;
-
-      marker.type = Marker::CUBE;
-      marker.scale.x = msg.scale * 0.45;
-      marker.scale.y = msg.scale * 0.45;
-      marker.scale.z = msg.scale * 0.45;
-      marker.color.r = 0.5;
-      marker.color.g = 0.5;
-      marker.color.b = 0.5;
-      marker.color.a = 1.0;
-
-      return marker;
-    }
-
-    static InteractiveMarkerControl& makeBoxControl( InteractiveMarker &msg )
-    {
-      InteractiveMarkerControl control;
-      control.always_visible = true;
-      control.markers.push_back( makeBox(msg) );
-      msg.controls.push_back( control );
-    
-      return msg.controls.back();
-    }
-
-    static void make6DofMarker( bool fixed, unsigned int interaction_mode, const tf::Vector3& position, 
-        bool show_6dof, std::string frame_id="base_link", std::string name="simple_6dof", std::string description="Simple 6DOF Control" )
-    {
-      InteractiveMarker int_marker;
-      int_marker.header.frame_id = "base_link";
-      tf::pointTFToMsg(position, int_marker.pose.position);
-      int_marker.scale = 1;
-
-      int_marker.name = "simple_6dof";
-      int_marker.description = "Simple 6-DOF Control";
-
-      // insert a box
-      makeBoxControl(int_marker);
-      int_marker.controls[0].interaction_mode = interaction_mode;
-
-      InteractiveMarkerControl control;
-
-      if ( fixed )
-      {
-        int_marker.name += "_fixed";
-        int_marker.description += "\n(fixed orientation)";
-        control.orientation_mode = InteractiveMarkerControl::FIXED;
-      }
-
-      if (interaction_mode != visualization_msgs::InteractiveMarkerControl::NONE)
-      {
-          std::string mode_text;
-          if( interaction_mode == visualization_msgs::InteractiveMarkerControl::MOVE_3D )         mode_text = "MOVE_3D";
-          if( interaction_mode == visualization_msgs::InteractiveMarkerControl::ROTATE_3D )       mode_text = "ROTATE_3D";
-          if( interaction_mode == visualization_msgs::InteractiveMarkerControl::MOVE_ROTATE_3D )  mode_text = "MOVE_ROTATE_3D";
-          int_marker.name += "_" + mode_text;
-          int_marker.description = std::string("3D Control") + (show_6dof ? " + 6-DOF controls" : "") + "\n" + mode_text;
-      }
-
-      if(show_6dof)
-      {
-        control.orientation.w = 1;
-        control.orientation.x = 1;
-        control.orientation.y = 0;
-        control.orientation.z = 0;
-        control.name = "rotate_x";
-        control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
-        int_marker.controls.push_back(control);
-        control.name = "move_x";
-        control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
-        int_marker.controls.push_back(control);
-
-        control.orientation.w = 1;
-        control.orientation.x = 0;
-        control.orientation.y = 1;
-        control.orientation.z = 0;
-        control.name = "rotate_z";
-        control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
-        int_marker.controls.push_back(control);
-        control.name = "move_z";
-        control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
-        int_marker.controls.push_back(control);
-
-        control.orientation.w = 1;
-        control.orientation.x = 0;
-        control.orientation.y = 0;
-        control.orientation.z = 1;
-        control.name = "rotate_y";
-        control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
-        int_marker.controls.push_back(control);
-        control.name = "move_y";
-        control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
-        int_marker.controls.push_back(control);
-      }
-
-    };
-
   };
-
+};
 };
 
 #endif

@@ -32,64 +32,68 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // using namespace moveit::core;
 
-namespace moveit_planner
-{
+namespace moveit_planner {
 
-MoveItPlanner::MoveItPlanner() :
-  use_aggregate_groups_(false)
-{
+MoveItPlanner::MoveItPlanner() : use_aggregate_groups_(false) {
   ROS_INFO("MoveItPlanner() created");
 }
 
-MoveItPlanner::~MoveItPlanner() { }
-      
+MoveItPlanner::~MoveItPlanner() {}
 
 bool MoveItPlanner::setup_() {
 
-  display_publisher = nh_.advertise<moveit_msgs::DisplayTrajectory>("/move_group/display_planned_path", 1, true);
+  display_publisher = nh_.advertise<moveit_msgs::DisplayTrajectory>(
+      "/move_group/display_planned_path", 1, true);
 
   return true;
 }
 
-bool MoveItPlanner::addPlanningGroup_(const std::string &group_name)
-{
+bool MoveItPlanner::addPlanningGroup_(const std::string &group_name) {
 
-    MoveGroupSharedPtr g( new moveit::planning_interface::MoveGroupInterface(group_name) );
-    groups_[group_name] = g;
+  MoveGroupSharedPtr g(
+      new moveit::planning_interface::MoveGroupInterface(group_name));
+  groups_[group_name] = g;
 
-    groups_[group_name]->setGoalJointTolerance(joint_tolerance_[group_name]);
-    groups_[group_name]->setGoalPositionTolerance(position_tolerances_[group_name]);
-    groups_[group_name]->setGoalOrientationTolerance(orientation_tolerances_[group_name]);
+  groups_[group_name]->setGoalJointTolerance(joint_tolerance_[group_name]);
+  groups_[group_name]->setGoalPositionTolerance(
+      position_tolerances_[group_name]);
+  groups_[group_name]->setGoalOrientationTolerance(
+      orientation_tolerances_[group_name]);
 
-    ROS_INFO("MoveItPlanner::setupGroup(%s) -- reference frame: %s", group_name.c_str(), g->getPlanningFrame().c_str());
-    ROS_INFO("MoveItPlanner::setupGroup(%s) -- EE Link: %s", group_name.c_str(), g->getEndEffectorLink().c_str());
+  ROS_INFO("MoveItPlanner::setupGroup(%s) -- reference frame: %s",
+           group_name.c_str(), g->getPlanningFrame().c_str());
+  ROS_INFO("MoveItPlanner::setupGroup(%s) -- EE Link: %s", group_name.c_str(),
+           g->getEndEffectorLink().c_str());
 
-    // DEBUG
-    std::vector<double> lower, upper;
-    rdf_model_->getJointLimits(group_name, lower, upper );
-    // END DEBUG
+  // DEBUG
+  std::vector<double> lower, upper;
+  rdf_model_->getJointLimits(group_name, lower, upper);
+  // END DEBUG
 
-    return true;
+  return true;
 }
 
 bool MoveItPlanner::hasGroup(const std::string &group_name) {
-  return (groups_.find(group_name) != std::end(groups_)); 
+  return (groups_.find(group_name) != std::end(groups_));
 }
 
-bool MoveItPlanner::getGroupPlanningFrame(const std::string &group_name, std::string &planning_frame) {
-  ROS_INFO("MoveItPlanner::getGroupPlanningFrame() -- group: %s", group_name.c_str());
-  if(hasGroup(group_name)) {
+bool MoveItPlanner::getGroupPlanningFrame(const std::string &group_name,
+                                          std::string &planning_frame) {
+  ROS_INFO("MoveItPlanner::getGroupPlanningFrame() -- group: %s",
+           group_name.c_str());
+  if (hasGroup(group_name)) {
     planning_frame = groups_[group_name]->getPlanningFrame();
-    ROS_INFO("MoveItPlanner::getGroupPlanningFrame(%s) -- %s", group_name.c_str(),planning_frame.c_str());
+    ROS_INFO("MoveItPlanner::getGroupPlanningFrame(%s) -- %s",
+             group_name.c_str(), planning_frame.c_str());
     return true;
   } else {
     return false;
   }
 }
 
-
-bool MoveItPlanner::getEndEffectorLink(const std::string &group_name, std::string &ee_link) {
-  if(hasGroup(group_name)) {
+bool MoveItPlanner::getEndEffectorLink(const std::string &group_name,
+                                       std::string &ee_link) {
+  if (hasGroup(group_name)) {
     ee_link = groups_[group_name]->getEndEffectorLink();
     return true;
   } else {
@@ -97,10 +101,9 @@ bool MoveItPlanner::getEndEffectorLink(const std::string &group_name, std::strin
   }
 }
 
-
 bool MoveItPlanner::removeGroup_(const std::string &group_name) {
   ROS_WARN("MoveItPlanner::removeGroup() -- %s", group_name.c_str());
-  if(hasGroup(group_name)) {
+  if (hasGroup(group_name)) {
     groups_[group_name].reset();
     groups_.erase(group_name);
   }
@@ -108,101 +111,127 @@ bool MoveItPlanner::removeGroup_(const std::string &group_name) {
 }
 
 void MoveItPlanner::clearGroupGoals(const std::string &group_name) {
-  if(hasGroup(group_name)) {
-    ROS_DEBUG("MoveItPlanner::clearGroupGoals() -- clearing targets or group %s", group_name.c_str()); 
-    groups_[group_name]->clearPoseTargets();  
+  if (hasGroup(group_name)) {
+    ROS_DEBUG(
+        "MoveItPlanner::clearGroupGoals() -- clearing targets or group %s",
+        group_name.c_str());
+    groups_[group_name]->clearPoseTargets();
     try {
       stored_display_trajectory_[group_name].trajectory.clear();
-    } catch(...) {
-      ROS_WARN("MoveItPlanner::clearGroupGoals() -- no display trajectory to clear");
-    } 
+    } catch (...) {
+      ROS_WARN(
+          "MoveItPlanner::clearGroupGoals() -- no display trajectory to clear");
+    }
     stored_display_trajectory_.erase(group_name);
     stored_plan_.erase(group_name);
   }
-}   
+}
 
-bool MoveItPlanner::planJointPath_(const std::map<std::string, std::vector<sensor_msgs::JointState> > &goals, std::map<std::string, trajectory_msgs::JointTrajectory>& trajectories, bool execute, bool show_path, JointStateMap start_states) {
+bool MoveItPlanner::planJointPath_(
+    const std::map<std::string, std::vector<sensor_msgs::JointState>> &goals,
+    std::map<std::string, trajectory_msgs::JointTrajectory> &trajectories,
+    bool execute, bool show_path, JointStateMap start_states) {
 
   // storage
   std::vector<std::string> group_names;
 
   // go through all the group goal arrays
-  for(auto &req : goals) {
+  for (auto &req : goals) {
 
     std::string group_name = req.first;
     std::vector<sensor_msgs::JointState> waypoints = req.second;
 
     // safety check
-    if(!hasGroup(group_name)) {
-        ROS_ERROR("MoveItPlanner::planJointPath_() -- unknown group: %s", group_name.c_str());
-        return false;
-    }
-
-    ROS_DEBUG("MoveItPlanner::planJointPath_() -- plan group %s with %d joint goals", group_name.c_str(), (int)waypoints.size());
-    if(waypoints.size() > 1 ) {
-      ROS_WARN("MoveItPlanner::planJointPath_() -- doesn't support multiple joint goal waypoints yet!");
+    if (!hasGroup(group_name)) {
+      ROS_ERROR("MoveItPlanner::planJointPath_() -- unknown group: %s",
+                group_name.c_str());
       return false;
     }
-    
+
+    ROS_DEBUG(
+        "MoveItPlanner::planJointPath_() -- plan group %s with %d joint goals",
+        group_name.c_str(), (int)waypoints.size());
+    if (waypoints.size() > 1) {
+      ROS_WARN("MoveItPlanner::planJointPath_() -- doesn't support multiple "
+               "joint goal waypoints yet!");
+      return false;
+    }
+
     // store the group names in easily accesible vector
     group_names.push_back(group_name);
 
-    robot_state::RobotStatePtr current_state = groups_[group_name]->getCurrentState();
+    robot_state::RobotStatePtr current_state =
+        groups_[group_name]->getCurrentState();
     if (start_states.find(group_name) != start_states.end()) {
-      if (start_states[group_name].name.size() == start_states[group_name].position.size() && start_states[group_name].name.size() > 0) {
-        ROS_INFO("[MoveItPlanner::planJointPath_] valid start state provided for %s", group_name.c_str());
+      if (start_states[group_name].name.size() ==
+              start_states[group_name].position.size() &&
+          start_states[group_name].name.size() > 0) {
+        ROS_INFO(
+            "[MoveItPlanner::planJointPath_] valid start state provided for %s",
+            group_name.c_str());
         current_state->setVariableValues(start_states[group_name]);
         groups_[group_name]->setStartState(*current_state);
       } else {
         groups_[group_name]->setStartStateToCurrentState();
-        if (start_states[group_name].name.size() == 0) 
-          ROS_INFO("[MoveItPlanner::planJointPath_] start state provided for %s is empty, will use current robot state", group_name.c_str());
+        if (start_states[group_name].name.size() == 0)
+          ROS_INFO("[MoveItPlanner::planJointPath_] start state provided for "
+                   "%s is empty, will use current robot state",
+                   group_name.c_str());
         else
-          ROS_WARN("[MoveItPlanner::planJointPath_] invalid start state provided for %s, will use current robot state", group_name.c_str());
+          ROS_WARN("[MoveItPlanner::planJointPath_] invalid start state "
+                   "provided for %s, will use current robot state",
+                   group_name.c_str());
       }
     } else {
-      ROS_INFO("[MoveItPlanner::planJointPath_] no start state provided for %s, will use current robot state", group_name.c_str());
+      ROS_INFO("[MoveItPlanner::planJointPath_] no start state provided for "
+               "%s, will use current robot state",
+               group_name.c_str());
       groups_[group_name]->setStartStateToCurrentState();
     }
 
     clearGroupGoals(group_name);
     groups_[group_name]->setJointValueTarget(waypoints[0]);
     moveit::planning_interface::MoveGroupInterface::Plan joint_plan;
-    if(groups_[group_name]->plan(joint_plan)) {
-      for(auto &pt : joint_plan.trajectory_.joint_trajectory.points) {
+    if (groups_[group_name]->plan(joint_plan)) {
+      for (auto &pt : joint_plan.trajectory_.joint_trajectory.points) {
         pt.velocities.clear();
         pt.accelerations.clear();
       }
       stored_plan_[group_name] = joint_plan;
       trajectories[group_name] = joint_plan.trajectory_.joint_trajectory;
     } else {
-      ROS_WARN("MoveItPlanner::planJointPath_() -- could not find joint plan for group %s", group_name.c_str());     
+      ROS_WARN("MoveItPlanner::planJointPath_() -- could not find joint plan "
+               "for group %s",
+               group_name.c_str());
     }
   }
 
   // if executing all at once
-  if(execute) {
+  if (execute) {
     return executePlans(group_names);
   }
 
   return true;
-
 }
-      
-bool MoveItPlanner::applyMaskConstraints(const std::string &group_name, moveit_msgs::Constraints &constraints) {
 
-  if(!hasGroup(group_name)) {
-    ROS_ERROR("MoveItPlanner::applyMaskConstraints() -- unknown group: %s", group_name.c_str());
+bool MoveItPlanner::applyMaskConstraints(
+    const std::string &group_name, moveit_msgs::Constraints &constraints) {
+
+  if (!hasGroup(group_name)) {
+    ROS_ERROR("MoveItPlanner::applyMaskConstraints() -- unknown group: %s",
+              group_name.c_str());
     return false;
   }
 
   robot_interaction_tools_msgs::JointMask mask;
-  robot_state::RobotStatePtr robotState = groups_[group_name]->getCurrentState(); 
-  if(getJointMask(group_name, mask)) {
+  robot_state::RobotStatePtr robotState =
+      groups_[group_name]->getCurrentState();
+  if (getJointMask(group_name, mask)) {
     int idx = 0;
-    for(auto &joint_name: mask.joint_names) {
-      if(!mask.mask[idx]) {
-        ROS_WARN("MoveItPlanner::applyMaskConstraints(%s) masking joint: %s", group_name.c_str(), joint_name.c_str());
+    for (auto &joint_name : mask.joint_names) {
+      if (!mask.mask[idx]) {
+        ROS_WARN("MoveItPlanner::applyMaskConstraints(%s) masking joint: %s",
+                 group_name.c_str(), joint_name.c_str());
         const double *jnt_pos = robotState->getJointPositions(joint_name);
         moveit_msgs::JointConstraint jc;
         jc.joint_name = joint_name;
@@ -219,22 +248,26 @@ bool MoveItPlanner::applyMaskConstraints(const std::string &group_name, moveit_m
 
   return true;
 }
-    
-bool MoveItPlanner::plan_(const std::map<std::string, planner_interface::PlanningGoal> &goals, std::map<std::string, trajectory_msgs::JointTrajectory> &trajectories, bool execute, bool show_path, JointStateMap start_states) {
-  
+
+bool MoveItPlanner::plan_(
+    const std::map<std::string, planner_interface::PlanningGoal> &goals,
+    std::map<std::string, trajectory_msgs::JointTrajectory> &trajectories,
+    bool execute, bool show_path, JointStateMap start_states) {
+
   // storage
   std::vector<std::string> group_names;
 
   // go through all the group goal arrays
-  for(auto &req : goals) {
+  for (auto &req : goals) {
 
     std::string group_name = req.first;
     ROS_INFO("[MoveItPlanner::plan] planning for group %s", group_name.c_str());
-    
+
     // safety check
-    if(!hasGroup(group_name)) {
-        ROS_ERROR("MoveItPlanner::plan() -- unknown group: %s", group_name.c_str());
-        return false;
+    if (!hasGroup(group_name)) {
+      ROS_ERROR("MoveItPlanner::plan() -- unknown group: %s",
+                group_name.c_str());
+      return false;
     }
 
     // store the group names in easily accesible vector
@@ -244,56 +277,72 @@ bool MoveItPlanner::plan_(const std::map<std::string, planner_interface::Plannin
     moveit_msgs::Constraints constraints;
     applyMaskConstraints(group_name, constraints);
 
-    if(req.second.type == planner_interface::CARTESIAN) { 
+    if (req.second.type == planner_interface::CARTESIAN) {
 
       std::vector<geometry_msgs::Pose> pose_goals;
-      pose_goals.push_back(req.second.goal.pose);      
+      pose_goals.push_back(req.second.goal.pose);
 
-      moveit::planning_interface::MoveGroupInterface::Plan cart_plan;      
+      moveit::planning_interface::MoveGroupInterface::Plan cart_plan;
       moveit_msgs::RobotTrajectory traj;
 
       // use start state for planning, if available
       moveit_msgs::RobotState start_state;
-      robot_state::RobotStatePtr current_state = groups_[group_name]->getCurrentState();
+      robot_state::RobotStatePtr current_state =
+          groups_[group_name]->getCurrentState();
       moveit::core::robotStateToRobotStateMsg(*current_state, start_state);
       if (start_states.find(group_name) != start_states.end()) {
-        if (start_states[group_name].name.size() == start_states[group_name].position.size() && start_states[group_name].name.size() > 0) {
-          ROS_INFO("[MoveItPlanner::plan] valid start state provided for %s", group_name.c_str());
+        if (start_states[group_name].name.size() ==
+                start_states[group_name].position.size() &&
+            start_states[group_name].name.size() > 0) {
+          ROS_INFO("[MoveItPlanner::plan] valid start state provided for %s",
+                   group_name.c_str());
           current_state->setVariableValues(start_states[group_name]);
           groups_[group_name]->setStartState(*current_state);
           moveit::core::robotStateToRobotStateMsg(*current_state, start_state);
         } else {
           groups_[group_name]->setStartStateToCurrentState();
-          if (start_states[group_name].name.size() == 0) 
-            ROS_INFO("[MoveItPlanner::plan] start state provided for %s is empty, will use current robot state", group_name.c_str());
+          if (start_states[group_name].name.size() == 0)
+            ROS_INFO("[MoveItPlanner::plan] start state provided for %s is "
+                     "empty, will use current robot state",
+                     group_name.c_str());
           else
-            ROS_WARN("[MoveItPlanner::plan] invalid start state provided for %s, will use current robot state", group_name.c_str());
+            ROS_WARN("[MoveItPlanner::plan] invalid start state provided for "
+                     "%s, will use current robot state",
+                     group_name.c_str());
         }
       } else {
-        ROS_INFO("[MoveItPlanner::plan] no start state provided for %s, will use current robot state", group_name.c_str());
+        ROS_INFO("[MoveItPlanner::plan] no start state provided for %s, will "
+                 "use current robot state",
+                 group_name.c_str());
         groups_[group_name]->setStartStateToCurrentState();
       }
 
-      double fraction = groups_[group_name]->computeCartesianPath(pose_goals, 0.01, 10, traj);
+      double fraction =
+          groups_[group_name]->computeCartesianPath(pose_goals, 0.01, 10, traj);
 
-      if(fraction > 0) {
+      if (fraction > 0) {
         is_partial_plan_ = true;
-        ROS_WARN("MoveItPlanner::plan() -- planned cartesian path for group %s, result fraction = %f", group_name.c_str(), fraction); 
+        ROS_WARN("MoveItPlanner::plan() -- planned cartesian path for group "
+                 "%s, result fraction = %f",
+                 group_name.c_str(), fraction);
       } else {
         is_partial_plan_ = false;
-        ROS_INFO("MoveItPlanner::plan() -- planned cartesian path for group %s, result fraction = %f", group_name.c_str(), fraction);  
+        ROS_INFO("MoveItPlanner::plan() -- planned cartesian path for group "
+                 "%s, result fraction = %f",
+                 group_name.c_str(), fraction);
       }
 
       if (fraction < 1)
         return false;
 
-      // fix cart traj to have velocities and accelerations cause this call doesnt populate those fields
-      if(traj.joint_trajectory.points.size() > 0) {
+      // fix cart traj to have velocities and accelerations cause this call
+      // doesnt populate those fields
+      if (traj.joint_trajectory.points.size() > 0) {
         int n = traj.joint_trajectory.points[0].positions.size();
-        if(traj.joint_trajectory.points[0].velocities.size() == 0) {
-          for(size_t i=0; i<traj.joint_trajectory.points.size(); i++) {
-            traj.joint_trajectory.points[i].velocities.resize(n,0);
-            traj.joint_trajectory.points[i].accelerations.resize(n,0);
+        if (traj.joint_trajectory.points[0].velocities.size() == 0) {
+          for (size_t i = 0; i < traj.joint_trajectory.points.size(); i++) {
+            traj.joint_trajectory.points[i].velocities.resize(n, 0);
+            traj.joint_trajectory.points[i].accelerations.resize(n, 0);
           }
         }
       }
@@ -302,46 +351,57 @@ bool MoveItPlanner::plan_(const std::map<std::string, planner_interface::Plannin
       cart_plan.start_state_ = start_state;
       stored_plan_[group_name] = cart_plan;
       trajectories[group_name] = cart_plan.trajectory_.joint_trajectory;
-      ROS_DEBUG("[MoveItPlanner::plan] cartesian goal with traj size %d", (int)trajectories[group_name].points.size());
+      ROS_DEBUG("[MoveItPlanner::plan] cartesian goal with traj size %d",
+                (int)trajectories[group_name].points.size());
     } else {
       clearGroupGoals(group_name);
       geometry_msgs::PoseStamped pose_goal = req.second.goal;
       pose_goal.header.stamp = ros::Time::now();
       groups_[group_name]->setPoseTarget(pose_goal);
       moveit::planning_interface::MoveGroupInterface::Plan joint_plan;
-      ROS_INFO("MoveItPlanner::plan() -- calling MoveIt! joint planner for %s with EE link: %s", group_name.c_str(), groups_[group_name]->getEndEffectorLink().c_str());
-      if(groups_[group_name]->plan(joint_plan)) {
+      ROS_INFO("MoveItPlanner::plan() -- calling MoveIt! joint planner for %s "
+               "with EE link: %s",
+               group_name.c_str(),
+               groups_[group_name]->getEndEffectorLink().c_str());
+      if (groups_[group_name]->plan(joint_plan)) {
         ROS_INFO("MoveItPlanner::plan() -- done");
-        for(auto &pt : joint_plan.trajectory_.joint_trajectory.points) {
+        for (auto &pt : joint_plan.trajectory_.joint_trajectory.points) {
           pt.velocities.clear();
           pt.accelerations.clear();
         }
         stored_plan_[group_name] = joint_plan;
         trajectories[group_name] = joint_plan.trajectory_.joint_trajectory;
-        ROS_DEBUG("[MoveItPlanner::plan] non cartesian goal with traj size %d", (int)trajectories[group_name].points.size());
+        ROS_DEBUG("[MoveItPlanner::plan] non cartesian goal with traj size %d",
+                  (int)trajectories[group_name].points.size());
       } else {
-        ROS_WARN("MoveItPlanner::plan() -- could not find joint plan for group %s", group_name.c_str());  
+        ROS_WARN(
+            "MoveItPlanner::plan() -- could not find joint plan for group %s",
+            group_name.c_str());
       }
     }
   }
 
   // if executing all at once
-  if(execute) {
+  if (execute) {
     return executePlans(group_names);
   }
 
   return true;
 }
 
+bool MoveItPlanner::executeContinuousPlans(
+    const std::vector<std::pair<
+        std::string, moveit::planning_interface::MoveGroupInterface::Plan>>
+        &group_plans) {
+  ROS_DEBUG(
+      "[MoveItPlanner::executeContinuousPlans] executing %d plans continuously",
+      (int)group_plans.size());
 
-bool MoveItPlanner::executeContinuousPlans(const std::vector<std::pair<std::string, moveit::planning_interface::MoveGroupInterface::Plan> >& group_plans)
-{
-  ROS_DEBUG("[MoveItPlanner::executeContinuousPlans] executing %d plans continuously", (int)group_plans.size());
-
-  // FIXME this doesn't have any error checking because many times it returns false even when the plan executes and appears to get to the goal
-  for (auto p : group_plans)
-  {
-    ROS_DEBUG("[MoveItPlanner::executeContinuousPlans] executing group %s plan", p.first.c_str());
+  // FIXME this doesn't have any error checking because many times it returns
+  // false even when the plan executes and appears to get to the goal
+  for (auto p : group_plans) {
+    ROS_DEBUG("[MoveItPlanner::executeContinuousPlans] executing group %s plan",
+              p.first.c_str());
     groups_[p.first]->execute(p.second);
   }
 
@@ -349,30 +409,36 @@ bool MoveItPlanner::executeContinuousPlans(const std::vector<std::pair<std::stri
 }
 
 bool MoveItPlanner::executePlans_(const std::vector<std::string> &group_names) {
-  for(auto &group_name : group_names) {
-    ROS_INFO("MoveItPlanner::executePlans_() -- %s", group_name.c_str());  
-    if(stored_plan_.find(group_name) != std::end(stored_plan_)) {
-      //scale trajectories
-      moveit::planning_interface::MoveGroupInterface::Plan cart_plan= stored_plan_[group_name];
-      
-      for (uint i=0; i < cart_plan.trajectory_.joint_trajectory.points.size(); i++) {
-        cart_plan.trajectory_.joint_trajectory.points[i].time_from_start = ros::Duration(cart_plan.trajectory_.joint_trajectory.points[i].time_from_start.toSec() / trajectory_scaler_);
+  for (auto &group_name : group_names) {
+    ROS_INFO("MoveItPlanner::executePlans_() -- %s", group_name.c_str());
+    if (stored_plan_.find(group_name) != std::end(stored_plan_)) {
+      // scale trajectories
+      moveit::planning_interface::MoveGroupInterface::Plan cart_plan =
+          stored_plan_[group_name];
+
+      for (uint i = 0; i < cart_plan.trajectory_.joint_trajectory.points.size();
+           i++) {
+        cart_plan.trajectory_.joint_trajectory.points[i].time_from_start =
+            ros::Duration(cart_plan.trajectory_.joint_trajectory.points[i]
+                              .time_from_start.toSec() /
+                          trajectory_scaler_);
       }
-      
+
       groups_[group_name]->asyncExecute(cart_plan);
       clearGroupGoals(group_name);
     } else {
-      ROS_WARN("MoveItPlanner::executePlans_() -- no stored plan for group %s", group_name.c_str()); 
+      ROS_WARN("MoveItPlanner::executePlans_() -- no stored plan for group %s",
+               group_name.c_str());
       return false;
     }
   }
   return true;
 }
 
-bool MoveItPlanner::getPlan(const std::string& group, moveit::planning_interface::MoveGroupInterface::Plan& plan)
-{ 
-  if (stored_plan_.find(group) != stored_plan_.end())
-  {
+bool MoveItPlanner::getPlan(
+    const std::string &group,
+    moveit::planning_interface::MoveGroupInterface::Plan &plan) {
+  if (stored_plan_.find(group) != stored_plan_.end()) {
     plan = stored_plan_[group];
     return true;
   }
@@ -380,20 +446,21 @@ bool MoveItPlanner::getPlan(const std::string& group, moveit::planning_interface
   return false;
 }
 
-bool MoveItPlanner::getCurrentState(const std::string& group, sensor_msgs::JointState& state)
-{
-  if (groups_.find(group) == groups_.end())
-  {
-    ROS_ERROR("[MoveItPlanner::getCurrentState] group %s not a current planning group!!", group.c_str());
+bool MoveItPlanner::getCurrentState(const std::string &group,
+                                    sensor_msgs::JointState &state) {
+  if (groups_.find(group) == groups_.end()) {
+    ROS_ERROR("[MoveItPlanner::getCurrentState] group %s not a current "
+              "planning group!!",
+              group.c_str());
     return false;
   }
 
   state.name = groups_[group]->getActiveJoints();
   state.position = groups_[group]->getCurrentJointValues();
 
-  if (state.name.size() != state.position.size())
-  {
-    ROS_ERROR("[MoveItPlanner::getCurrentState] current state size doesn't match!!");
+  if (state.name.size() != state.position.size()) {
+    ROS_ERROR(
+        "[MoveItPlanner::getCurrentState] current state size doesn't match!!");
     return false;
   }
 
@@ -402,4 +469,5 @@ bool MoveItPlanner::getCurrentState(const std::string& group, sensor_msgs::Joint
 
 }; // namespace
 
-PLUGINLIB_EXPORT_CLASS(moveit_planner::MoveItPlanner, planner_interface::PlannerInterface)
+PLUGINLIB_EXPORT_CLASS(moveit_planner::MoveItPlanner,
+                       planner_interface::PlannerInterface)

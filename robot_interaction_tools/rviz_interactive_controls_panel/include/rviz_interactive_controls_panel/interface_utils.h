@@ -33,70 +33,67 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // #include "robot_interaction_tools/InteractiveControlsInterface.h"
 // #include <planner_interface/planner_interface.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <robot_interaction_tools_msgs/InteractiveControlsInterface.h>
 #include <robot_interaction_tools_msgs/JointMask.h>
 #include <robot_interaction_tools_msgs/JointNameMap.h>
 #include <robot_interaction_tools_msgs/ToleranceInfo.h>
 #include <robot_interaction_tools_msgs/ToleranceInfoArray.h>
-#include <robot_interaction_tools_msgs/InteractiveControlsInterface.h>
-#include <geometry_msgs/PoseStamped.h>
 #include <string>
 #include <unordered_set>
 #include <vector>
 
 namespace rviz_interactive_controls_panel {
 
-    // typedef for using message in Qt signal/slot; registered in .cpp
-    typedef robot_interaction_tools_msgs::InteractiveControlsInterface ICInterface;
-    //typedef robot_interaction_tools_msgs::InteractiveControlsInterface::Request InteractiveControlsInterfaceRequest;
-    //typedef robot_interaction_tools_msgs::InteractiveControlsInterface::Response InteractiveControlsInterfaceResponse;
-    typedef robot_interaction_tools_msgs::InteractiveControlsInterfaceRequest ICInterfaceRequest;
-    typedef robot_interaction_tools_msgs::InteractiveControlsInterfaceResponse ICInterfaceResponse;
-    
-    // TODO: need a service call thread object
-    
-    class InteractiveControlsInterfaceUtils {
-        public:
-            static
-            void inactiveGroups(const ICInterface::Response &srv,
-                                std::unordered_set<std::string> &inactive);
-                                //std::vector<std::string> &inactive);
-            
-            static
-            std::string srvStr(const ICInterface &srv, bool suppress=true);
-            
-            static
-            std::string requestStr(const ICInterfaceRequest &srv, bool suppress=true);
-            
-            static
-            std::string responseStr(const ICInterfaceResponse &srv, bool suppress=true);
-            
-            static
-            std::string actionStr(char type);
-            
-        private:
-            static
-            std::string vecString2Str(const std::vector<std::string> &vec);
-            
-            static
-            std::string vecPoseStamped2Str(const std::vector<geometry_msgs::PoseStamped> &vec);
-            
-            static
-            std::string vecJointMask2Str(const std::vector<robot_interaction_tools_msgs::JointMask> &vec);
-            
-            static
-            std::string vecToleranceInfo2Str(const std::vector<robot_interaction_tools_msgs::ToleranceInfo> &vec);
-            
-            //static
-            //std::string vecToleranceInfoArray2Str(const std::vector<robot_interaction_tools_msgs::ToleranceInfoArray> &vec);
-            
-            static
-            std::string vecBool2Str(const std::vector<uint8_t> &vec);
-            
-            static
-            std::string vecJointNameMap2Str(const std::vector<robot_interaction_tools_msgs::JointNameMap> &vec);
-            
-    };
-     
+// typedef for using message in Qt signal/slot; registered in .cpp
+typedef robot_interaction_tools_msgs::InteractiveControlsInterface ICInterface;
+// typedef robot_interaction_tools_msgs::InteractiveControlsInterface::Request
+// InteractiveControlsInterfaceRequest;
+// typedef robot_interaction_tools_msgs::InteractiveControlsInterface::Response
+// InteractiveControlsInterfaceResponse;
+typedef robot_interaction_tools_msgs::InteractiveControlsInterfaceRequest
+    ICInterfaceRequest;
+typedef robot_interaction_tools_msgs::InteractiveControlsInterfaceResponse
+    ICInterfaceResponse;
+
+// TODO: need a service call thread object
+
+class InteractiveControlsInterfaceUtils {
+public:
+  static void inactiveGroups(const ICInterface::Response &srv,
+                             std::unordered_set<std::string> &inactive);
+  // std::vector<std::string> &inactive);
+
+  static std::string srvStr(const ICInterface &srv, bool suppress = true);
+
+  static std::string requestStr(const ICInterfaceRequest &srv,
+                                bool suppress = true);
+
+  static std::string responseStr(const ICInterfaceResponse &srv,
+                                 bool suppress = true);
+
+  static std::string actionStr(char type);
+
+private:
+  static std::string vecString2Str(const std::vector<std::string> &vec);
+
+  static std::string
+  vecPoseStamped2Str(const std::vector<geometry_msgs::PoseStamped> &vec);
+
+  static std::string vecJointMask2Str(
+      const std::vector<robot_interaction_tools_msgs::JointMask> &vec);
+
+  static std::string vecToleranceInfo2Str(
+      const std::vector<robot_interaction_tools_msgs::ToleranceInfo> &vec);
+
+  // static
+  // std::string vecToleranceInfoArray2Str(const
+  // std::vector<robot_interaction_tools_msgs::ToleranceInfoArray> &vec);
+
+  static std::string vecBool2Str(const std::vector<uint8_t> &vec);
+
+  static std::string vecJointNameMap2Str(
+      const std::vector<robot_interaction_tools_msgs::JointNameMap> &vec);
+};
 }
 #endif
-

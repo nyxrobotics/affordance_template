@@ -32,21 +32,21 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define RVIZ_INTERACTIVE_CONTROLS_PANEL_HPP
 
 /* ROS Includes */
+#include <ros/package.h>
 #include <ros/ros.h>
 #include <rviz/panel.h>
-#include <ros/package.h>
 
-#include <robot_interaction_tools_msgs/GetGroupConfiguration.h>
 #include <robot_interaction_tools_msgs/ConfigureGroup.h>
+#include <robot_interaction_tools_msgs/GetGroupConfiguration.h>
 
 #include "ui_rviz_panel.h"
-#include <rviz_interactive_controls_panel/interface_utils.h>
 #include <rviz_interactive_controls_panel/group_controls_widget.h>
+#include <rviz_interactive_controls_panel/interface_utils.h>
 #include <rviz_interactive_controls_panel/multi_group_controls_widget.h>
 
 #include <robot_interaction_tools_msgs/AddGroup.h>
-#include <robot_interaction_tools_msgs/RemoveGroup.h>
 #include <robot_interaction_tools_msgs/ExecuteCommand.h>
+#include <robot_interaction_tools_msgs/RemoveGroup.h>
 
 namespace Ui {
 class RVizInteractiveControlsPanel;
@@ -54,61 +54,60 @@ class RVizInteractiveControlsPanel;
 
 namespace rviz_interactive_controls_panel {
 
-    class RVizInteractiveControlsPanel : public rviz::Panel
-    {
-        Q_OBJECT
+class RVizInteractiveControlsPanel : public rviz::Panel {
+  Q_OBJECT
 
-    public:
-        explicit RVizInteractiveControlsPanel(QWidget *parent = 0);
-        ~RVizInteractiveControlsPanel();
-        
-      public Q_SLOTS:  
-         bool getConfigData();
-         bool popupParamData();
-         bool addGroupRequest();
-         bool removeGroupRequest();
-         void groupDoubleClicked(QListWidgetItem*);
+public:
+  explicit RVizInteractiveControlsPanel(QWidget *parent = 0);
+  ~RVizInteractiveControlsPanel();
 
-    private:
-        
-        // pointer to maink UI panel
-        Ui::RVizInteractiveControlsPanel *ui;
+public Q_SLOTS:
+  bool getConfigData();
+  bool popupParamData();
+  bool addGroupRequest();
+  bool removeGroupRequest();
+  void groupDoubleClicked(QListWidgetItem *);
 
-        // service client to get/set info
-        ros::ServiceClient interactive_control_configure_client_;
-        ros::ServiceClient interactive_control_get_info_client_;
+private:
+  // pointer to maink UI panel
+  Ui::RVizInteractiveControlsPanel *ui;
 
-        // ros node handle
-        ros::NodeHandle nh_;
+  // service client to get/set info
+  ros::ServiceClient interactive_control_configure_client_;
+  ros::ServiceClient interactive_control_get_info_client_;
 
-        // topic base
-        std::string topic_base_;
+  // ros node handle
+  ros::NodeHandle nh_;
 
-        // init flag
-        bool initialized;
-        
-        // array of group widgets
-        std::map<std::string, GroupControlsWidget *> group_widgets;
-        std::map<std::string, int> previous_groups;
-        MultiGroupControlsWidget *multi_group_widget;
+  // topic base
+  std::string topic_base_;
 
-        // setup widget function
-        void setupWidgets();
-        bool selectTab(const std::string &text);
+  // init flag
+  bool initialized;
 
-        // function add a new group controls tab
-        bool addGroupControls(std::string group_name);
+  // array of group widgets
+  std::map<std::string, GroupControlsWidget *> group_widgets;
+  std::map<std::string, int> previous_groups;
+  MultiGroupControlsWidget *multi_group_widget;
 
-        // multi-group controls
-        void updateMultiGroupControls(std::vector<robot_interaction_tools_msgs::PlanGroupConfiguration> &group_configurations);
-        bool addMultiGroupControls();
-        bool removeMultiGroupControls();
+  // setup widget function
+  void setupWidgets();
+  bool selectTab(const std::string &text);
 
-        bool setupFromConfigResponse(std::vector<robot_interaction_tools_msgs::PlanGroupConfiguration> &group_configurations);
+  // function add a new group controls tab
+  bool addGroupControls(std::string group_name);
 
-    };
+  // multi-group controls
+  void updateMultiGroupControls(
+      std::vector<robot_interaction_tools_msgs::PlanGroupConfiguration>
+          &group_configurations);
+  bool addMultiGroupControls();
+  bool removeMultiGroupControls();
 
+  bool setupFromConfigResponse(
+      std::vector<robot_interaction_tools_msgs::PlanGroupConfiguration>
+          &group_configurations);
+};
 }
 
 #endif // RVIZ_INTERACTIVE_CONTROLS_PANEL_HPP
-

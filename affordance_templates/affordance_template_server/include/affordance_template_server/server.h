@@ -33,19 +33,19 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <iostream>
 
-#include <ros/ros.h>
 #include <ros/package.h>
+#include <ros/ros.h>
 
 #include <tf/transform_listener.h>
 
-#include <affordance_template_markers/robot_interface.h>
 #include <affordance_template_markers/affordance_template.h>
+#include <affordance_template_markers/robot_interface.h>
 
-#include <affordance_template_library/affordance_template_structure.h>
 #include <affordance_template_library/affordance_template_parser.h>
+#include <affordance_template_library/affordance_template_structure.h>
 
-#include <affordance_template_msgs/RobotConfig.h>
 #include <affordance_template_msgs/AffordanceTemplateConfig.h>
+#include <affordance_template_msgs/RobotConfig.h>
 
 #include <interactive_markers/interactive_marker_server.h>
 
@@ -55,59 +55,71 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define BOOST_NO_CXX11_SCOPED_ENUMS
 #include <boost/filesystem.hpp>
 
-namespace affordance_template_server
-{
-  class AffordanceTemplateServer
-  {
-    void configureServer();
-    bool loadRobot();
-    bool loadTemplates();
-    int getNextID(const std::string&);
-    std::string getPackagePath(const std::string&);
+namespace affordance_template_server {
+class AffordanceTemplateServer {
+  void configureServer();
+  bool loadRobot();
+  bool loadTemplates();
+  int getNextID(const std::string &);
+  std::string getPackagePath(const std::string &);
 
-    ros::NodeHandle nh_;
-    boost::mutex mutex_;
+  ros::NodeHandle nh_;
+  boost::mutex mutex_;
 
-    tf::TransformListener listener_;
-    affordance_template_msgs::RobotConfig robot_config_;
+  tf::TransformListener listener_;
+  affordance_template_msgs::RobotConfig robot_config_;
 
-    std::shared_ptr<interactive_markers::InteractiveMarkerServer> im_server_;
-    std::shared_ptr<affordance_template_markers::RobotInterface> robot_interface_;
+  std::shared_ptr<interactive_markers::InteractiveMarkerServer> im_server_;
+  std::shared_ptr<affordance_template_markers::RobotInterface> robot_interface_;
 
-    std::map<std::string, std::shared_ptr<affordance_template::AffordanceTemplate> > at_map_;
-    std::map<std::string, affordance_template_object::AffordanceTemplateStructure> at_structure_map_;
+  std::map<std::string,
+           std::shared_ptr<affordance_template::AffordanceTemplate>>
+      at_map_;
+  std::map<std::string, affordance_template_object::AffordanceTemplateStructure>
+      at_structure_map_;
 
-    bool status_;
-    std::string pkg_name_;
-    std::string robot_yaml_;
-    std::string robot_name_;
-    
-  public:
-    AffordanceTemplateServer(){} // default constructor 
-    AffordanceTemplateServer(const ros::NodeHandle &, const std::string&);
-    ~AffordanceTemplateServer(){}
-     
-    inline bool getStatus() { return status_; }
-    inline void setStatus(bool status) { status_ = status; }
-    inline bool findTemplate(const std::string &name) { at_structure_map_.find(name) == at_structure_map_.end() ? false : true; }
-    inline affordance_template_msgs::RobotConfig getRobotConfig() { return robot_config_; }
-    
-    std::vector<affordance_template_msgs::AffordanceTemplateConfig> getAvailableTemplates(const std::string &name="");
-    std::vector<std::string> getRunningTemplates(const std::string &name="");
+  bool status_;
+  std::string pkg_name_;
+  std::string robot_yaml_;
+  std::string robot_name_;
 
-    bool loadRobot(const std::string&); // from file
-    bool loadRobot(const affordance_template_msgs::RobotConfig&); // from msg
+public:
+  AffordanceTemplateServer() {} // default constructor
+  AffordanceTemplateServer(const ros::NodeHandle &, const std::string &);
+  ~AffordanceTemplateServer() {}
 
-    bool refreshTemplates() { return loadTemplates(); }
+  inline bool getStatus() { return status_; }
+  inline void setStatus(bool status) { status_ = status; }
+  inline bool findTemplate(const std::string &name) {
+    at_structure_map_.find(name) == at_structure_map_.end() ? false : true;
+  }
+  inline affordance_template_msgs::RobotConfig getRobotConfig() {
+    return robot_config_;
+  }
 
-    bool addTemplate(const std::string&, uint8_t&);
-    bool addTemplate(const std::string&, uint8_t&, geometry_msgs::PoseStamped&);
-    bool removeTemplate(const std::string&, const uint8_t);
-    bool updateTemplate(const std::string&, const uint8_t, const geometry_msgs::PoseStamped&);
+  std::vector<affordance_template_msgs::AffordanceTemplateConfig>
+  getAvailableTemplates(const std::string &name = "");
+  std::vector<std::string> getRunningTemplates(const std::string &name = "");
 
-    bool getTemplateInstance(const std::string&, const uint8_t, std::shared_ptr<affordance_template::AffordanceTemplate>&);
-    bool getTemplateInstance(const std::string&, std::shared_ptr<affordance_template::AffordanceTemplate>&);
-  };
+  bool loadRobot(const std::string &);                           // from file
+  bool loadRobot(const affordance_template_msgs::RobotConfig &); // from msg
+
+  bool refreshTemplates() { return loadTemplates(); }
+
+  bool addTemplate(const std::string &, uint8_t &);
+  bool addTemplate(const std::string &, uint8_t &,
+                   geometry_msgs::PoseStamped &);
+  bool removeTemplate(const std::string &, const uint8_t);
+  bool updateTemplate(const std::string &, const uint8_t,
+                      const geometry_msgs::PoseStamped &);
+
+  bool getTemplateInstance(
+      const std::string &, const uint8_t,
+      std::shared_ptr<affordance_template::AffordanceTemplate> &);
+  bool getTemplateInstance(
+      const std::string &,
+      std::shared_ptr<affordance_template::AffordanceTemplate> &);
+};
 }
 
-#endif 
+#endif

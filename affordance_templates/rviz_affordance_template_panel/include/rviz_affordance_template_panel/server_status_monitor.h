@@ -33,7 +33,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <ros/ros.h>
 
-#include <boost/thread.hpp> 
+#include <boost/thread.hpp>
 #include <boost/thread/mutex.hpp>
 
 #include <rviz_affordance_template_panel/msg_headers.h>
@@ -44,41 +44,41 @@ class RVizAffordanceTemplatePanel;
 
 namespace rviz_affordance_template_panel {
 
-  class AffordanceTemplateServerStatusMonitor  {
+class AffordanceTemplateServerStatusMonitor {
 
-    public:
+public:
+  AffordanceTemplateServerStatusMonitor(ros::NodeHandle &nh,
+                                        std::string srv_name,
+                                        int update_rate = 1);
+  ~AffordanceTemplateServerStatusMonitor();
 
-      AffordanceTemplateServerStatusMonitor(ros::NodeHandle &nh, std::string srv_name, int update_rate=1);
-      ~AffordanceTemplateServerStatusMonitor();
+  void start();
+  void stop();
 
-      void start();
-      void stop();
+  inline bool isReady() { return ready_; }
+  inline bool isAvailable() { return available_; }
 
-      inline bool isReady() { return ready_; }
-      inline bool isAvailable() { return available_; }
+protected:
+  void run_function();
+  void wait(int seconds);
 
-    protected:
+  // boost thread
+  std::unique_ptr<boost::thread> monitor_thread_;
+  boost::mutex mutex;
 
-      void run_function();
-      void wait(int seconds);
+  // ros stuff
+  ros::ServiceClient srv_;
+  std::string srv_name_;
+  ros::NodeHandle nh_;
 
-      // boost thread
-      std::unique_ptr<boost::thread> monitor_thread_;
-      boost::mutex mutex;
+  // member functions
+  int update_rate_;
 
-      // ros stuff
-      ros::ServiceClient srv_;
-      std::string srv_name_;
-      ros::NodeHandle nh_;
-
-      // member functions
-      int update_rate_;
-
-      // status vars
-      bool available_;
-      bool ready_;
-      bool running_;
-  };
+  // status vars
+  bool available_;
+  bool ready_;
+  bool running_;
+};
 }
 
 #endif // AFFORDANCE_TEMPLATE_SERVER_STATUS_MONITOR_HPP

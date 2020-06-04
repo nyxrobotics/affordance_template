@@ -37,68 +37,64 @@ sensor_msgs::JointState start_state_, zero_state_;
 bool flip_;
 bool state_set_;
 
-void stateCb(const sensor_msgs::JointState& state)
-{
-    if (!state_set_)
-    {
-        start_state_ = state;
-        zero_state_ = start_state_;
-        for (unsigned int i=0; i < zero_state_.name.size(); ++i)
-            if (zero_state_.name[i].find("arm") != std::string::npos)
-                zero_state_.position[i] = 0.0;
-        state_set_ = true;
-    }
+void stateCb(const sensor_msgs::JointState &state) {
+  if (!state_set_) {
+    start_state_ = state;
+    zero_state_ = start_state_;
+    for (unsigned int i = 0; i < zero_state_.name.size(); ++i)
+      if (zero_state_.name[i].find("arm") != std::string::npos)
+        zero_state_.position[i] = 0.0;
+    state_set_ = true;
+  }
 
-    state_queue_.push_back(state);
+  state_queue_.push_back(state);
 }
 
-int main(int argc, char** argv)
-{
-    flip_ = false;
-    state_set_ = false;
+int main(int argc, char **argv) {
+  flip_ = false;
+  state_set_ = false;
 
-    ros::init(argc, argv, "predicted_display_test");
-    ros::NodeHandle nh;
-    ros::Subscriber js_sub = nh.subscribe("joint_states", 1, &stateCb);
-    ros::Publisher display_pub = nh.advertise<sensor_msgs::JointState>("predictive_joint_states", 1);
+  ros::init(argc, argv, "predicted_display_test");
+  ros::NodeHandle nh;
+  ros::Subscriber js_sub = nh.subscribe("joint_states", 1, &stateCb);
+  ros::Publisher display_pub =
+      nh.advertise<sensor_msgs::JointState>("predictive_joint_states", 1);
 
-    while (ros::ok())
-    {
-        if (state_queue_.size())
-        {
-            state_queue_.pop_front();
+  while (ros::ok()) {
+    if (state_queue_.size()) {
+      state_queue_.pop_front();
 
-            sensor_msgs::JointState st = zero_state_;
-            if (flip_)
-                st = start_state_;
-            
-            //get arm joints
-            std::map<std::string, double> arm_joints;
-            for (unsigned int i = 0; i < st.name.size(); ++i)
-                if (st.name[i].find("left_arm") != std::string::npos || st.name[i].find("right_arm") != std::string::npos)
-                    arm_joints[st.name[i]] = (start_state_.position[i] - zero_state_.position[i])/10;
+      sensor_msgs::JointState st = zero_state_;
+      if (flip_)
+        st = start_state_;
 
-            // take 10 steps to go from ready pose to home back to ready pose
-            for (int cnt = 0; cnt < 10; ++cnt)
-            {
-                for (unsigned int i = 0; i < st.name.size(); ++i)
-                    if (arm_joints.find(st.name[i]) != arm_joints.end())
-                        if (!flip_)
-                            st.position[i] += arm_joints[st.name[i]];
-                        else 
-                            st.position[i] -= arm_joints[st.name[i]];
-                
-                st.header.stamp = ros::Time::now() + ros::Duration(0.5);
-                display_pub.publish(st);
-                ros::Duration(0.1).sleep();
-            }
+      // get arm joints
+      std::map<std::string, double> arm_joints;
+      for (unsigned int i = 0; i < st.name.size(); ++i)
+        if (st.name[i].find("left_arm") != std::string::npos ||
+            st.name[i].find("right_arm") != std::string::npos)
+          arm_joints[st.name[i]] =
+              (start_state_.position[i] - zero_state_.position[i]) / 10;
 
-            flip_ = !flip_;
-        }
-        ros::Duration(1).sleep();
-        ros::spinOnce();
+      // take 10 steps to go from ready pose to home back to ready pose
+      for (int cnt = 0; cnt < 10; ++cnt) {
+        for (unsigned int i = 0; i < st.name.size(); ++i)
+          if (arm_joints.find(st.name[i]) != arm_joints.end())
+            if (!flip_)
+              st.position[i] += arm_joints[st.name[i]];
+            else
+              st.position[i] -= arm_joints[st.name[i]];
+
+        st.header.stamp = ros::Time::now() + ros::Duration(0.5);
+        display_pub.publish(st);
+        ros::Duration(0.1).sleep();
+      }
+
+      flip_ = !flip_;
     }
+    ros::Duration(1).sleep();
+    ros::spinOnce();
+  }
 
-    return 0;
+  return 0;
 }
-

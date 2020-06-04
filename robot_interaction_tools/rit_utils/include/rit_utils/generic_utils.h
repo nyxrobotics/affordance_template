@@ -33,114 +33,102 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <ros/ros.h>
 
-#include <tf/transform_datatypes.h>
 #include <math.h>
+#include <tf/transform_datatypes.h>
 
-namespace rit_utils
-{
-  enum GroupType
-  {
-    NONE = 0,
-  	JOINT = 1,
-  	CARTESIAN = 2,
-  	ENDEFFECTOR = 3
-  };
+namespace rit_utils {
+enum GroupType { NONE = 0, JOINT = 1, CARTESIAN = 2, ENDEFFECTOR = 3 };
 
-  inline std::string groupTypeToString(const GroupType& type)
-  {
-    switch(type)
-    {
-      default:
-        return "";
-    }
-    return ""; //TODO
+inline std::string groupTypeToString(const GroupType &type) {
+  switch (type) {
+  default:
+    return "";
   }
+  return ""; // TODO
+}
 
-  inline tf::Matrix3x3 doXRot(double v) {
-    tfScalar xx(1.0);
-    tfScalar xy(0.0);  
-    tfScalar xz(0.0);
-    tfScalar yx(0.0); 
-    tfScalar yy(cos(v)); 
-    tfScalar yz(-sin(v));
-    tfScalar zx(0.0); 
-    tfScalar zy(sin(v));
-    tfScalar zz(cos(v));
-    tf::Matrix3x3 R(xx, xy, xz, yx, yy, yz, zx, zy, zz);
-    return R;
-  } 
+inline tf::Matrix3x3 doXRot(double v) {
+  tfScalar xx(1.0);
+  tfScalar xy(0.0);
+  tfScalar xz(0.0);
+  tfScalar yx(0.0);
+  tfScalar yy(cos(v));
+  tfScalar yz(-sin(v));
+  tfScalar zx(0.0);
+  tfScalar zy(sin(v));
+  tfScalar zz(cos(v));
+  tf::Matrix3x3 R(xx, xy, xz, yx, yy, yz, zx, zy, zz);
+  return R;
+}
 
-  inline tf::Matrix3x3 doYRot(double v) {
-    tfScalar xx(cos(v));
-    tfScalar xy(0.0);  
-    tfScalar xz(sin(v));
-    tfScalar yx(0.0); 
-    tfScalar yy(1.0); 
-    tfScalar yz(0.0);
-    tfScalar zx(-sin(v)); 
-    tfScalar zy(0.0);
-    tfScalar zz(cos(v));
-    tf::Matrix3x3 R(xx, xy, xz, yx, yy, yz, zx, zy, zz);
-    return R;
-  } 
+inline tf::Matrix3x3 doYRot(double v) {
+  tfScalar xx(cos(v));
+  tfScalar xy(0.0);
+  tfScalar xz(sin(v));
+  tfScalar yx(0.0);
+  tfScalar yy(1.0);
+  tfScalar yz(0.0);
+  tfScalar zx(-sin(v));
+  tfScalar zy(0.0);
+  tfScalar zz(cos(v));
+  tf::Matrix3x3 R(xx, xy, xz, yx, yy, yz, zx, zy, zz);
+  return R;
+}
 
-  inline tf::Matrix3x3 doZRot(double v) {
-    tfScalar xx(cos(v));
-    tfScalar xy(-sin(v));  
-    tfScalar xz(0.0);
-    tfScalar yx(sin(v)); 
-    tfScalar yy(cos(v)); 
-    tfScalar yz(0.0);
-    tfScalar zx(0.0); 
-    tfScalar zy(0.0);
-    tfScalar zz(1.0);
+inline tf::Matrix3x3 doZRot(double v) {
+  tfScalar xx(cos(v));
+  tfScalar xy(-sin(v));
+  tfScalar xz(0.0);
+  tfScalar yx(sin(v));
+  tfScalar yy(cos(v));
+  tfScalar yz(0.0);
+  tfScalar zx(0.0);
+  tfScalar zy(0.0);
+  tfScalar zz(1.0);
 
-    // std::cout << "-------------------------------" << std::endl;
-    // std::cout << xx << " " << xy << " " << xz << std::endl;
-    // std::cout << yx << " " << yy << " " << yz << std::endl;
-    // std::cout << zx << " " << zy << " " << zz << std::endl;
-    // std::cout << "-------------------------------" << std::endl;
+  // std::cout << "-------------------------------" << std::endl;
+  // std::cout << xx << " " << xy << " " << xz << std::endl;
+  // std::cout << yx << " " << yy << " " << yz << std::endl;
+  // std::cout << zx << " " << zy << " " << zz << std::endl;
+  // std::cout << "-------------------------------" << std::endl;
 
-    tf::Matrix3x3 R(xx, xy, xz, yx, yy, yz, zx, zy, zz);
-    return R;
-  
-  } 
+  tf::Matrix3x3 R(xx, xy, xz, yx, yy, yz, zx, zy, zz);
+  return R;
+}
 
-  inline tf::Matrix3x3 getRotationFromJointVal(urdf::Vector3 axis, double v) {
-    if(axis.x > 0) {
-      return doXRot(v);
-    } else if(axis.x < 0) {
-      return doXRot(-v);
-    } else if(axis.y > 0) {
-      return doYRot(v);
-    } else if(axis.y < 0) {
-      return doYRot(-v);
-    } else if(axis.z < 0) {
-      return doZRot(-v);
-    } else {
-      return doZRot(v);
-    }
+inline tf::Matrix3x3 getRotationFromJointVal(urdf::Vector3 axis, double v) {
+  if (axis.x > 0) {
+    return doXRot(v);
+  } else if (axis.x < 0) {
+    return doXRot(-v);
+  } else if (axis.y > 0) {
+    return doYRot(v);
+  } else if (axis.y < 0) {
+    return doYRot(-v);
+  } else if (axis.z < 0) {
+    return doZRot(-v);
+  } else {
+    return doZRot(v);
   }
+}
 
-  inline tf::Vector3 getTranslationFromJointVal(urdf::Vector3 axis, double v) {
-    tf::Vector3 V(0,0,0);
-    if(axis.x > 0) {
-      V.setX(v);
-    } else if(axis.x < 0) {
-      V.setX(-v);
-    } else if(axis.y > 0) {
-      V.setY(v);
-    } else if(axis.y < 0) {
-      V.setY(-v);
-    } else if(axis.z < 0) {
-      V.setZ(v);
-    } else {
-      V.setZ(-v);
-    }
-    return V;
+inline tf::Vector3 getTranslationFromJointVal(urdf::Vector3 axis, double v) {
+  tf::Vector3 V(0, 0, 0);
+  if (axis.x > 0) {
+    V.setX(v);
+  } else if (axis.x < 0) {
+    V.setX(-v);
+  } else if (axis.y > 0) {
+    V.setY(v);
+  } else if (axis.y < 0) {
+    V.setY(-v);
+  } else if (axis.z < 0) {
+    V.setZ(v);
+  } else {
+    V.setZ(-v);
   }
-
-
+  return V;
+}
 }
 
 #endif
