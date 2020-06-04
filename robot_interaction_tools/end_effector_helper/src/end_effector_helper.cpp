@@ -271,7 +271,7 @@ tf::Transform EndEffectorHelper::getTransformToLink(std::string root_link, std::
   T = getTransformToLink(root_link, parent_link, parent_joint, jpos, T_joints, T_map);
 
   // add last transform
-  boost::shared_ptr<urdf::Joint> jnt = rdf_model_->getJoint(joint);
+  std::shared_ptr<urdf::Joint> jnt = rdf_model_->getJoint(joint);
   
   double q[4];
   jnt->parent_to_joint_origin_transform.rotation.getQuaternion(q[0],q[1],q[2],q[3]);

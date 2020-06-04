@@ -93,7 +93,7 @@ namespace end_effector_helper
 
   };
 
-  typedef boost::shared_ptr<EndEffectorHelper> EndEffectorHelperConstPtr;
+  typedef std::shared_ptr<EndEffectorHelper> EndEffectorHelperConstPtr;
 };
 
 #endif

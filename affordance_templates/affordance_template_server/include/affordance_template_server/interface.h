@@ -62,7 +62,7 @@ using namespace affordance_template_msgs;
 
 namespace affordance_template_server
 {
-    typedef boost::shared_ptr<affordance_template::AffordanceTemplate> ATPointer;
+    typedef std::shared_ptr<affordance_template::AffordanceTemplate> ATPointer;
 
     inline std::string boolToString(bool b) { return (b ? "true" : "false"); }
     inline std::string successToString(bool b) { return (b ? "succeeded" : "failed"); }
@@ -97,7 +97,7 @@ namespace affordance_template_server
         AffordanceTemplateStatus getTemplateStatus(const std::string& template_name, const int template_id, std::string& traj_name, const std::string& frame_id="");
         
         ros::Subscriber scale_stream_sub_;
-        boost::shared_ptr<AffordanceTemplateServer> at_server_;
+        std::shared_ptr<AffordanceTemplateServer> at_server_;
         tf::TransformListener listener_;
         std::map<std::string, ros::ServiceServer> at_srv_map_;
         ros::NodeHandle nh_;

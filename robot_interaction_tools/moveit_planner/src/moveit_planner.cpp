@@ -54,7 +54,7 @@ bool MoveItPlanner::setup_() {
 bool MoveItPlanner::addPlanningGroup_(const std::string &group_name)
 {
 
-    MoveGroupSharedPtr g( new moveit::planning_interface::MoveGroup(group_name) );
+    MoveGroupSharedPtr g( new moveit::planning_interface::MoveGroupInterface(group_name) );
     groups_[group_name] = g;
 
     groups_[group_name]->setGoalJointTolerance(joint_tolerance_[group_name]);
@@ -119,94 +119,7 @@ void MoveItPlanner::clearGroupGoals(const std::string &group_name) {
     stored_display_trajectory_.erase(group_name);
     stored_plan_.erase(group_name);
   }
-}
-
-bool MoveItPlanner::setObstacles(planner_interface::SetObstacles::Request  &req,
-                          planner_interface::SetObstacles::Response &res) {
-
-    std::vector<moveit_msgs::CollisionObject> collision_objects;
-
-    for(auto &obj : req.marker_obstacles.markers) {
-
-      moveit_msgs::CollisionObject collision_object;
-      collision_object.header.frame_id = obj.header.frame_id;
-
-      /* The id of the object is used to identify it. */
-      collision_object.id = obj.ns + "/" + obj.text;
-
-
-      if(obj.type==visualization_msgs::Marker::CUBE) {
-        shape_msgs::SolidPrimitive primitive;
-        primitive.type = primitive.BOX;
-        primitive.dimensions.resize(3);
-        primitive.dimensions[0] = obj.scale.x;
-        primitive.dimensions[1] = obj.scale.y;
-        primitive.dimensions[2] = obj.scale.z;
-        collision_object.primitives.push_back(primitive);
-        collision_object.primitive_poses.push_back(obj.pose);
-      } else if(obj.type==visualization_msgs::Marker::SPHERE) {
-        shape_msgs::SolidPrimitive primitive;
-        primitive.type = primitive.SPHERE;
-        primitive.dimensions.resize(1);
-        primitive.dimensions[0] = obj.scale.x;
-        collision_object.primitives.push_back(primitive);
-        collision_object.primitive_poses.push_back(obj.pose);
-      } else if(obj.type==visualization_msgs::Marker::CYLINDER) {
-        shape_msgs::SolidPrimitive primitive;
-        primitive.type = primitive.CYLINDER;
-        primitive.dimensions.resize(2);
-        primitive.dimensions[0] = obj.scale.x;
-        primitive.dimensions[1] = obj.scale.y;
-        collision_object.primitives.push_back(primitive);
-        collision_object.primitive_poses.push_back(obj.pose);
-      } else if(obj.type==visualization_msgs::Marker::MESH_RESOURCE) {
-        ROS_WARN("TracIKPlanner::setObstacles() -- mesh obstacles not supported");
-        continue;
-      }
-   
-      if(req.action == req.ADD) {
-        collision_object.operation = collision_object.ADD;
-        ROS_INFO("Add obstacle %s into the world", collision_object.id.c_str());
-        obj.action = visualization_msgs::Marker::ADD;
-      } else if(req.action == req.DELETE) {
-        collision_object.operation = collision_object.REMOVE;
-        ROS_INFO("Removing obstacle %s from the world", collision_object.id.c_str());
-        obj.action = visualization_msgs::Marker::DELETE;
-      } else if(req.action == req.MOVE) {
-        collision_object.operation = collision_object.MOVE;
-        ROS_INFO("Moving obstacle %s in world", collision_object.id.c_str());
-        obj.action = visualization_msgs::Marker::MODIFY;
-      } 
-      obstacles_.markers.push_back(obj);
-
-      collision_objects.push_back(collision_object);
-
-    }
- 
-    for(auto &obj : req.moveit_obstacles) {
-      moveit_msgs::CollisionObject co = obj;
-      if(req.action == req.ADD) {
-        co.operation = co.ADD;
-        ROS_INFO("Add MoveIt! obstacle %s into the world", co.id.c_str());
-      } else if(req.action == req.DELETE) {
-        co.operation = co.REMOVE;
-        ROS_INFO("Removing MoveIt! obstacle %s from the world", co.id.c_str());
-      } else if(req.action == req.MOVE) {
-        co.operation = co.MOVE;
-        ROS_INFO("Moving MoveIt! obstacle %s in world", co.id.c_str());
-      } 
-      collision_objects.push_back(co);
-    }
-
-
-    planning_scene_interface_.addCollisionObjects(collision_objects);
-
-    obstacle_pub_.publish(obstacles_);
-
-    res.result = true;
-    return true;
-}
-    
+}   
 
 bool MoveItPlanner::planJointPath_(const std::map<std::string, std::vector<sensor_msgs::JointState> > &goals, std::map<std::string, trajectory_msgs::JointTrajectory>& trajectories, bool execute, bool show_path, JointStateMap start_states) {
 
@@ -254,7 +167,7 @@ bool MoveItPlanner::planJointPath_(const std::map<std::string, std::vector<senso
 
     clearGroupGoals(group_name);
     groups_[group_name]->setJointValueTarget(waypoints[0]);
-    moveit::planning_interface::MoveGroup::Plan joint_plan;
+    moveit::planning_interface::MoveGroupInterface::Plan joint_plan;
     if(groups_[group_name]->plan(joint_plan)) {
       for(auto &pt : joint_plan.trajectory_.joint_trajectory.points) {
         pt.velocities.clear();
@@ -336,7 +249,7 @@ bool MoveItPlanner::plan_(const std::map<std::string, planner_interface::Plannin
       std::vector<geometry_msgs::Pose> pose_goals;
       pose_goals.push_back(req.second.goal.pose);      
 
-      moveit::planning_interface::MoveGroup::Plan cart_plan;      
+      moveit::planning_interface::MoveGroupInterface::Plan cart_plan;      
       moveit_msgs::RobotTrajectory traj;
 
       // use start state for planning, if available
@@ -395,7 +308,7 @@ bool MoveItPlanner::plan_(const std::map<std::string, planner_interface::Plannin
       geometry_msgs::PoseStamped pose_goal = req.second.goal;
       pose_goal.header.stamp = ros::Time::now();
       groups_[group_name]->setPoseTarget(pose_goal);
-      moveit::planning_interface::MoveGroup::Plan joint_plan;
+      moveit::planning_interface::MoveGroupInterface::Plan joint_plan;
       ROS_INFO("MoveItPlanner::plan() -- calling MoveIt! joint planner for %s with EE link: %s", group_name.c_str(), groups_[group_name]->getEndEffectorLink().c_str());
       if(groups_[group_name]->plan(joint_plan)) {
         ROS_INFO("MoveItPlanner::plan() -- done");
@@ -421,7 +334,7 @@ bool MoveItPlanner::plan_(const std::map<std::string, planner_interface::Plannin
 }
 
 
-bool MoveItPlanner::executeContinuousPlans(const std::vector<std::pair<std::string, moveit::planning_interface::MoveGroup::Plan> >& group_plans)
+bool MoveItPlanner::executeContinuousPlans(const std::vector<std::pair<std::string, moveit::planning_interface::MoveGroupInterface::Plan> >& group_plans)
 {
   ROS_DEBUG("[MoveItPlanner::executeContinuousPlans] executing %d plans continuously", (int)group_plans.size());
 
@@ -440,7 +353,7 @@ bool MoveItPlanner::executePlans_(const std::vector<std::string> &group_names) {
     ROS_INFO("MoveItPlanner::executePlans_() -- %s", group_name.c_str());  
     if(stored_plan_.find(group_name) != std::end(stored_plan_)) {
       //scale trajectories
-      moveit::planning_interface::MoveGroup::Plan cart_plan= stored_plan_[group_name];
+      moveit::planning_interface::MoveGroupInterface::Plan cart_plan= stored_plan_[group_name];
       
       for (uint i=0; i < cart_plan.trajectory_.joint_trajectory.points.size(); i++) {
         cart_plan.trajectory_.joint_trajectory.points[i].time_from_start = ros::Duration(cart_plan.trajectory_.joint_trajectory.points[i].time_from_start.toSec() / trajectory_scaler_);
@@ -456,7 +369,7 @@ bool MoveItPlanner::executePlans_(const std::vector<std::string> &group_names) {
   return true;
 }
 
-bool MoveItPlanner::getPlan(const std::string& group, moveit::planning_interface::MoveGroup::Plan& plan)
+bool MoveItPlanner::getPlan(const std::string& group, moveit::planning_interface::MoveGroupInterface::Plan& plan)
 { 
   if (stored_plan_.find(group) != stored_plan_.end())
   {

@@ -160,7 +160,7 @@ namespace interactive_controls
       std::string robot_name_;
       std::string planner_plugin_;
             
-      boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;
+      std::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;
 
       std::map<std::string, visualization_msgs::InteractiveMarker> markers_;
       std::map<std::string, std::map<std::string, visualization_msgs::InteractiveMarker> > posture_markers_;

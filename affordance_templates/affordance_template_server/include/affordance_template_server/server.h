@@ -71,10 +71,10 @@ namespace affordance_template_server
     tf::TransformListener listener_;
     affordance_template_msgs::RobotConfig robot_config_;
 
-    boost::shared_ptr<interactive_markers::InteractiveMarkerServer> im_server_;
-    boost::shared_ptr<affordance_template_markers::RobotInterface> robot_interface_;
+    std::shared_ptr<interactive_markers::InteractiveMarkerServer> im_server_;
+    std::shared_ptr<affordance_template_markers::RobotInterface> robot_interface_;
 
-    std::map<std::string, boost::shared_ptr<affordance_template::AffordanceTemplate> > at_map_;
+    std::map<std::string, std::shared_ptr<affordance_template::AffordanceTemplate> > at_map_;
     std::map<std::string, affordance_template_object::AffordanceTemplateStructure> at_structure_map_;
 
     bool status_;
@@ -105,8 +105,8 @@ namespace affordance_template_server
     bool removeTemplate(const std::string&, const uint8_t);
     bool updateTemplate(const std::string&, const uint8_t, const geometry_msgs::PoseStamped&);
 
-    bool getTemplateInstance(const std::string&, const uint8_t, boost::shared_ptr<affordance_template::AffordanceTemplate>&);
-    bool getTemplateInstance(const std::string&, boost::shared_ptr<affordance_template::AffordanceTemplate>&);
+    bool getTemplateInstance(const std::string&, const uint8_t, std::shared_ptr<affordance_template::AffordanceTemplate>&);
+    bool getTemplateInstance(const std::string&, std::shared_ptr<affordance_template::AffordanceTemplate>&);
   };
 }
 

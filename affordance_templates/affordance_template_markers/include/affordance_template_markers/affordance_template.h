@@ -99,7 +99,7 @@ namespace affordance_template
     std::string group; // left_arm, left_hand, etc
     PlanningGroup type;
     sensor_msgs::JointState start_state;
-    moveit::planning_interface::MoveGroup::Plan plan;
+    moveit::planning_interface::MoveGroupInterface::Plan plan;
   };
 
   class AffordanceTemplate
@@ -107,13 +107,13 @@ namespace affordance_template
 
   public:
     AffordanceTemplate(const ros::NodeHandle nh, 
-                       boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server, 
+                       std::shared_ptr<interactive_markers::InteractiveMarkerServer> server, 
                        std::string robot_nkame, 
                        std::string template_type,
                        int id);
     AffordanceTemplate(const ros::NodeHandle nh, 
-                       boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server, 
-                       boost::shared_ptr<affordance_template_markers::RobotInterface> robot_interface,
+                       std::shared_ptr<interactive_markers::InteractiveMarkerServer> server, 
+                       std::shared_ptr<affordance_template_markers::RobotInterface> robot_interface,
                        std::string robot_name, 
                        std::string template_type,
                        int id);
@@ -135,7 +135,7 @@ namespace affordance_template
     inline std::string getCurrentTrajectory() { return current_trajectory_; }
     inline affordance_template_object::AffordanceTemplateStructure getCurrentStructure() { return structure_; }
     inline affordance_template_object::AffordanceTemplateStructure getDefaultStructure() { return initial_structure_; }
-    inline boost::shared_ptr<affordance_template_markers::RobotInterface> getRobotInterface() { return robot_interface_; }
+    inline std::shared_ptr<affordance_template_markers::RobotInterface> getRobotInterface() { return robot_interface_; }
 
     int getNumWaypoints(const std::string traj_name, const int ee_id);
     bool getTrajectoryPlan(const std::string&, const std::string&, PlanStatus&);
@@ -145,7 +145,7 @@ namespace affordance_template
     bool switchTrajectory(const std::string&);
     bool setTrajectory(const std::string&);
     bool setObjectScaling(const std::string&, double, double);
-    void setRobotInterface(boost::shared_ptr<affordance_template_markers::RobotInterface> robot_interface);
+    void setRobotInterface(std::shared_ptr<affordance_template_markers::RobotInterface> robot_interface);
     bool setObjectPose(const affordance_template_msgs::DisplayObjectInfo&);
     bool setWaypointViewMode(int ee, int wp, bool m);
     bool setTemplatePose(geometry_msgs::PoseStamped ps);
@@ -193,8 +193,8 @@ namespace affordance_template
     bool object_controls_display_on_;
     bool running_;
     
-    boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;
-    boost::shared_ptr<affordance_template_markers::RobotInterface> robot_interface_;
+    std::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;
+    std::shared_ptr<affordance_template_markers::RobotInterface> robot_interface_;
 
     std::map<std::string, visualization_msgs::InteractiveMarker> int_markers_;
     std::map<std::string, interactive_markers::MenuHandler> marker_menus_;

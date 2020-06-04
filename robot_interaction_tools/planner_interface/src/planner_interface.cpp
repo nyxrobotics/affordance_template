@@ -44,7 +44,6 @@ bool PlannerInterface::initialize(const ros::NodeHandle &nh, const std::string& 
 
   std::string node_name = ros::this_node::getName();
 
-  set_obstacle_srv_ = nh_.advertiseService(node_name + "/set_obstacles", &PlannerInterface::setObstacles, this);
   obstacle_pub_ = nh_.advertise<visualization_msgs::MarkerArray>(node_name + "/obstacles", 1000);
 
   ROS_DEBUG("PlannerInterface::initialize() -- nh namespace: %s", node_name.c_str());

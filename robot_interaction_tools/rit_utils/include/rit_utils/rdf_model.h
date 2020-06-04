@@ -51,7 +51,7 @@ namespace rit_utils
 {
 class RDFModel
 {
-  bool parseRDF(const srdf::Model &srdf, const boost::shared_ptr<urdf::ModelInterface> &urdf);
+  bool parseRDF(const srdf::Model &srdf, const std::shared_ptr<urdf::ModelInterface> &urdf);
   
   // SRDF data structures
   std::string robot_name_;
@@ -64,8 +64,8 @@ class RDFModel
   std::vector<srdf::Model::DisabledCollision> disabled_collisions_; // TODO getters - we don't know if we need this info
   // URDF data structures
   std::map<std::string, std::string> mesh_links_;
-  std::vector<boost::shared_ptr<urdf::Link> > urdf_links_;
-  std::map<std::string, boost::shared_ptr<urdf::Joint> > urdf_joints_;
+  std::vector<std::shared_ptr<urdf::Link> > urdf_links_;
+  std::map<std::string, std::shared_ptr<urdf::Joint> > urdf_joints_;
   std::map<std::string, std::pair<std::string, std::string> > fixed_joints_;
   std::map<std::string, std::pair<std::string, std::string> > robot_links_;
   std::map<std::string, std::vector<std::string> > full_group_joints_;
@@ -98,8 +98,8 @@ public:
 
   bool getJointLimits(const std::string& group, std::vector<double>& lower, std::vector<double>& upper);
 
-  boost::shared_ptr<urdf::Link> getLink(const std::string& link);
-  boost::shared_ptr<urdf::Joint> getJoint(const std::string& joint);
+  std::shared_ptr<urdf::Link> getLink(const std::string& link);
+  std::shared_ptr<urdf::Joint> getJoint(const std::string& joint);
 
   bool getLinks(const std::string& group, std::vector<std::string>& links);
   bool getJoints(const std::string& group, std::vector<std::string>& joints, bool full_joints=true, bool fixed=false);

@@ -62,7 +62,7 @@ bool RDFModel::createModels(const std::string& srdf, const std::string& urdf)
   ROS_ASSERT(nh.hasParam(urdf));
   std::string robot_xml;
   nh.getParam(urdf, robot_xml);
-  boost::shared_ptr<urdf::ModelInterface> urdf_model = urdf::parseURDF(robot_xml);
+  std::shared_ptr<urdf::ModelInterface> urdf_model = urdf::parseURDF(robot_xml);
   ROS_ASSERT(urdf_model != NULL);
   ROS_INFO("[RDFModel::createModels] URDF created");
 
@@ -82,7 +82,7 @@ bool RDFModel::createModels(const std::string& srdf, const std::string& urdf)
   return true;
 }
 
-bool RDFModel::parseRDF(const srdf::Model &srdf, const boost::shared_ptr<urdf::ModelInterface> &urdf)
+bool RDFModel::parseRDF(const srdf::Model &srdf, const std::shared_ptr<urdf::ModelInterface> &urdf)
 {
   // SRDF
   ROS_INFO("[RDFModel::parseRDF] Parsing SRDF file.");
@@ -225,7 +225,7 @@ bool RDFModel::findGroup(const std::string& group_name, srdf::Model::Group& grou
   return false;
 }
 
-boost::shared_ptr<urdf::Link> RDFModel::getLink(const std::string& link)
+std::shared_ptr<urdf::Link> RDFModel::getLink(const std::string& link)
 {
   for (auto &i : urdf_links_)
   {
@@ -234,7 +234,7 @@ boost::shared_ptr<urdf::Link> RDFModel::getLink(const std::string& link)
   }
 }
 
-boost::shared_ptr<urdf::Joint> RDFModel::getJoint(const std::string& joint)
+std::shared_ptr<urdf::Joint> RDFModel::getJoint(const std::string& joint)
 {
   for (auto &i : urdf_joints_)
   {
@@ -758,7 +758,7 @@ visualization_msgs::MarkerArray RDFModel::getLinkMarkers(const std::string& link
   marker.mesh_use_embedded_materials = true;
   marker.frame_locked = true;
   // make sure our visual and geometry actually exists
-  boost::shared_ptr<urdf::Link> ptr = getLink(link);
+  std::shared_ptr<urdf::Link> ptr = getLink(link);
   if (ptr->visual != NULL) // some links don't have a visual
   {
     if (ptr->visual->geometry != NULL)

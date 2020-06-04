@@ -71,12 +71,12 @@ namespace rviz_affordance_template_panel
     public:
 
         // typedefs
-        typedef boost::shared_ptr<Affordance> AffordanceSharedPtr;
-        typedef boost::shared_ptr<RobotConfig> RobotConfigSharedPtr;
-        typedef boost::shared_ptr<EndEffectorConfig> EndEffectorConfigSharedPtr;
-        typedef boost::shared_ptr<EndEffectorPoseConfig> EndEffectorPoseIDConfigSharedPtr;
-        typedef boost::shared_ptr<Controls> ControlsSharedPtr;
-        typedef boost::shared_ptr<WaypointDisplay> WaypointDisplaySharedPtr;
+        typedef std::shared_ptr<Affordance> AffordanceSharedPtr;
+        typedef std::shared_ptr<RobotConfig> RobotConfigSharedPtr;
+        typedef std::shared_ptr<EndEffectorConfig> EndEffectorConfigSharedPtr;
+        typedef std::shared_ptr<EndEffectorPoseConfig> EndEffectorPoseIDConfigSharedPtr;
+        typedef std::shared_ptr<Controls> ControlsSharedPtr;
+        typedef std::shared_ptr<WaypointDisplay> WaypointDisplaySharedPtr;
         typedef std::pair<std::string, int> TemplateInstanceID;
 
         // Constructors

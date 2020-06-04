@@ -180,7 +180,7 @@ namespace tolerance_util
 
     };
 
-    typedef boost::shared_ptr<ToleranceUtil> ToleranceUtilSharedPtr;
+    typedef std::shared_ptr<ToleranceUtil> ToleranceUtilSharedPtr;
 };
 
 #endif

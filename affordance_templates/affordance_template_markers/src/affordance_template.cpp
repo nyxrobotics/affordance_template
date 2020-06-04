@@ -36,7 +36,7 @@ using namespace affordance_template_markers;
 using namespace affordance_template_msgs;
 
 AffordanceTemplate::AffordanceTemplate(const ros::NodeHandle nh, 
-                                        boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server,  
+                                        std::shared_ptr<interactive_markers::InteractiveMarkerServer> server,  
                                         std::string robot_name, 
                                         std::string template_type,
                                         int id) :
@@ -68,8 +68,8 @@ AffordanceTemplate::AffordanceTemplate(const ros::NodeHandle nh,
 
 
 AffordanceTemplate::AffordanceTemplate(const ros::NodeHandle nh, 
-                                        boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server,  
-                                        boost::shared_ptr<affordance_template_markers::RobotInterface> robot_interface,
+                                        std::shared_ptr<interactive_markers::InteractiveMarkerServer> server,  
+                                        std::shared_ptr<affordance_template_markers::RobotInterface> robot_interface,
                                         std::string robot_name, 
                                         std::string template_type,
                                         int id) :
@@ -84,7 +84,7 @@ AffordanceTemplate::~AffordanceTemplate()
   robot_interface_->getPlanner()->resetAnimation(true);
 }
 
-void AffordanceTemplate::setRobotInterface(boost::shared_ptr<affordance_template_markers::RobotInterface> robot_interface)
+void AffordanceTemplate::setRobotInterface(std::shared_ptr<affordance_template_markers::RobotInterface> robot_interface)
 {
   robot_interface_ = robot_interface;
 }
@@ -2356,7 +2356,7 @@ void AffordanceTemplate::planRequest(const PlanGoalConstPtr& goal)
 
         plan_status_[goal->trajectory][ee].plan_valid = true;
         
-        moveit::planning_interface::MoveGroup::Plan plan;
+        moveit::planning_interface::MoveGroupInterface::Plan plan;
         if (!robot_interface_->getPlanner()->getPlan(manipulator_name, plan)) {
           ROS_FATAL("[AffordanceTemplate::planRequest] couldn't find stored plan for %s waypoint!! this shouldn't happen, something is wrong!.", next_path_str.c_str());
           planning.progress = -1;
@@ -2557,7 +2557,7 @@ bool AffordanceTemplate::continuousMoveToWaypoints(const std::string& trajectory
   }
 
   std::string manipulator_name = robot_interface_->getManipulator(ee);
-  std::vector<std::pair<std::string, moveit::planning_interface::MoveGroup::Plan> > plans_to_exe;
+  std::vector<std::pair<std::string, moveit::planning_interface::MoveGroupInterface::Plan> > plans_to_exe;
   bool ee_wp = false, man_wp = false;
   for ( auto& p : continuous_plans_[trajectory]) {
     if (p.group == ee && !ee_wp) {

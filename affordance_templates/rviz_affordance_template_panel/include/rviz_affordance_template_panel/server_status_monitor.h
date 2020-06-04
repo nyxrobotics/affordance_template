@@ -63,7 +63,7 @@ namespace rviz_affordance_template_panel {
       void wait(int seconds);
 
       // boost thread
-      boost::scoped_ptr<boost::thread> monitor_thread_;
+      std::unique_ptr<boost::thread> monitor_thread_;
       boost::mutex mutex;
 
       // ros stuff

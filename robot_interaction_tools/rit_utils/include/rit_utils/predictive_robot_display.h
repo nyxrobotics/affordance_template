@@ -65,7 +65,7 @@ namespace robot_display
         
         std::map<std::string, std::vector<sensor_msgs::JointState> > group_animations_;
 
-        boost::scoped_ptr<boost::thread> animate_thread_;
+        std::unique_ptr<boost::thread> animate_thread_;
         boost::mutex animate_mutex_;
 
     public: 

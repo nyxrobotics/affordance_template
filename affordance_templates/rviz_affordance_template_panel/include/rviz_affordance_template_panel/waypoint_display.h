@@ -59,7 +59,7 @@ namespace rviz_affordance_template_panel
     Q_OBJECT
     public:
 
-        typedef boost::shared_ptr<RobotConfig> RobotConfigSharedPtr;
+        typedef std::shared_ptr<RobotConfig> RobotConfigSharedPtr;
 
         WaypointDisplay(QObject *_parent=0);
         ~WaypointDisplay() {};

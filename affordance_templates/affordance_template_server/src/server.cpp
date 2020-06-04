@@ -306,7 +306,7 @@ bool AffordanceTemplateServer::addTemplate(const std::string &type, uint8_t& id,
     std::string key = type + ":" + std::to_string(id);
     ROS_INFO("[AffordanceTemplateServer::addTemplate] creating new affordance template with ID: %d and key: %s", id, key.c_str());
 
-    at_map_[key] = boost::shared_ptr<affordance_template::AffordanceTemplate>(new affordance_template::AffordanceTemplate(nh_, im_server_, robot_interface_, robot_name_, type, id));
+    at_map_[key] = std::shared_ptr<affordance_template::AffordanceTemplate>(new affordance_template::AffordanceTemplate(nh_, im_server_, robot_interface_, robot_name_, type, id));
     
     affordance_template_object::AffordanceTemplateStructure structure;
     geometry_msgs::Pose p;
@@ -340,7 +340,7 @@ bool AffordanceTemplateServer::updateTemplate(const std::string& type, const uin
     return at_map_[key]->setTemplatePose(pose); 
 }
 
-bool AffordanceTemplateServer::getTemplateInstance(const std::string &type, const uint8_t id, boost::shared_ptr<affordance_template::AffordanceTemplate> &ati)
+bool AffordanceTemplateServer::getTemplateInstance(const std::string &type, const uint8_t id, std::shared_ptr<affordance_template::AffordanceTemplate> &ati)
 {
     boost::mutex::scoped_lock l(mutex_);
 
@@ -351,7 +351,7 @@ bool AffordanceTemplateServer::getTemplateInstance(const std::string &type, cons
     return true;
 }
 
-bool AffordanceTemplateServer::getTemplateInstance(const std::string &key, boost::shared_ptr<affordance_template::AffordanceTemplate> &ati)
+bool AffordanceTemplateServer::getTemplateInstance(const std::string &key, std::shared_ptr<affordance_template::AffordanceTemplate> &ati)
 {
     if (at_map_.find(key) == at_map_.end())
         return false;

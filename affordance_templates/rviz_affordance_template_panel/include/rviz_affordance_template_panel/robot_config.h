@@ -89,8 +89,8 @@ namespace rviz_affordance_template_panel
     class RobotConfig
     {
     public:
-        typedef boost::shared_ptr<EndEffectorConfig> EndEffectorConfigSharedPtr;
-        typedef boost::shared_ptr<EndEffectorPoseConfig> EndEffectorPoseIDConfigSharedPtr;
+        typedef std::shared_ptr<EndEffectorConfig> EndEffectorConfigSharedPtr;
+        typedef std::shared_ptr<EndEffectorPoseConfig> EndEffectorPoseIDConfigSharedPtr;
 
         RobotConfig(const string& uid) {uid_=uid;};
         ~RobotConfig() {}

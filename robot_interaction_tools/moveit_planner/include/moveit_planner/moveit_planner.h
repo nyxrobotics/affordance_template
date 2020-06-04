@@ -34,7 +34,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <planner_interface/planner_interface.h>
 #include <pluginlib/class_list_macros.h>
 
-#include <moveit/move_group_interface/move_group.h>
+#include <moveit/move_group_interface/move_group_interface.h>
 #include <moveit/planning_scene_interface/planning_scene_interface.h>
 #include <moveit/robot_state/robot_state.h>
 #include <moveit/robot_state/conversions.h>
@@ -69,7 +69,7 @@ namespace moveit_planner
       MoveItPlanner();
       ~MoveItPlanner();
 
-      typedef boost::shared_ptr<moveit::planning_interface::MoveGroup> MoveGroupSharedPtr;
+      typedef std::shared_ptr<moveit::planning_interface::MoveGroupInterface> MoveGroupSharedPtr;
 
     protected:
 
@@ -89,7 +89,7 @@ namespace moveit_planner
       bool plan_(const std::map<std::string, planner_interface::PlanningGoal> &goals, std::map<std::string, trajectory_msgs::JointTrajectory> &trajectories, bool execute=false, bool show_path=true, JointStateMap start_states=JointStateMap());
       bool planJointPath_(const std::map<std::string, std::vector<sensor_msgs::JointState> > &goals, std::map<std::string, trajectory_msgs::JointTrajectory>& trajectories, bool execute=false, bool show_path=true, JointStateMap start_states=JointStateMap());
       bool executePlans_(const std::vector<std::string> &group_names);
-      bool executeContinuousPlans(const std::vector<std::pair<std::string, moveit::planning_interface::MoveGroup::Plan> >&);
+      bool executeContinuousPlans(const std::vector<std::pair<std::string, moveit::planning_interface::MoveGroupInterface::Plan> >&);
       void clearGroupGoals(const std::string &group_name);
 
       // bookkeeping functions
@@ -97,20 +97,17 @@ namespace moveit_planner
       bool getGroupPlanningFrame(const std::string &group_name, std::string &planning_frame);
       bool getEndEffectorLink(const std::string &group_name, std::string &ee_link);
 
-      bool getPlan(const std::string&, moveit::planning_interface::MoveGroup::Plan&);
+      bool getPlan(const std::string&, moveit::planning_interface::MoveGroupInterface::Plan&);
       bool getCurrentState(const std::string&, sensor_msgs::JointState&);
 
       bool applyMaskConstraints(const std::string &group_name, moveit_msgs::Constraints &constraints);
-
-      bool setObstacles(planner_interface::SetObstacles::Request  &req   ,
-                          planner_interface::SetObstacles::Response &res);
 
       moveit::planning_interface::PlanningSceneInterface planning_scene_interface_;  
       std::map<std::string, MoveGroupSharedPtr> groups_;
 
       ros::Publisher display_publisher;
       std::map<std::string, moveit_msgs::DisplayTrajectory> stored_display_trajectory_;
-      std::map<std::string, moveit::planning_interface::MoveGroup::Plan> stored_plan_;
+      std::map<std::string, moveit::planning_interface::MoveGroupInterface::Plan> stored_plan_;
 
       bool use_aggregate_groups_;
 
