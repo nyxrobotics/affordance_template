@@ -15,14 +15,19 @@ find_package(affordance_template_server_protobuf)
 include_directories(${affordance_template_server_protobuf_DIR}/proto_gen/cpp)
 # include_directories(${rviz_affordance_template_panel_DIR})
 
-find_package(Qt4 COMPONENTS QtCore QtGui REQUIRED)
-include(${QT_USE_FILE})
+find_package( Qt5Core REQUIRED )
+find_package( Qt5Widgets REQUIRED )
+find_package( Qt5Gui REQUIRED )
+find_package( Qt5OpenGL REQUIRED )
+find_package( Qt5Multimedia REQUIRED )
+find_package( Qt5WebKitWidgets REQUIRED )
+find_package( Qt5Xml REQUIRED )
 add_definitions(-DQT_NO_KEYWORDS)
 
 set(QT_FORMS ${PROJECT_SOURCE_DIR}/ui/rviz_affordance_template_panel.ui)
 set(QT_RESS ${PROJECT_SOURCE_DIR}/resources/images.qrc)
 
-qt4_wrap_cpp(MOC_FILES
+qt5_wrap_cpp(MOC_FILES
     src/rviz_affordance_template_panel.hpp
     src/Affordance.hpp
     src/RecognitionObject.hpp
@@ -30,8 +35,8 @@ qt4_wrap_cpp(MOC_FILES
     src/Controls.hpp
     src/util.hpp
 )
-qt4_wrap_ui(QT_FORMS_HPP ${QT_FORMS})
-qt4_add_resources(QT_RESOURCES ${QT_RESS})
+qt5_wrap_ui(QT_FORMS_HPP ${QT_FORMS})
+qt5_add_resources(QT_RESOURCES ${QT_RESS})
 
 set(SRC_FILES
     src/rviz_affordance_template_panel.cpp
@@ -95,5 +100,13 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 add_library(${PROJECT_NAME} ${SRC_FILES} ${QT_FORMS_HPP} ${QT_RESOURCES})
 
 # Specify libraries to link a library or executable target against
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${ZeroMQ_LIBRARIES} ${PROTOBUF_LIBRARY} ${orocos_kdl_LIBRARIES} AffordanceTemplateServerCmd)
+target_link_libraries(
+  ${PROJECT_NAME}
+  ${catkin_LIBRARIES}
+  ${ZeroMQ_LIBRARIES}
+  ${PROTOBUF_LIBRARY}
+  ${orocos_kdl_LIBRARIES}
+  AffordanceTemplateServerCmd 
+  Qt5::Widgets
+)
 
