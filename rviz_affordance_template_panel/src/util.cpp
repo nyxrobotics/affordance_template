@@ -80,7 +80,8 @@ bool send_request(zmq::socket_t* socket, const Request& request, Response& respo
         socket->send(msg);
 
         string rep;
-        zmq::pollitem_t poller[] = { {*socket, 0, ZMQ_POLLIN, 0} };
+        std::vector<zmq::pollitem_t> poller = {{static_cast<void *>(socket), 0, ZMQ_POLLIN, 0}};
+
         zmq::poll(&poller[0], 1, timeout);
 
         // poll for 1 second

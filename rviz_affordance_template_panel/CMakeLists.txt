@@ -6,9 +6,6 @@ if(CMAKE_COMPILER_IS_GNUCXX)
 endif()
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
-# find ZMQ
-find_package(ZeroMQ REQUIRED)
-include_directories(${ZeroMQ_INCLUDE_DIR})
 
 # add protobuf include
 find_package(affordance_template_server_protobuf)
@@ -56,6 +53,7 @@ find_package(catkin REQUIRED COMPONENTS
   affordance_template_server
   affordance_template_server_protobuf
   visualization_msgs
+  affordance_template_msgs
 )
 
 find_package(orocos_kdl REQUIRED)
@@ -74,7 +72,7 @@ find_library(KDL_LIBRARY REQUIRED NAMES orocos-kdl HINTS ${orocos_kdl_LIBRARY_DI
 catkin_package(
   # INCLUDE_DIRS include
   LIBRARIES rviz_affordance_template_panel ${KDL_LIBRARY}
-  CATKIN_DEPENDS geometry_msgs interactive_markers roscpp roslib rviz affordance_template_server affordance_template_server_protobuf visualization_msgs
+  CATKIN_DEPENDS geometry_msgs interactive_markers roscpp roslib rviz affordance_template_server affordance_template_server_protobuf visualization_msgs affordance_template_msgs
   DEPENDS system_lib orocos_kdl
 )
 
@@ -106,7 +104,6 @@ target_link_libraries(
   ${ZeroMQ_LIBRARIES}
   ${PROTOBUF_LIBRARY}
   ${orocos_kdl_LIBRARIES}
-  AffordanceTemplateServerCmd 
   Qt5::Widgets
 )
 
