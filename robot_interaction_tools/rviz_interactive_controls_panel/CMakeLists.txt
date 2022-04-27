@@ -37,7 +37,7 @@ set(QT_FORMS
  ${PROJECT_SOURCE_DIR}/ui/rviz_panel.ui
  ${PROJECT_SOURCE_DIR}/ui/group_controls_widget.ui
  ${PROJECT_SOURCE_DIR}/ui/multi_group_controls_widget.ui
- #${PROJECT_SOURCE_DIR}/ui/navigation_controls_widget.ui
+ ${PROJECT_SOURCE_DIR}/ui/navigation_controls_widget.ui
 )
 
 qt5_wrap_cpp(MOC_SOURCES
@@ -45,7 +45,7 @@ qt5_wrap_cpp(MOC_SOURCES
    include/rviz_interactive_controls_panel/group_controls_widget.h
    include/rviz_interactive_controls_panel/interface_utils.h
    include/rviz_interactive_controls_panel/multi_group_controls_widget.h
-   #include/rviz_interactive_controls_panel/navigation_controls_widget.h
+   include/rviz_interactive_controls_panel/navigation_controls_widget.h
    include/rviz_interactive_controls_panel/rosparam_dialog.h
    include/rviz_interactive_controls_panel/rviz_panel.h
 )
@@ -58,7 +58,7 @@ add_library(${PROJECT_NAME}
  src/group_controls_widget.cpp
  src/interface_utils.cpp
  src/multi_group_controls_widget.cpp
- #src/navigation_controls_widget.cpp
+ src/navigation_controls_widget.cpp
  src/rosparam_dialog.cpp
 )
 

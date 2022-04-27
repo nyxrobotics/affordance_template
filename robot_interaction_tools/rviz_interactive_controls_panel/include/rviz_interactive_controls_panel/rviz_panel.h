@@ -43,6 +43,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rviz_interactive_controls_panel/group_controls_widget.h>
 #include <rviz_interactive_controls_panel/interface_utils.h>
 #include <rviz_interactive_controls_panel/multi_group_controls_widget.h>
+#include <rviz_interactive_controls_panel/navigation_controls_widget.h>
 
 #include <robot_interaction_tools_msgs/AddGroup.h>
 #include <robot_interaction_tools_msgs/ExecuteCommand.h>
