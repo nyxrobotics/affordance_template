@@ -7,14 +7,19 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
-find_package(Qt4 COMPONENTS QtCore QtGui REQUIRED)
-include(${QT_USE_FILE})
+find_package( Qt5Core REQUIRED )
+find_package( Qt5Widgets REQUIRED )
+find_package( Qt5Gui REQUIRED )
+find_package( Qt5OpenGL REQUIRED )
+find_package( Qt5Multimedia REQUIRED )
+find_package( Qt5WebKitWidgets REQUIRED )
+find_package( Qt5Xml REQUIRED )
 add_definitions(-DQT_NO_KEYWORDS)
 
 set(QT_FORMS ${PROJECT_SOURCE_DIR}/ui/rviz_affordance_template_panel.ui)
 set(QT_RESS ${PROJECT_SOURCE_DIR}/resources/images.qrc)
 
-qt4_wrap_cpp(MOC_FILES
+qt5_wrap_cpp(MOC_FILES
     include/${PROJECT_NAME}/msg_headers.h
     include/${PROJECT_NAME}/server_status_monitor.h
     include/${PROJECT_NAME}/rviz_client.h
@@ -25,8 +30,8 @@ qt4_wrap_cpp(MOC_FILES
     include/${PROJECT_NAME}/util.h
     include/${PROJECT_NAME}/rviz_affordance_template_panel.h
 )
-qt4_wrap_ui(QT_FORMS_HPP ${QT_FORMS})
-qt4_add_resources(QT_RESOURCES ${QT_RESS})
+qt5_wrap_ui(QT_FORMS_HPP ${QT_FORMS})
+qt5_add_resources(QT_RESOURCES ${QT_RESS})
 
 set(SRC_FILES
     src/server_status_monitor.cpp
@@ -71,5 +76,6 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
 add_library(${PROJECT_NAME} ${SRC_FILES} ${QT_FORMS_HPP} ${QT_RESOURCES})
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${orocos_kdl_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${orocos_kdl_LIBRARIES} Qt5::Widgets)
+# qt5_use_modules (${PROJECT_NAME} Widgets)
 add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
